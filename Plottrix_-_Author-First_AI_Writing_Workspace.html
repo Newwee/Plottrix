@@ -1,0 +1,2359 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Plottrix – พื้นที่เขียนนิยายอัจฉริยะที่นักเขียนคุมเกมเอง</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Sarabun & IBM Plex Sans Thai for UI + Noto Serif Thai & Prompt for Novel Writing -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&family=Prompt:wght@300;400;500;600&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans Thai"', 'sans-serif'],
+            serif: ['"Noto Serif Thai"', 'serif'],
+            reading: ['"Sarabun"', 'sans-serif'],
+            modern: ['"Prompt"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars for iPad & Desktop */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+
+    /* =================================================================
+       4 WRITER-FRIENDLY THEMES (Daylight, Warm Sepia, Sage Focus, Midnight Dark)
+       ================================================================= */
+    .theme-light {
+      --bg-app: #eef2f6;
+      --bg-panel: #ffffff;
+      --bg-subpanel: #f8fafc;
+      --bg-paper: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #cbd5e1;
+      --paper-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    }
+    .theme-sepia {
+      --bg-app: #f5efe6;
+      --bg-panel: #faf5ec;
+      --bg-subpanel: #efe7d8;
+      --bg-paper: #fffdf9;
+      --text-main: #3b2f26;
+      --text-muted: #786655;
+      --border-color: #dccdb6;
+      --paper-shadow: 0 10px 30px -5px rgba(61, 49, 42, 0.1), 0 4px 12px -2px rgba(61, 49, 42, 0.05);
+    }
+    .theme-sage {
+      --bg-app: #eaf2ed;
+      --bg-panel: #f4f9f5;
+      --bg-subpanel: #e2ede6;
+      --bg-paper: #f9fcf9;
+      --text-main: #1c3127;
+      --text-muted: #527062;
+      --border-color: #c2d9cb;
+      --paper-shadow: 0 10px 30px -5px rgba(28, 49, 39, 0.08), 0 4px 12px -2px rgba(28, 49, 39, 0.04);
+    }
+    .theme-dark {
+      --bg-app: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-subpanel: #0f172a;
+      --bg-paper: #1e293b;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --paper-shadow: 0 12px 34px -4px rgba(0, 0, 0, 0.55);
+    }
+
+    body {
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .themed-panel {
+      background-color: var(--bg-panel) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+    .themed-subpanel {
+      background-color: var(--bg-subpanel) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+    }
+    .themed-paper {
+      background-color: var(--bg-paper) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+      box-shadow: var(--paper-shadow);
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+    .themed-input {
+      background-color: var(--bg-subpanel) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+    }
+    .themed-input:focus {
+      background-color: var(--bg-paper) !important;
+      border-color: #6366f1 !important;
+    }
+    .themed-muted {
+      color: var(--text-muted) !important;
+    }
+
+    /* Dark Mode Overrides for Nested Elements */
+    body.theme-dark .bg-white,
+    body.theme-dark .bg-white\/90,
+    body.theme-dark .bg-white\/95 {
+      background-color: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-color: #334155 !important;
+    }
+    body.theme-dark .bg-slate-50,
+    body.theme-dark .bg-slate-50\/50,
+    body.theme-dark .bg-slate-100 {
+      background-color: #0f172a !important;
+      color: #e2e8f0 !important;
+      border-color: #334155 !important;
+    }
+    body.theme-dark .text-slate-900,
+    body.theme-dark .text-slate-800,
+    body.theme-dark .text-slate-700 {
+      color: #f1f5f9 !important;
+    }
+    body.theme-dark .text-slate-600,
+    body.theme-dark .text-slate-500 {
+      color: #94a3b8 !important;
+    }
+    body.theme-dark .border-slate-200,
+    body.theme-dark .border-slate-100 {
+      border-color: #334155 !important;
+    }
+
+    /* Smooth Adaptive Button Transitions (No overflow or badge clipping) */
+    .adaptive-btn {
+      transition: flex-grow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      min-height: 54px;
+      touch-action: manipulation;
+    }
+    .adaptive-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Editor Textarea Styling - Contained strictly inside the Paper Sheet */
+    #novel-editor {
+      background-color: transparent;
+      color: var(--text-main);
+      line-height: 1.95;
+      resize: none;
+      outline: none;
+      overflow-y: hidden;
+    }
+    #novel-editor::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    /* Touch target comfort for iPad */
+    .ipad-touch {
+      min-height: 40px;
+      min-width: 40px;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: translateY(6px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-pop {
+      animation: popIn 0.18s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="theme-light h-dvh w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- ==================== TOP NAVIGATION BAR (With Left Safe Spacer for iPad Preview X Button) ==================== -->
+  <header class="themed-panel h-16 border-b pl-16 sm:pl-[68px] pr-3 sm:pr-5 flex items-center justify-between gap-2 z-30 shrink-0 shadow-sm relative">
+    
+    <!-- Left: Sidebar Toggle + Brand + Novel Title Input -->
+    <div class="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+      <button id="btn-toggle-left" onclick="toggleSidebar('left')" title="ซ่อน/แสดงแถบจัดการตอน"
+        class="ipad-touch px-3 rounded-xl themed-subpanel hover:opacity-90 flex items-center gap-1.5 font-semibold text-xs sm:text-sm transition shrink-0 border">
+        <i class="ph-bold ph-list-Numbers text-lg text-indigo-600"></i>
+        <span>รายการตอน</span>
+      </button>
+
+      <!-- Logo -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-sm">
+          <i class="ph-bold ph-feather text-lg"></i>
+        </div>
+        <div class="hidden md:block">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-sm lg:text-base tracking-tight">Plottrix</span>
+            <span id="current-plan-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">Free Plan</span>
+          </div>
+          <p class="text-[10px] themed-muted leading-none">Author-First AI Workspace</p>
+        </div>
+      </div>
+
+      <!-- Editable Novel Title (Starts 100% Blank) -->
+      <div class="flex-1 max-w-xs lg:max-w-md min-w-[110px]">
+        <input id="novel-title-input" type="text" value=""
+          placeholder="ตั้งชื่อเรื่องนิยายของคุณ..."
+          oninput="updateNovelMeta()"
+          class="w-full ipad-touch px-3 py-1.5 rounded-xl themed-input border font-semibold text-xs sm:text-sm transition outline-none placeholder:font-normal" />
+      </div>
+    </div>
+
+    <!-- Right Controls: Trix Wallet, Import, Export, Theme Switcher, Focus Mode, Right Sidebar -->
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      
+      <!-- Trix Currency Button -->
+      <button onclick="openModal('modal-trix')"
+        class="ipad-touch px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 border border-amber-300 flex items-center gap-1.5 shadow-sm transition group shrink-0">
+        <div class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-inner group-hover:scale-110 transition">
+          <i class="ph-fill ph-sparkle"></i>
+        </div>
+        <div class="text-left flex items-center gap-1">
+          <span id="trix-balance-display" class="font-extrabold text-xs sm:text-sm text-amber-950">30</span>
+          <span class="text-[11px] font-bold text-amber-700">Trix</span>
+        </div>
+        <i class="ph-bold ph-plus-circle text-amber-600 text-sm"></i>
+      </button>
+
+      <!-- Import File Button -->
+      <button onclick="document.getElementById('file-import-input').click()" title="นำเข้าไฟล์งานเขียน (.txt, .md)"
+        class="ipad-touch px-2.5 sm:px-3 rounded-xl themed-subpanel border hover:opacity-90 flex items-center gap-1.5 text-xs sm:text-sm font-medium transition">
+        <i class="ph-bold ph-upload-simple text-base"></i>
+        <span class="hidden xl:inline">นำเข้าไฟล์</span>
+      </button>
+      <input id="file-import-input" type="file" accept=".txt,.md,.text" class="hidden" onchange="handleFileImport(event)" />
+
+      <!-- Export to ReadAWrite / Dek-D -->
+      <button onclick="openExportModal()" title="คัดลอกพร้อมลง ReadAWrite / Dek-D"
+        class="ipad-touch px-3 sm:px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs sm:text-sm font-semibold shadow-sm transition">
+        <i class="ph-bold ph-export text-base"></i>
+        <span class="hidden sm:inline">ส่งออก</span>
+      </button>
+
+      <!-- THEME & TYPOGRAPHY SWITCHER BUTTON + POPOVER -->
+      <div class="relative">
+        <button id="btn-theme-menu" onclick="toggleThemePopover(event)" title="โหมดปรับธีม & ตัวอักษร"
+          class="ipad-touch px-2.5 sm:px-3 rounded-xl themed-subpanel border hover:border-indigo-400 flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition">
+          <i class="ph-fill ph-palette text-lg text-indigo-600"></i>
+          <span class="hidden md:inline">ปรับธีม</span>
+        </button>
+
+        <!-- Theme & Typography Popover Menu -->
+        <div id="theme-popover" onclick="event.stopPropagation()"
+          class="hidden absolute right-0 top-14 w-80 sm:w-96 rounded-2xl themed-panel border shadow-2xl p-4 z-50 animate-pop space-y-4">
+          
+          <div class="flex items-center justify-between border-b border-slate-200/70 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i class="ph-fill ph-paint-brush-broad text-indigo-600 text-lg"></i>
+              <span class="font-bold text-sm">โหมดปรับธีมถนอมสายตา & ฟอนต์</span>
+            </div>
+            <button onclick="closeThemePopover()" class="w-7 h-7 rounded-lg hover:bg-slate-200/50 flex items-center justify-center">
+              <i class="ph-bold ph-x text-sm"></i>
+            </button>
+          </div>
+
+          <!-- 4 Writer-Friendly Themes -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider themed-muted mb-2">เลือกโหมดสีพื้นที่เขียนนิยาย (4 โหมด)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setWorkspaceTheme('light')" id="theme-opt-light"
+                class="p-2.5 rounded-xl border-2 border-indigo-600 bg-[#f8fafc] text-slate-900 flex items-center gap-2.5 text-left transition">
+                <span class="w-7 h-7 rounded-full bg-white border border-slate-300 shadow-inner shrink-0 flex items-center justify-center text-amber-500">
+                  <i class="ph-fill ph-sun text-sm"></i>
+                </span>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs truncate">สว่างมาตรฐาน</div>
+                  <div class="text-[10px] text-slate-500 truncate">Daylight Studio</div>
+                </div>
+              </button>
+
+              <button onclick="setWorkspaceTheme('sepia')" id="theme-opt-sepia"
+                class="p-2.5 rounded-xl border-2 border-transparent bg-[#f5efe6] text-[#3b2f26] flex items-center gap-2.5 text-left transition">
+                <span class="w-7 h-7 rounded-full bg-[#fffdf9] border border-[#dccdb6] shadow-inner shrink-0 flex items-center justify-center text-amber-800">
+                  <i class="ph-fill ph-scroll text-sm"></i>
+                </span>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs truncate">ถนอมสายตา</div>
+                  <div class="text-[10px] text-[#786655] truncate">Warm Sepia</div>
+                </div>
+              </button>
+
+              <button onclick="setWorkspaceTheme('sage')" id="theme-opt-sage"
+                class="p-2.5 rounded-xl border-2 border-transparent bg-[#eaf2ed] text-[#1c3127] flex items-center gap-2.5 text-left transition">
+                <span class="w-7 h-7 rounded-full bg-[#f9fcf9] border border-[#c2d9cb] shadow-inner shrink-0 flex items-center justify-center text-emerald-700">
+                  <i class="ph-fill ph-leaf text-sm"></i>
+                </span>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs truncate">เขียวมิ้นต์ผ่อนคลาย</div>
+                  <div class="text-[10px] text-[#527062] truncate">Sage Focus</div>
+                </div>
+              </button>
+
+              <button onclick="setWorkspaceTheme('dark')" id="theme-opt-dark"
+                class="p-2.5 rounded-xl border-2 border-transparent bg-[#1e293b] text-slate-100 flex items-center gap-2.5 text-left transition">
+                <span class="w-7 h-7 rounded-full bg-[#0f172a] border border-slate-600 shadow-inner shrink-0 flex items-center justify-center text-indigo-400">
+                  <i class="ph-fill ph-moon-stars text-sm"></i>
+                </span>
+                <div class="min-w-0">
+                  <div class="font-bold text-xs truncate">มืดสบายตา</div>
+                  <div class="text-[10px] text-slate-400 truncate">Midnight Dark</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Font Family Selector -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider themed-muted mb-2">รูปแบบตัวอักษรสำหรับงานเขียน</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button onclick="setEditorFontFamily('reading')" id="font-opt-reading"
+                class="py-2 px-2 rounded-xl border-2 border-indigo-600 bg-indigo-50/40 text-xs font-bold text-center font-reading">
+                สารบรรณ<br><span class="text-[10px] font-normal opacity-75">อ่านสบายตา</span>
+              </button>
+              <button onclick="setEditorFontFamily('serif')" id="font-opt-serif"
+                class="py-2 px-2 rounded-xl border-2 border-transparent themed-subpanel text-xs font-bold text-center font-serif">
+                วรรณกรรม<br><span class="text-[10px] font-normal opacity-75">มีหัวคลาสสิก</span>
+              </button>
+              <button onclick="setEditorFontFamily('modern')" id="font-opt-modern"
+                class="py-2 px-2 rounded-xl border-2 border-transparent themed-subpanel text-xs font-bold text-center font-modern">
+                ทันสมัย<br><span class="text-[10px] font-normal opacity-75">ไม่มีหัว</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Font Size Adjuster -->
+          <div class="pt-1">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-bold">ขนาดตัวอักษร (16px – 24px)</span>
+              <span id="popover-font-size-label" class="text-xs font-extrabold text-indigo-600">18px</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="changeFontSize(-2)" class="ipad-touch flex-1 py-1.5 rounded-xl themed-subpanel border font-bold text-xs hover:border-indigo-400">ก- ลดขนาด</button>
+              <button onclick="changeFontSize(2)" class="ipad-touch flex-1 py-1.5 rounded-xl themed-subpanel border font-bold text-xs hover:border-indigo-400">ก+ เพิ่มขนาด</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- iPad Focus Mode (Collapse both sidebars) -->
+      <button id="btn-focus-mode" onclick="toggleFocusMode()" title="โหมดโฟกัสเต็มจอบน iPad"
+        class="ipad-touch px-2.5 rounded-xl themed-subpanel border hover:opacity-90 flex items-center justify-center transition">
+        <i class="ph-bold ph-corners-out text-base"></i>
+      </button>
+
+      <!-- Right Sidebar Toggle -->
+      <button id="btn-toggle-right" onclick="toggleSidebar('right')" title="เปิดข้อมูลตัวละคร & คลังคำศัพท์นิยาย"
+        class="ipad-touch px-3 rounded-xl themed-subpanel border hover:opacity-90 flex items-center gap-1.5 font-semibold text-xs sm:text-sm transition">
+        <i class="ph-bold ph-book-bookmark text-lg text-indigo-600"></i>
+        <span class="hidden lg:inline">ตัวละคร & คลังคำ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE AREA ==================== -->
+  <div class="flex-1 flex min-h-0 overflow-hidden relative" onclick="closeThemePopover()">
+
+    <!-- ==================== LEFT SIDEBAR: CHAPTERS, PAGES & GENRE ==================== -->
+    <aside id="left-sidebar" class="hidden lg:flex w-72 themed-panel border-r flex-col shrink-0 z-20 transition-all duration-300 select-none">
+      
+      <!-- Novel Genre & Tone Setting -->
+      <div class="p-3.5 border-b border-slate-100 space-y-2.5 themed-subpanel">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider themed-muted">ตั้งค่าบริบทเรื่อง</span>
+          <span class="text-[11px] text-indigo-600 font-medium">AI อ้างอิงอัตโนมัติ</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] themed-muted block mb-1">หมวดหมู่นิยาย</label>
+            <select id="novel-genre" onchange="updateNovelMeta()" class="w-full text-xs font-medium themed-input border rounded-lg px-2 py-1.5 outline-none">
+              <option value="ทั่วไป / ยังไม่ระบุ">ทั่วไป / ยังไม่ระบุ</option>
+              <option value="โรแมนติก / ดราม่า">โรแมนติก / ดราม่า</option>
+              <option value="แฟนตาซี / กำลังภายใน">แฟนตาซี / กำลังภายใน</option>
+              <option value="วาย / ยูริ (BL / GL)">วาย / ยูริ (BL / GL)</option>
+              <option value="สืบสวน / ระทึกขวัญ">สืบสวน / ระทึกขวัญ</option>
+              <option value="พีเรียด / ย้อนยุค">พีเรียด / ย้อนยุค</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] themed-muted block mb-1">มุมมองการเล่า (POV)</label>
+            <select id="novel-pov" onchange="updateNovelMeta()" class="w-full text-xs font-medium themed-input border rounded-lg px-2 py-1.5 outline-none">
+              <option value="บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)">บุรุษที่ 3 (เขา/เธอ)</option>
+              <option value="บุรุษที่ 1 (ฉัน/ผม/ข้า)">บุรุษที่ 1 (ฉัน/ผม/ข้า)</option>
+              <option value="สลับมุมมองตัวละคร">สลับมุมมองตัวละคร</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chapters List Header -->
+      <div class="px-4 py-3 flex items-center justify-between border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <i class="ph-bold ph-files text-indigo-600"></i>
+          <span class="font-bold text-sm">สารบัญรายตอน</span>
+        </div>
+        <span id="chapter-count-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full themed-subpanel border">1 ตอน</span>
+      </div>
+
+      <!-- Scrollable Chapter List -->
+      <div id="chapter-list-container" class="flex-1 overflow-y-auto p-3 space-y-2">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Add New Chapter Button (Auto runs chapter number) -->
+      <div class="p-3 border-t border-slate-100 themed-subpanel space-y-2">
+        <button onclick="addNewChapter()"
+          class="w-full ipad-touch py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-sm">
+          <i class="ph-bold ph-plus-circle text-lg"></i>
+          <span>เพิ่มตอนใหม่ (รันเลขตอนอัตโนมัติ)</span>
+        </button>
+
+        <!-- Reset Blank Button -->
+        <button onclick="confirmResetBlank()"
+          class="w-full py-2 px-3 rounded-xl text-xs font-medium themed-muted hover:text-rose-600 hover:bg-rose-50/60 flex items-center justify-center gap-1.5 transition">
+          <i class="ph ph-trash"></i>
+          <span>ล้างหน้ากระดาษใหม่ทั้งหมด</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================== CENTER WORKSPACE: ADAPTIVE AI BAR + CONTAINED SCROLLABLE PAPER + FIXED BOTTOM BAR ==================== -->
+    <main class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
+
+      <!-- TOP EDITOR SUB-BAR: ADAPTIVE HIGHLIGHT TOOLBAR (Fixed Single-Line Badges & Non-Clipping Layout) -->
+      <div class="themed-panel border-b px-3 sm:px-5 py-2.5 shadow-sm z-20 shrink-0">
+        <div class="max-w-5xl mx-auto">
+          
+          <!-- Adaptive Bar Status Header -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                <i class="ph-fill ph-magic-wand text-indigo-600"></i>
+                Adaptive Highlight-to-Action UI
+              </span>
+              <span id="selection-status-text" class="text-xs themed-muted truncate">
+                ลากคลุมดำข้อความ หรือกดปุ่มด้านล่างเพื่อตรวจทั้งย่อหน้า/ทั้งตอน (ปุ่มที่ใช้บ่อยจะขยายกว้างขึ้นอัตโนมัติ)
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button onclick="resetAdaptiveWeights()" title="รีเซ็ตขนาดปุ่ม Adaptive เพื่อสาธิตการขยายขนาดใหม่"
+                class="text-xs themed-muted hover:text-indigo-600 px-2 py-0.5 rounded-lg hover:bg-slate-100/60 flex items-center gap-1 transition whitespace-nowrap">
+                <i class="ph ph-arrows-counter-clockwise"></i>
+                <span>รีเซ็ตขนาดปุ่ม Adaptive</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ADAPTIVE BUTTONS ROW (No transform scale clipping, no two-line badge wrapping) -->
+          <div id="adaptive-toolbar-container" class="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-nowrap items-stretch gap-2">
+            <!-- Rendered dynamically by renderAdaptiveToolbar() -->
+          </div>
+        </div>
+      </div>
+
+      <!-- FLOATING HIGHLIGHT POPOVER (Appears near text selection when user highlights text) -->
+      <div id="floating-selection-bar" class="hidden fixed z-50 bg-slate-900/95 backdrop-blur-md text-white p-1.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-1.5 animate-pop">
+        <span class="text-[11px] font-medium text-indigo-300 px-2.5 border-r border-slate-700 hidden sm:inline whitespace-nowrap" id="floating-sel-count">เลือกข้อความแล้ว</span>
+        <button onclick="triggerAICommand('proofread')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap">
+          <i class="ph-bold ph-check-circle"></i> แก้คำผิด & เช็คคำ <span class="opacity-80 text-[10px]">(1 Trix)</span>
+        </button>
+        <button onclick="triggerAICommand('polish')" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap">
+          <i class="ph-bold ph-sparkle"></i> เกลาสำนวน <span class="opacity-80 text-[10px]">(1 Trix)</span>
+        </button>
+        <button onclick="triggerAICommand('continuity')" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium flex items-center gap-1 transition whitespace-nowrap">
+          <i class="ph ph-detective"></i> เช็คจุดต่าง <span class="text-amber-400 text-[10px]">(3)</span>
+        </button>
+        <button onclick="triggerAICommand('translate')" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium flex items-center gap-1 transition whitespace-nowrap">
+          <i class="ph ph-translate"></i> แปลภาษา <span class="text-amber-400 text-[10px]">(3)</span>
+        </button>
+        <button onclick="hideFloatingBar()" class="p-2 rounded-xl text-slate-400 hover:text-white">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <!-- WRITING CANVAS SCROLL CONTAINER (Strict min-h-0 + generous bottom spacing pb-20 so Paper Card NEVER bleeds into bottom status bar) -->
+      <div id="paper-scroll-viewport" class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 md:px-10 pt-5 pb-20">
+        
+        <!-- AI RESULT / SUGGESTION DRAWER (Appears right above the paper when AI finishes processing) -->
+        <div id="ai-result-container" class="w-full max-w-[780px] mx-auto mb-5 hidden animate-pop">
+          <!-- Populated dynamically when AI command runs -->
+        </div>
+
+        <!-- PAPER SHEET CARD (Properly Enclosed Rounded Card with Bottom Margin & Shadow) -->
+        <div id="paper-card" class="w-full max-w-[780px] mx-auto mb-10 themed-paper rounded-2xl border flex flex-col overflow-hidden transition-all">
+          
+          <!-- Paper Header: Chapter Number + Chapter Title Input + Quick Theme/Font Bar + Page Tabs -->
+          <div class="px-5 sm:px-8 pt-5 pb-3.5 border-b border-slate-200/70 flex flex-col gap-3">
+            
+            <div class="flex flex-wrap items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                <span id="active-chapter-number-badge" class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs sm:text-sm shrink-0 shadow-sm whitespace-nowrap">
+                  ตอนที่ 1
+                </span>
+                <input id="active-chapter-title" type="text" value=""
+                  placeholder="ตั้งชื่อตอนที่นี่... (เว้นว่างไว้ก่อนได้)"
+                  oninput="updateActiveChapterTitle(this.value)"
+                  class="w-full ipad-touch px-3 py-1.5 rounded-xl themed-input border font-bold text-sm sm:text-base outline-none transition placeholder:font-normal" />
+              </div>
+
+              <!-- Quick Theme & Font Size Bar Directly on Paper Header -->
+              <div class="flex items-center gap-1.5 themed-subpanel px-2 py-1 rounded-xl border shrink-0">
+                <button onclick="changeFontSize(-2)" title="ลดขนาดตัวอักษร" class="w-7 h-7 rounded-lg hover:bg-black/5 font-bold text-xs flex items-center justify-center transition">ก-</button>
+                <span id="font-size-label" class="text-xs font-bold px-1">18px</span>
+                <button onclick="changeFontSize(2)" title="เพิ่มขนาดตัวอักษร" class="w-7 h-7 rounded-lg hover:bg-black/5 font-bold text-sm flex items-center justify-center transition">ก+</button>
+                <div class="h-4 w-[1px] bg-slate-300/80 mx-0.5"></div>
+                <button onclick="setWorkspaceTheme('light')" title="สว่างมาตรฐาน (Daylight)" class="w-5 h-5 rounded-full bg-white border border-slate-400 shadow-sm hover:scale-110 transition"></button>
+                <button onclick="setWorkspaceTheme('sepia')" title="ถนอมสายตา (Warm Sepia)" class="w-5 h-5 rounded-full bg-[#f4e7d3] border border-amber-600 shadow-sm hover:scale-110 transition"></button>
+                <button onclick="setWorkspaceTheme('sage')" title="เขียวมิ้นต์ผ่อนคลาย (Sage Focus)" class="w-5 h-5 rounded-full bg-[#d5e8dc] border border-emerald-600 shadow-sm hover:scale-110 transition"></button>
+                <button onclick="setWorkspaceTheme('dark')" title="มืดสบายตา (Midnight Dark)" class="w-5 h-5 rounded-full bg-slate-800 border border-indigo-400 shadow-sm hover:scale-110 transition"></button>
+              </div>
+            </div>
+
+            <!-- Sub-Pages Bar within Current Chapter (แบ่งหน้ากระดาษในตอน) -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div class="flex items-center gap-1.5 overflow-x-auto py-0.5" id="page-tabs-container">
+                <!-- Rendered by JS: หน้า 1, หน้า 2, + เพิ่มหน้ากระดาษ -->
+              </div>
+
+              <!-- Quick formatting helpers for novelists -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button onclick="insertAtCursor('    ')" title="ย่อหน้า (Indent)"
+                  class="px-2.5 py-1.5 rounded-lg themed-subpanel border hover:opacity-80 text-xs font-semibold flex items-center gap-1 transition">
+                  <i class="ph-bold ph-text-indent text-sm"></i>
+                  <span>ย่อหน้า</span>
+                </button>
+                <button onclick="insertAtCursor('“”', -1)" title="แทรกเครื่องหมายคำพูด “...”"
+                  class="px-2.5 py-1.5 rounded-lg themed-subpanel border hover:opacity-80 text-xs font-bold transition">
+                  “ คำพูด ”
+                </button>
+                <button onclick="insertAtCursor('\n\n* * *\n\n')" title="แทรกตัวคั่นฉาก"
+                  class="px-2.5 py-1.5 rounded-lg themed-subpanel border hover:opacity-80 text-xs font-bold transition">
+                  * * *
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MAIN BLANK WRITING TEXTAREA (Auto-resizes cleanly with bottom footer inside the paper card) -->
+          <div class="px-6 sm:px-10 pt-6 pb-8">
+            <textarea id="novel-editor"
+              placeholder="เริ่มเขียนเนื้อหานิยายของคุณที่นี่...&#10;&#10;• นักเขียนลงมือเขียนเอง 100% ในสำนวนของคุณ&#10;• ลองพิมพ์เนื้อเรื่อง แล้วลากคลุมดำ (หรือกดปุ่ม AI ด้านบน) เพื่อให้ผู้ช่วยบรรณาธิการช่วยเช็คคำผิด เกลาสำนวน เช็คความต่อเนื่องกับข้อมูลตัวละคร หรือเสนอทางเลือกพล็อตตอนต่อไป"
+              oninput="handleEditorInput()"
+              onmouseup="handleTextSelection()"
+              onkeyup="handleTextSelection()"
+              ontouchend="setTimeout(handleTextSelection, 120)"
+              class="w-full font-reading text-[18px] select-text border-0 focus:ring-0 min-h-[380px] block"></textarea>
+          </div>
+
+          <!-- Subtle Paper Sheet Bottom Margin Footer so the Paper Card Always Has a Distinct Visual End -->
+          <div class="px-6 sm:px-10 py-3 border-t border-slate-200/50 themed-subpanel flex items-center justify-between text-[11px] themed-muted">
+            <span id="paper-footer-page-indicator">ขอบกระดาษท้ายหน้า • หน้า 1</span>
+            <span>เลื่อนลงหรือกด “+ เพิ่มหน้ากระดาษ” ด้านบนเพื่อแบ่งหน้าเขียนต่อ</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- DEDICATED NON-OVERLAPPING BOTTOM STATUS & PLOT BRANCH BAR -->
+      <div class="themed-panel border-t px-4 sm:px-8 py-2.5 z-20 shrink-0 shadow-[0_-4px_16px_rgba(15,23,42,0.05)]">
+        <div class="max-w-[780px] mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-3 sm:gap-5 text-xs themed-muted">
+            <div class="flex items-center gap-1.5">
+              <i class="ph-bold ph-text-aa text-indigo-500 text-base"></i>
+              <span>จำนวนคำ: <strong id="stat-words" class="font-extrabold">0</strong> คำ</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <i class="ph-bold ph-hash text-indigo-500 text-base"></i>
+              <span>ตัวอักษร: <strong id="stat-chars" class="font-extrabold">0</strong> ตัว</span>
+            </div>
+            <div id="stat-selection-badge" class="hidden items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-semibold">
+              <i class="ph-fill ph-selection"></i>
+              <span>คลุมดำ <span id="stat-sel-chars">0</span> ตัวอักษร</span>
+            </div>
+            <div class="flex items-center gap-1 text-emerald-600 font-semibold">
+              <i class="ph-fill ph-check-circle"></i>
+              <span id="autosave-status">พร้อมเขียน (หน้ากระดาษเปล่า)</span>
+            </div>
+          </div>
+
+          <!-- Interactive Plot Branching Quick Button -->
+          <button onclick="triggerAICommand('plotBranch')"
+            class="ipad-touch px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition whitespace-nowrap">
+            <i class="ph-bold ph-git-branch text-base"></i>
+            <span>คิดทางเลือกพล็อตต่อจากนี้</span>
+            <span class="px-1.5 py-0.5 rounded bg-white/20 text-[11px] font-extrabold">5 Trix</span>
+          </button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ==================== RIGHT SIDEBAR: CHARACTERS, PLOT NOTES & VOCABULARY BANK ==================== -->
+    <aside id="right-sidebar" class="hidden xl:flex w-80 sm:w-96 themed-panel border-l flex-col shrink-0 z-20 transition-all duration-300 select-none">
+      
+      <!-- Right Sidebar Navigation Tabs -->
+      <div class="grid grid-cols-3 p-2 gap-1 themed-subpanel border-b">
+        <button id="tab-btn-chars" onclick="switchRightTab('chars')"
+          class="py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm border border-slate-200/80 transition">
+          <i class="ph-bold ph-users text-sm"></i>
+          <span>ตัวละคร</span>
+        </button>
+        <button id="tab-btn-plot" onclick="switchRightTab('plot')"
+          class="py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 themed-muted hover:text-indigo-600 transition">
+          <i class="ph-bold ph-notebook text-sm"></i>
+          <span>พล็อตย่อ</span>
+        </button>
+        <button id="tab-btn-vocab" onclick="switchRightTab('vocab')"
+          class="py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 themed-muted hover:text-indigo-600 transition">
+          <i class="ph-bold ph-book-open-text text-sm"></i>
+          <span>คลังคำศัพท์</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: CHARACTERS PANEL -->
+      <div id="right-panel-chars" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-sm">ข้อมูลตัวละครในเรื่อง</h3>
+            <p class="text-[11px] themed-muted">AI ใช้ตรวจความต่อเนื่องและสรรพนามเวลาแปลภาษา</p>
+          </div>
+        </div>
+
+        <!-- Add Character Form -->
+        <div class="p-3.5 rounded-2xl themed-subpanel border space-y-2.5">
+          <input id="char-name-input" type="text" placeholder="ชื่อตัวละคร (เช่น คิรัน, เจ้าหญิงลินดา)"
+            class="w-full px-3 py-2 rounded-xl themed-input border text-xs font-semibold outline-none" />
+          <div class="grid grid-cols-2 gap-2">
+            <input id="char-role-input" type="text" placeholder="บทบาท (เช่น พระเอก, ตัวร้าย)"
+              class="w-full px-3 py-1.5 rounded-xl themed-input border text-xs outline-none" />
+            <input id="char-pronoun-input" type="text" placeholder="สรรพนาม (เช่น ผม/คุณ, ข้า/เจ้า)"
+              class="w-full px-3 py-1.5 rounded-xl themed-input border text-xs outline-none" />
+          </div>
+          <textarea id="char-traits-input" rows="2" placeholder="นิสัย / ลักษณะเด่น / กฎเหล็กของตัวละครนี้ (เช่น เย็นชา พูดน้อย แพ้เกสรดอกไม้)"
+            class="w-full px-3 py-1.5 rounded-xl themed-input border text-xs outline-none resize-none"></textarea>
+          <button onclick="addCharacter()"
+            class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+            <i class="ph-bold ph-user-plus text-sm"></i>
+            <span>บันทึกตัวละครเพิ่ม</span>
+          </button>
+        </div>
+
+        <!-- Characters List -->
+        <div id="characters-list-container" class="space-y-2.5">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- TAB 2: CHAPTER PLOT NOTES PANEL -->
+      <div id="right-panel-plot" class="hidden flex-1 overflow-y-auto p-4 space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-sm">พล็อตย่อ & เป้าหมายของตอน</h3>
+            <span id="plot-note-chapter-label" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">ตอนที่ 1</span>
+          </div>
+          <p class="text-[11px] themed-muted">จดสิ่งที่ต้องการให้เกิดขึ้นในตอนนี้ AI จะใช้อ้างอิงตอนเสนอทางเลือกเนื้อเรื่อง</p>
+        </div>
+
+        <textarea id="chapter-plot-note" rows="8"
+          oninput="saveChapterPlotNote(this.value)"
+          placeholder="ยังไม่มีบันทึกพล็อตของตอนนี้...&#10;&#10;ตัวอย่างการจด:&#10;- ฉากเปิดเรื่องที่สถานีรถไฟเก่า&#10;- ตัวเอกพบจดหมายปริศนาในกระเป๋าเสื้อ&#10;- ทิ้งปมท้ายตอนให้คนอ่านสงสัยว่าใครเป็นคนส่ง"
+          class="w-full p-3.5 rounded-2xl themed-input border text-xs sm:text-sm leading-relaxed outline-none resize-none select-text"></textarea>
+
+        <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2 text-slate-800">
+          <div class="flex items-center gap-1.5 text-indigo-800 font-bold text-xs">
+            <i class="ph-fill ph-lightbulb"></i>
+            <span>ทิปสำหรับนักเขียน Plottrix</span>
+          </div>
+          <p class="text-xs text-indigo-900/80 leading-relaxed">
+            เมื่อคุณจดพล็อตย่อและข้อมูลตัวละครไว้ที่นี่ เวลากดปุ่ม <strong>“เช็คจุดต่างเนื้อเรื่อง” (3 Trix)</strong> หรือ <strong>“ตัวเลือกเส้นเรื่อง” (5 Trix)</strong> ระบบจะดึงเฉพาะข้อมูลสำคัญไปประมวลผลร่วมกับย่อหน้าที่คุณเขียนโดยอัตโนมัติ (Selective Context Injection)
+          </p>
+        </div>
+      </div>
+
+      <!-- TAB 3: NOVEL VOCABULARY BANK -->
+      <div id="right-panel-vocab" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-slate-100 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-sm">คลังคำศัพท์เฉพาะทางสำหรับนิยาย</h3>
+              <p class="text-[11px] text-emerald-600 font-semibold">ค้นหาฟรี 0 Trix • แตะที่คำเพื่อแทรกลงในนิยายทันที</p>
+            </div>
+          </div>
+
+          <div class="relative">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 themed-muted"></i>
+            <input id="vocab-search-input" type="text" oninput="renderVocabularyBank()"
+              placeholder="ค้นหาคำศัพท์ หรืออารมณ์ที่ต้องการบรรยาย..."
+              class="w-full pl-9 pr-3 py-2 rounded-xl themed-input border text-xs outline-none" />
+          </div>
+
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1" id="vocab-category-pills">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div id="vocab-items-container" class="flex-1 overflow-y-auto p-4 space-y-2.5">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- ==================== MODAL 1: TRIX WALLET & PRICING PLANS ==================== -->
+  <div id="modal-trix" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 animate-pop my-8 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-2xl shadow-md">
+            <i class="ph-fill ph-sparkle"></i>
+          </div>
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">ระบบเหรียญ Trix & แพ็กเกจนักเขียน Plottrix</h2>
+            <p class="text-xs sm:text-sm text-slate-500">Hybrid Freemium & Trix Currency • ควบคุมต้นทุนคุ้มค่า จ่ายตามการใช้งานจริง</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-trix')" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Current Balance & Usage Rate Summary -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+        <div class="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold text-amber-800 uppercase">เหรียญ Trix คงเหลือของคุณ</span>
+            <div class="text-3xl font-extrabold text-amber-900 mt-1"><span id="modal-trix-balance">30</span> <span class="text-base font-bold text-amber-700">Trix</span></div>
+            <span id="modal-current-plan" class="inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-white text-amber-800 border border-amber-200">แผนปัจจุบัน: Free Plan</span>
+          </div>
+          <i class="ph-duotone ph-coins text-5xl text-amber-500/70"></i>
+        </div>
+
+        <div class="md:col-span-2 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-center">
+          <span class="text-xs font-bold text-slate-700 mb-2">อัตราการใช้เหรียญ Trix ต่อคำสั่ง (Trix Usage Rate)</span>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+              <span class="font-bold text-emerald-700 block">1 Trix / ครั้ง</span>
+              <span class="text-slate-600 text-[11px]">แก้คำผิด เช็คคำ และเกลาสำนวนเฉพาะจุด</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+              <span class="font-bold text-amber-700 block">3 Trix / ครั้ง</span>
+              <span class="text-slate-600 text-[11px]">เช็คจุดต่างความต่อเนื่อง หรือ แปลภาษาคงบริบท</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+              <span class="font-bold text-violet-700 block">5 Trix / ครั้ง</span>
+              <span class="text-slate-600 text-[11px]">สร้างตัวเลือกพล็อตตอนต่อไปพร้อมบทเกริ่นนำ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription Plans -->
+      <h3 class="font-bold text-sm text-slate-800 mb-3">1. เลือกแพ็กเกจรายเดือน (จำลองการอัปเกรดได้ทันทีสำหรับการสาธิต)</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="p-5 rounded-2xl border border-slate-200 bg-white flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-base text-slate-900">Free Plan</span>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">เริ่มต้น</span>
+            </div>
+            <div class="text-2xl font-extrabold text-slate-900 mt-2">0 ฿ <span class="text-xs font-normal text-slate-500">/ เดือน</span></div>
+            <p class="text-xs font-semibold text-amber-700 mt-1">รับ 30 Trix แรกเข้า (+5 Trix/วัน)</p>
+            <ul class="mt-3 space-y-1.5 text-xs text-slate-600">
+              <li>• สร้างนิยายได้สูงสุด 2 เรื่อง</li>
+              <li>• ใช้ Workspace จดตัวละคร & พล็อตครบ</li>
+              <li>• คลังคำศัพท์นิยายพื้นฐานฟรี</li>
+              <li>• ส่งออก ReadAWrite & Dek-D</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Free Plan', 30)" class="mt-4 w-full py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition">
+            ใช้แผน Free Plan
+          </button>
+        </div>
+
+        <div class="p-5 rounded-2xl border-2 border-indigo-600 bg-indigo-50/20 flex flex-col justify-between relative shadow-md">
+          <span class="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">ยอดนิยมสำหรับนักเขียน</span>
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-base text-indigo-950">Pro Plan</span>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700">คุ้มค่า</span>
+            </div>
+            <div class="text-2xl font-extrabold text-indigo-950 mt-2">299 ฿ <span class="text-xs font-normal text-slate-500">/ เดือน</span></div>
+            <p class="text-xs font-semibold text-amber-700 mt-1">รับ 450 Trix / เดือน</p>
+            <ul class="mt-3 space-y-1.5 text-xs text-slate-700">
+              <li>• สร้างโปรเจกต์นิยายไม่จำกัดเรื่องและตอน</li>
+              <li>• AI จดจำบริบทเช็คจุดต่างย้อนหลัง 15 ตอน</li>
+              <li>• ปลดล็อกคลังคำศัพท์นิยายขั้นสูงทั้งหมด</li>
+              <li>• บันทึกประวัติการแก้ไข (Version History)</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Pro Plan', 450)" class="mt-4 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white shadow-sm transition">
+            ทดลองเปิดใช้ Pro Plan (+450 Trix)
+          </button>
+        </div>
+
+        <div class="p-5 rounded-2xl border border-violet-300 bg-gradient-to-b from-violet-50/40 to-white flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-base text-violet-950">Ultra Plan</span>
+              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">มืออาชีพ</span>
+            </div>
+            <div class="text-2xl font-extrabold text-violet-950 mt-2">699 ฿ <span class="text-xs font-normal text-slate-500">/ เดือน</span></div>
+            <p class="text-xs font-semibold text-amber-700 mt-1">รับ 1,200 Trix / เดือน</p>
+            <ul class="mt-3 space-y-1.5 text-xs text-slate-700">
+              <li>• วิเคราะห์พล็อต & เช็คจุดต่างทั้งเรื่อง (Full-Book)</li>
+              <li>• แปลภาษาทั้งตอนพร้อมส่งออกหลายภาษา</li>
+              <li>• บันทึกสไตล์สำนวนการเขียนเฉพาะตัว</li>
+              <li>• ส่งออกไฟล์รูปเล่ม E-Book ครบวงจร</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Ultra Plan', 1200)" class="mt-4 w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-xs font-bold text-white shadow-sm transition">
+            ทดลองเปิดใช้ Ultra Plan (+1,200 Trix)
+          </button>
+        </div>
+      </div>
+
+      <!-- Top-Up Trix Coins -->
+      <h3 class="font-bold text-sm text-slate-800 mb-3">2. เติมเหรียญ Trix แยกตามจริง (Trix Top-Up • เหรียญไม่มีวันหมดอายุ)</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <button onclick="topUpTrix(60, 59)" class="p-3.5 rounded-2xl border border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 flex items-center justify-between transition text-left">
+          <div>
+            <div class="font-extrabold text-sm text-amber-950">+60 Trix</div>
+            <div class="text-[11px] text-amber-700">เฉลี่ย 0.98 บาท/Trix</div>
+          </div>
+          <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-sm">59 ฿</span>
+        </button>
+
+        <button onclick="topUpTrix(180, 149)" class="p-3.5 rounded-2xl border border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 flex items-center justify-between transition text-left">
+          <div>
+            <div class="font-extrabold text-sm text-amber-950">+180 Trix</div>
+            <div class="text-[11px] text-amber-700">เฉลี่ย 0.82 บาท/Trix</div>
+          </div>
+          <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-sm">149 ฿</span>
+        </button>
+
+        <button onclick="topUpTrix(400, 299)" class="p-3.5 rounded-2xl border border-amber-400 bg-amber-100/60 hover:bg-amber-100 flex items-center justify-between transition text-left">
+          <div>
+            <div class="font-extrabold text-sm text-amber-950">+400 Trix <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-600 text-white ml-1">สุดคุ้ม</span></div>
+            <div class="text-[11px] text-amber-700">เฉลี่ย 0.75 บาท/Trix</div>
+          </div>
+          <span class="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs shadow-sm">299 ฿</span>
+        </button>
+      </div>
+
+      <!-- Recent Trix Transactions Log -->
+      <div class="border-t border-slate-100 pt-4">
+        <span class="text-xs font-bold text-slate-600 block mb-2">ประวัติการใช้เหรียญ Trix ล่าสุด</span>
+        <div id="trix-history-list" class="max-h-28 overflow-y-auto space-y-1 text-xs text-slate-600">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: EXPORT TO READAWRITE & DEK-D ==================== -->
+  <div id="modal-export" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 animate-pop my-8">
+      <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">ส่งออกงานเขียนพร้อมเผยแพร่ (Platform Export)</h2>
+          <p class="text-xs text-slate-500">จัดรูปแบบย่อหน้าและเครื่องหมายคำพูดอัตโนมัติ สำหรับวางบน ReadAWrite และ Dek-D</p>
+        </div>
+        <button onclick="closeModal('modal-export')" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="my-4 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button onclick="formatExportPreview('readawrite')" id="exp-btn-raw"
+            class="p-3 rounded-2xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition">
+            <div class="font-bold text-xs text-indigo-950">รูปแบบ ReadAWrite</div>
+            <div class="text-[11px] text-slate-500">เว้นบรรทัดมาตรฐาน อ่านง่ายบนมือถือ</div>
+          </button>
+          <button onclick="formatExportPreview('dekd')" id="exp-btn-dekd"
+            class="p-3 rounded-2xl border border-slate-200 hover:border-indigo-300 text-left transition">
+            <div class="font-bold text-xs text-slate-800">รูปแบบ Dek-D</div>
+            <div class="text-[11px] text-slate-500">มีย่อหน้าชัดเจน พร้อมหัวข้อตอน</div>
+          </button>
+          <button onclick="formatExportPreview('allchapter')" id="exp-btn-all"
+            class="p-3 rounded-2xl border border-slate-200 hover:border-indigo-300 text-left transition">
+            <div class="font-bold text-xs text-slate-800">รวมทุกหน้าในตอนนี้</div>
+            <div class="text-[11px] text-slate-500">รวมทุกหน้ากระดาษของตอนปัจจุบัน</div>
+          </button>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-1.5">ตัวอย่างข้อความที่พร้อมคัดลอก:</label>
+          <textarea id="export-preview-textarea" rows="9" readonly
+            class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-reading leading-relaxed text-slate-800 outline-none select-all"></textarea>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-2.5 pt-2">
+          <button onclick="downloadTxtFile()"
+            class="ipad-touch px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm flex items-center gap-2 transition">
+            <i class="ph-bold ph-download-simple"></i>
+            <span>ดาวน์โหลดไฟล์ .txt</span>
+          </button>
+          <button onclick="copyExportToClipboard()"
+            class="ipad-touch px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition">
+            <i class="ph-bold ph-copy"></i>
+            <span>คัดลอกพร้อมนำไปวางบนเว็บนิยายทันที</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION BOX ==================== -->
+  <div id="toast-container" class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2"></div>
+
+  <!-- ==================== APPLICATION JAVASCRIPT ==================== -->
+  <script>
+    // =========================================================================
+    // 1. INITIAL BLANK STATE (100% Clean Slate - No Pre-filled Story Templates)
+    // =========================================================================
+    const apiKey = ""; // Canvas injects Gemini API key at runtime
+
+    let appState = {
+      novelTitle: "",
+      genre: "ทั่วไป / ยังไม่ระบุ",
+      pov: "บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)",
+      plan: "Free Plan",
+      trixBalance: 30,
+      trixHistory: [
+        { time: "เริ่มต้นใช้งาน", desc: "โควตาต้อนรับ Free Plan แรกเข้า", amount: "+30 Trix" }
+      ],
+      fontSize: 18,
+      fontFamily: "reading", // 'reading', 'serif', 'modern'
+      paperTheme: "light",   // 'light', 'sepia', 'sage', 'dark'
+      activeChapterId: 1,
+      activePageIdx: 0,
+      chapters: [
+        {
+          id: 1,
+          number: 1,
+          title: "",
+          plotNote: "",
+          pages: [""]
+        }
+      ],
+      characters: [],
+      adaptiveClicks: {
+        proofread: 0,
+        polish: 0,
+        continuity: 0,
+        translate: 0,
+        plotBranch: 0
+      },
+      targetTranslateLang: "English (ภาษาอังกฤษ)"
+    };
+
+    let currentSelection = {
+      text: "",
+      start: 0,
+      end: 0
+    };
+
+    // =========================================================================
+    // 2. NOVEL VOCABULARY BANK DATA (Free 0 Trix)
+    // =========================================================================
+    const VOCABULARY_BANK = [
+      { category: "อารมณ์ความรู้สึก", word: "สะท้านเยือกในอก", meaning: "รู้สึกหนาวเหน็บหรือตกใจอย่างรุนแรงไปถึงข้างในจิตใจ", example: "ถ้อยคำบอกลานั้นทำให้หัวใจของเขาสะท้านเยือกในอก" },
+      { category: "อารมณ์ความรู้สึก", word: "ร้าวรานเจียนแหลกสลาย", meaning: "เจ็บปวดเสียใจอย่างแสนสาหัส", example: "แววตาที่มองมาเต็มไปด้วยความร้าวรานเจียนแหลกสลาย" },
+      { category: "อารมณ์ความรู้สึก", word: "วาบหวามแกมประหม่า", meaning: "ความรู้สึกใจสั่นหวั่นไหวระคนเขินอาย", example: "ปลายนิ้วที่แตะสัมผัสมือทำให้เกิดความรู้สึกวาบหวามแกมประหม่า" },
+      { category: "อารมณ์ความรู้สึก", word: "ขุ่นมัวคุกรุ่น", meaning: "อารมณ์โกรธหรือไม่พอใจที่กำลังก่อตัวขึ้น", example: "โทสะที่ถูกกดทับไว้เริ่มขุ่นมัวคุกรุ่นขึ้นในดวงตาคู่คม" },
+      { category: "กิริยาท่าทาง & สายตา", word: "ปรายตามองอย่างเย็นชา", meaning: "เหลือบสายตามองด้วยท่าทีห่างเหินไร้ความรู้สึก", example: "ชายหนุ่มเพียงปรายตามองอย่างเย็นชาโดยไม่เอ่ยคำใด" },
+      { category: "กิริยาท่าทาง & สายตา", word: "เม้มริมฝีปากแน่นจนซีดขาว", meaning: "อาการอดกลั้นอารมณ์โกรธหรือความเจ็บปวด", example: "เธอเม้มริมฝีปากแน่นจนซีดขาวเพื่อกลั้นเสียงสะอื้น" },
+      { category: "กิริยาท่าทาง & สายตา", word: "ทอดถอนใจอย่างเหนื่อยล้า", meaning: "ถอนหายใจยาวด้วยความอ่อนแรงทั้งกายและใจ", example: "เขาทอดถอนใจอย่างเหนื่อยล้าขณะเอนกายพิงพนักเก้าอี้" },
+      { category: "กิริยาท่าทาง & สายตา", word: "หลุบเปลือกตาลงต่ำ", meaning: "ก้มหน้าหรือลดสายตาลงเพื่อซ่อนความรู้สึกในแววตา", example: "ร่างบางหลุบเปลือกตาลงต่ำหลบเลี่ยงสายตาคาดคั้น" },
+      { category: "บรรยากาศ & ฉาก", word: "สายหมอกจางลอยอ้อยอิ่ง", meaning: "หมอกบางๆ ที่ลอยตัวช้าๆ ชวนให้รู้สึกสงบหรือลึกลับ", example: "ยามรุ่งสางมีสายหมอกจางลอยอ้อยอิ่งเหนือผิวน้ำ" },
+      { category: "บรรยากาศ & ฉาก", word: "ความเงียบงันเข้าครอบงำ", meaning: "บรรยากาศที่จู่ๆ ก็เงียบกริบไร้เสียงพูดคุย", example: "สิ้นประโยคคำถาม ความเงียบงันเข้าครอบงำทั่วทั้งห้องโถง" },
+      { category: "บรรยากาศ & ฉาก", word: "แสงจันทร์สีเงินยวงทอประกาย", meaning: "แสงจันทร์นวลสว่างเป็นสีเงินสวยงามยามค่ำคืน", example: "แสงจันทร์สีเงินยวงทอประกายลอดผ่านบานหน้าต่างไม้" },
+      { category: "ฉากต่อสู้ & แอ็กชัน", word: "พุ่งทะยานดั่งสายฟ้าฟาด", meaning: "เคลื่อนที่เข้าหาเป้าหมายด้วยความเร็วสูงและเฉียบขาด", example: "เงาร่างสีดำพุ่งทะยานดั่งสายฟ้าฟาดเข้าประชิดตัวศัตรู" },
+      { category: "ฉากต่อสู้ & แอ็กชัน", word: "ตวัดคมดาบสกัดกั้น", meaning: "เหวี่ยงอาวุธขึ้นรับการโจมตีอย่างฉับไว", example: "เขาตวัดคมดาบสกัดกั้นแรงปะทะจนเกิดประกายไฟแลบแปลบปลาบ" },
+      { category: "คำราชาศัพท์ & ย้อนยุค", word: "ทอดพระเนตร", meaning: "มอง, ดู (สำหรับพระมหากษัตริย์/เชื้อพระวงศ์)", example: "องค์รัชทายาททอดพระเนตรลงไปยังลานพิธีเบื้องล่าง" },
+      { category: "คำราชาศัพท์ & ย้อนยุค", word: "แย้มพระสรวล", meaning: "ยิ้มน้อยๆ อย่างสุภาพสง่างาม", example: "พระองค์แย้มพระสรวลบางเบาที่มุมพระโอษฐ์" },
+      { category: "คำราชาศัพท์ & ย้อนยุค", word: "เพลาปัจจุสมัย", meaning: "เวลาเช้ามืดใกล้รุ่งสาง (สำนวนพีเรียด/โบราณ)", example: "ขบวนม้าเร็วออกเดินทางตั้งแต่เพลาปัจจุสมัย" }
+    ];
+
+    let activeVocabCategory = "ทั้งหมด";
+
+    // =========================================================================
+    // 3. INITIALIZATION ON WINDOW LOAD
+    // =========================================================================
+    window.onload = function () {
+      loadSavedAppearancePreferences();
+      renderChapterList();
+      renderPageTabs();
+      renderAdaptiveToolbar();
+      renderCharacters();
+      renderVocabCategories();
+      renderVocabularyBank();
+      renderTrixUI();
+      updateWordAndCharStats();
+      autoResizeEditorTextarea();
+    };
+
+    function autoResizeEditorTextarea() {
+      const editor = document.getElementById("novel-editor");
+      if (!editor) return;
+      editor.style.height = "auto";
+      editor.style.height = Math.max(380, editor.scrollHeight) + "px";
+    }
+
+    // =========================================================================
+    // 4. CHAPTER & MULTI-PAGE WORKSPACE MANAGEMENT
+    // =========================================================================
+    function getActiveChapter() {
+      return appState.chapters.find(c => c.id === appState.activeChapterId) || appState.chapters[0];
+    }
+
+    function updateNovelMeta() {
+      appState.novelTitle = document.getElementById("novel-title-input").value;
+      appState.genre = document.getElementById("novel-genre").value;
+      appState.pov = document.getElementById("novel-pov").value;
+      markAutoSaved();
+    }
+
+    function updateActiveChapterTitle(val) {
+      const ch = getActiveChapter();
+      ch.title = val;
+      renderChapterList();
+      markAutoSaved();
+    }
+
+    function addNewChapter() {
+      saveCurrentEditorToState();
+      const nextNum = appState.chapters.length + 1;
+      const newId = Date.now();
+      appState.chapters.push({
+        id: newId,
+        number: nextNum,
+        title: "",
+        plotNote: "",
+        pages: [""]
+      });
+      appState.activeChapterId = newId;
+      appState.activePageIdx = 0;
+
+      loadActiveChapterIntoEditor();
+      renderChapterList();
+      showToast(`เพิ่ม "ตอนที่ ${nextNum}" พร้อมรันเลขตอนอัตโนมัติแล้ว`, "indigo");
+    }
+
+    function switchChapter(chapterId) {
+      saveCurrentEditorToState();
+      appState.activeChapterId = chapterId;
+      appState.activePageIdx = 0;
+      loadActiveChapterIntoEditor();
+      renderChapterList();
+    }
+
+    function deleteChapter(chapterId, event) {
+      event.stopPropagation();
+      if (appState.chapters.length <= 1) {
+        showToast("ต้องมีอย่างน้อย 1 ตอนในโปรเจกต์", "amber");
+        return;
+      }
+      appState.chapters = appState.chapters.filter(c => c.id !== chapterId);
+      appState.chapters.forEach((c, idx) => { c.number = idx + 1; });
+      if (appState.activeChapterId === chapterId) {
+        appState.activeChapterId = appState.chapters[0].id;
+        appState.activePageIdx = 0;
+      }
+      loadActiveChapterIntoEditor();
+      renderChapterList();
+      showToast("ลบตอนและจัดลำดับเลขตอนใหม่เรียบร้อย", "slate");
+    }
+
+    function switchPage(pageIdx) {
+      saveCurrentEditorToState();
+      appState.activePageIdx = pageIdx;
+      const ch = getActiveChapter();
+      document.getElementById("novel-editor").value = ch.pages[pageIdx] || "";
+      renderPageTabs();
+      updateWordAndCharStats();
+      autoResizeEditorTextarea();
+    }
+
+    function addNewPageInChapter() {
+      saveCurrentEditorToState();
+      const ch = getActiveChapter();
+      ch.pages.push("");
+      appState.activePageIdx = ch.pages.length - 1;
+      document.getElementById("novel-editor").value = "";
+      renderPageTabs();
+      renderChapterList();
+      updateWordAndCharStats();
+      autoResizeEditorTextarea();
+      document.getElementById("novel-editor").focus();
+      showToast(`เพิ่ม หน้า ${ch.pages.length} ในตอนที่ ${ch.number} แล้ว`, "indigo");
+    }
+
+    function saveCurrentEditorToState() {
+      const ch = getActiveChapter();
+      if (!ch) return;
+      const editorEl = document.getElementById("novel-editor");
+      ch.pages[appState.activePageIdx] = editorEl.value;
+    }
+
+    function loadActiveChapterIntoEditor() {
+      const ch = getActiveChapter();
+      document.getElementById("active-chapter-number-badge").textContent = `ตอนที่ ${ch.number}`;
+      document.getElementById("active-chapter-title").value = ch.title;
+      document.getElementById("novel-editor").value = ch.pages[appState.activePageIdx] || "";
+      document.getElementById("chapter-plot-note").value = ch.plotNote || "";
+      document.getElementById("plot-note-chapter-label").textContent = `ตอนที่ ${ch.number}`;
+      renderPageTabs();
+      updateWordAndCharStats();
+      autoResizeEditorTextarea();
+    }
+
+    function renderChapterList() {
+      const container = document.getElementById("chapter-list-container");
+      document.getElementById("chapter-count-badge").textContent = `${appState.chapters.length} ตอน`;
+
+      container.innerHTML = appState.chapters.map(ch => {
+        const isActive = ch.id === appState.activeChapterId;
+        const totalChars = ch.pages.join("").length;
+        const displayTitle = ch.title.trim() ? escapeHtml(ch.title) : `<span class="opacity-60 italic">ยังไม่ได้ตั้งชื่อตอน</span>`;
+
+        return `
+          <div onclick="switchChapter(${ch.id})"
+            class="group p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-2 ${
+              isActive
+                ? 'bg-indigo-50/90 border-indigo-400 text-indigo-950 shadow-sm'
+                : 'themed-subpanel hover:border-indigo-300'
+            }">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-md ${
+                  isActive ? 'bg-indigo-600 text-white' : 'bg-slate-200/70 text-slate-700'
+                }">ตอนที่ ${ch.number}</span>
+                <span class="text-[11px] opacity-60">${ch.pages.length} หน้า</span>
+              </div>
+              <div class="text-xs font-semibold truncate mt-1.5">${displayTitle}</div>
+              <div class="text-[10px] opacity-60 mt-0.5">${totalChars.toLocaleString()} ตัวอักษร</div>
+            </div>
+            ${
+              appState.chapters.length > 1
+                ? `<button onclick="deleteChapter(${ch.id}, event)" title="ลบตอนนี้"
+                    class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition">
+                    <i class="ph ph-trash text-sm"></i>
+                  </button>`
+                : ''
+            }
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderPageTabs() {
+      const ch = getActiveChapter();
+      const container = document.getElementById("page-tabs-container");
+      let html = ch.pages.map((_, idx) => {
+        const active = idx === appState.activePageIdx;
+        return `
+          <button onclick="switchPage(${idx})"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 ${
+              active
+                ? 'bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-sm'
+                : 'themed-subpanel border opacity-80 hover:opacity-100'
+            }">
+            <i class="ph-bold ph-file-text"></i>
+            <span>หน้า ${idx + 1}</span>
+          </button>
+        `;
+      }).join("");
+
+      html += `
+        <button onclick="addNewPageInChapter()"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold themed-subpanel border hover:border-indigo-400 flex items-center gap-1 shrink-0 transition">
+          <i class="ph-bold ph-plus"></i>
+          <span>เพิ่มหน้ากระดาษ</span>
+        </button>
+      `;
+      container.innerHTML = html;
+
+      const footerIndicator = document.getElementById("paper-footer-page-indicator");
+      if (footerIndicator) {
+        footerIndicator.textContent = `ขอบกระดาษท้ายหน้า • ตอนที่ ${ch.number} (หน้า ${appState.activePageIdx + 1} จาก ${ch.pages.length})`;
+      }
+    }
+
+    // =========================================================================
+    // 5. REAL-TIME STATS, SELECTION TRACKING & ADAPTIVE TOOLBAR
+    // =========================================================================
+    function handleEditorInput() {
+      saveCurrentEditorToState();
+      updateWordAndCharStats();
+      autoResizeEditorTextarea();
+      renderChapterList();
+      markAutoSaved();
+    }
+
+    function countThaiAndEnglishWords(text) {
+      const cleaned = text.trim();
+      if (!cleaned) return 0;
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        const segmenter = new Intl.Segmenter("th", { granularity: "word" });
+        let count = 0;
+        for (const seg of segmenter.segment(cleaned)) {
+          if (seg.isWordLike) count++;
+        }
+        return count;
+      }
+      return cleaned.split(/\s+/).filter(Boolean).length;
+    }
+
+    function updateWordAndCharStats() {
+      const text = document.getElementById("novel-editor").value;
+      const chars = text.length;
+      const words = countThaiAndEnglishWords(text);
+      document.getElementById("stat-words").textContent = words.toLocaleString();
+      document.getElementById("stat-chars").textContent = chars.toLocaleString();
+    }
+
+    function handleTextSelection() {
+      const editor = document.getElementById("novel-editor");
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const selected = editor.value.substring(start, end).trim();
+
+      const statusText = document.getElementById("selection-status-text");
+      const selBadge = document.getElementById("stat-selection-badge");
+      const floatingBar = document.getElementById("floating-selection-bar");
+
+      if (selected.length > 0) {
+        currentSelection = { text: selected, start, end };
+        statusText.innerHTML = `<span class="text-indigo-600 font-bold">กำลังคลุมดำข้อความ (${selected.length} ตัวอักษร):</span> กดปุ่มคำสั่ง AI ด้านล่างเพื่อประมวลผลเฉพาะส่วนที่คลุมดำได้ทันที`;
+        selBadge.classList.remove("hidden");
+        selBadge.classList.add("inline-flex");
+        document.getElementById("stat-sel-chars").textContent = selected.length;
+        document.getElementById("floating-sel-count").textContent = `คลุมดำ ${selected.length} ตัวอักษร`;
+
+        const rect = editor.getBoundingClientRect();
+        const topPos = Math.max(76, rect.top - 52);
+        const leftPos = Math.min(window.innerWidth - 360, Math.max(16, rect.left + 24));
+        floatingBar.style.top = `${topPos}px`;
+        floatingBar.style.left = `${leftPos}px`;
+        floatingBar.classList.remove("hidden");
+      } else {
+        currentSelection = { text: "", start: 0, end: 0 };
+        statusText.textContent = "ลากคลุมดำข้อความ หรือกดปุ่มด้านล่างเพื่อตรวจทั้งย่อหน้า/ทั้งตอน (ปุ่มที่ใช้บ่อยจะขยายกว้างขึ้นอัตโนมัติ)";
+        selBadge.classList.add("hidden");
+        selBadge.classList.remove("inline-flex");
+        floatingBar.classList.add("hidden");
+      }
+    }
+
+    function hideFloatingBar() {
+      document.getElementById("floating-selection-bar").classList.add("hidden");
+    }
+
+    // ADAPTIVE HIGHLIGHT TOOLBAR (Fixed Single-Line Badges & Non-Clipping Flex Growth)
+    function renderAdaptiveToolbar() {
+      const container = document.getElementById("adaptive-toolbar-container");
+      const clicks = appState.adaptiveClicks;
+      const maxClicks = Math.max(1, ...Object.values(clicks));
+
+      const buttons = [
+        {
+          id: "proofread",
+          label: "แก้คำผิด & เช็คคำ",
+          sub: "คำสะกด • คำพ้องเสียง",
+          cost: 1,
+          icon: "ph-check-circle",
+          color: "emerald"
+        },
+        {
+          id: "polish",
+          label: "เกลาสำนวนเฉพาะจุด",
+          sub: "คงเอกลักษณ์นักเขียน",
+          cost: 1,
+          icon: "ph-sparkle",
+          color: "indigo"
+        },
+        {
+          id: "continuity",
+          label: "เช็คจุดต่างเนื้อเรื่อง",
+          sub: "เทียบตัวละคร & พล็อต",
+          cost: 3,
+          icon: "ph-detective",
+          color: "amber"
+        },
+        {
+          id: "translate",
+          label: "แปลภาษาคงบริบท",
+          sub: "อ้างอิงสรรพนาม",
+          cost: 3,
+          icon: "ph-translate",
+          color: "sky"
+        },
+        {
+          id: "plotBranch",
+          label: "ตัวเลือกเส้นเรื่อง",
+          sub: "เสนอพล็อต + เกริ่นนำ",
+          cost: 5,
+          icon: "ph-git-branch",
+          color: "violet"
+        }
+      ];
+
+      container.innerHTML = buttons.map(b => {
+        const count = clicks[b.id] || 0;
+        const ratio = count > 0 ? count / maxClicks : 0;
+        const flexGrow = (1 + ratio * 0.9).toFixed(2);
+        const isFrequent = count >= 2 && ratio >= 0.5;
+
+        const colorMap = {
+          emerald: "bg-emerald-50/95 hover:bg-emerald-100 border-emerald-300 text-emerald-950",
+          indigo: "bg-indigo-50/95 hover:bg-indigo-100 border-indigo-300 text-indigo-950",
+          amber: "bg-amber-50/95 hover:bg-amber-100 border-amber-300 text-amber-950",
+          sky: "bg-sky-50/95 hover:bg-sky-100 border-sky-300 text-sky-950",
+          violet: "bg-violet-50/95 hover:bg-violet-100 border-violet-300 text-violet-950"
+        };
+
+        const ringClass = isFrequent ? "ring-2 ring-indigo-500/60 shadow-md px-3.5" : "shadow-sm px-3";
+
+        return `
+          <button onclick="triggerAICommand('${b.id}')"
+            style="flex: ${flexGrow} 1 0%;"
+            class="adaptive-btn rounded-2xl border py-2 flex flex-col justify-between text-left min-w-0 ${colorMap[b.color]} ${ringClass}">
+            <div class="flex items-center justify-between gap-1.5 w-full min-w-0">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <i class="ph-bold ${b.icon} ${isFrequent ? 'text-lg' : 'text-base'} shrink-0"></i>
+                <span class="${isFrequent ? 'text-xs sm:text-sm font-extrabold' : 'text-xs font-bold'} truncate">${b.label}</span>
+              </div>
+              <span class="px-1.5 py-0.5 rounded-md bg-white/90 text-slate-800 text-[10px] font-extrabold shrink-0 border border-black/10 whitespace-nowrap">
+                ${b.cost} Trix
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-1.5 mt-1 w-full min-w-0">
+              <span class="text-[10px] opacity-75 truncate">${b.sub}</span>
+              ${
+                count > 0
+                  ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 leading-none ${
+                      isFrequent ? 'bg-indigo-600 text-white shadow-sm' : 'bg-black/10 text-slate-800'
+                    }">${isFrequent ? '★ ใช้บ่อย ' : ''}${count} ครั้ง</span>`
+                  : `<span class="text-[10px] opacity-55 whitespace-nowrap shrink-0 leading-none">พร้อมใช้</span>`
+              }
+            </div>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function resetAdaptiveWeights() {
+      appState.adaptiveClicks = {
+        proofread: 0,
+        polish: 0,
+        continuity: 0,
+        translate: 0,
+        plotBranch: 0
+      };
+      renderAdaptiveToolbar();
+      showToast("รีเซ็ตขนาดปุ่ม Adaptive UI กลับเป็นค่าเริ่มต้นแล้ว", "slate");
+    }
+
+    // =========================================================================
+    // 6. GEMINI API INTEGRATION WITH SELECTIVE CONTEXT INJECTION & TRIX SYSTEM
+    // =========================================================================
+    async function callGeminiStructured(systemInstruction, userPrompt, responseSchema) {
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: responseSchema
+        }
+      };
+
+      const delays = [1000, 2000, 4000];
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const result = await response.json();
+          const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!jsonText) throw new Error("Empty response from Gemini");
+          return JSON.parse(jsonText);
+        } catch (err) {
+          if (attempt === delays.length) throw err;
+          await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+      }
+    }
+
+    function buildSelectiveContext() {
+      const ch = getActiveChapter();
+      const charSummary = appState.characters.length > 0
+        ? appState.characters.map(c => `- ${c.name} (${c.role || 'ไม่ระบุบทบาท'}, สรรพนาม: ${c.pronoun || 'ไม่ระบุ'}): ${c.traits}`).join("\n")
+        : "ยังไม่ได้ระบุข้อมูลตัวละคร";
+
+      return `
+ชื่อเรื่อง: ${appState.novelTitle || "ยังไม่ตั้งชื่อเรื่อง"}
+หมวดหมู่: ${appState.genre}
+มุมมองการเล่าเรื่อง (POV): ${appState.pov}
+ตอนปัจจุบัน: ตอนที่ ${ch.number} ${ch.title || ""}
+พล็อตย่อของตอนนี้: ${ch.plotNote || "ไม่ได้ระบุ"}
+ข้อมูลตัวละครที่เกี่ยวข้อง:
+${charSummary}
+      `.trim();
+    }
+
+    async function triggerAICommand(commandType) {
+      hideFloatingBar();
+      const editor = document.getElementById("novel-editor");
+      const fullText = editor.value.trim();
+      const hasSelection = currentSelection.text.length > 0;
+      const targetText = hasSelection ? currentSelection.text : fullText;
+
+      if (!targetText && commandType !== "plotBranch") {
+        showToast("กรุณาพิมพ์เนื้อหานิยายลงในหน้ากระดาษก่อนเรียกใช้ผู้ช่วย AI", "amber");
+        editor.focus();
+        return;
+      }
+
+      const costMap = { proofread: 1, polish: 1, continuity: 3, translate: 3, plotBranch: 5 };
+      const cost = costMap[commandType] || 1;
+
+      if (appState.trixBalance < cost) {
+        showToast(`เหรียญ Trix ไม่พอ (ต้องการ ${cost} Trix) กรุณาเติมเหรียญก่อนใช้งาน`, "rose");
+        openModal("modal-trix");
+        return;
+      }
+
+      appState.trixBalance -= cost;
+      const cmdNames = {
+        proofread: "แก้คำผิด & เช็คคำ",
+        polish: "เกลาสำนวนเฉพาะจุด",
+        continuity: "เช็คจุดต่าง & ความต่อเนื่อง",
+        translate: "แปลภาษาคงบริบท",
+        plotBranch: "สร้างตัวเลือกเส้นเรื่อง"
+      };
+      appState.trixHistory.unshift({
+        time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+        desc: `ใช้คำสั่ง ${cmdNames[commandType]}`,
+        amount: `-${cost} Trix`
+      });
+      renderTrixUI();
+
+      appState.adaptiveClicks[commandType] = (appState.adaptiveClicks[commandType] || 0) + 1;
+      renderAdaptiveToolbar();
+
+      const resultBox = document.getElementById("ai-result-container");
+      resultBox.classList.remove("hidden");
+      resultBox.innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-indigo-200 shadow-lg flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center animate-spin">
+              <i class="ph-bold ph-spinner text-xl"></i>
+            </div>
+            <div>
+              <div class="font-bold text-sm">ผู้ช่วยบรรณาธิการ Plottrix AI กำลังวิเคราะห์...</div>
+              <div class="text-xs themed-muted">ใช้เทคนิค Selective Context Injection • หัก ${cost} Trix เรียบร้อย</div>
+            </div>
+          </div>
+          <button onclick="closeAIDrawer()" class="text-xs themed-muted hover:text-slate-700 px-2 py-1">ยกเลิก</button>
+        </div>
+      `;
+
+      const contextInfo = buildSelectiveContext();
+
+      try {
+        if (commandType === "proofread") {
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              correctedText: { type: "STRING" },
+              issuesFound: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    original: { type: "STRING" },
+                    suggestion: { type: "STRING" },
+                    reason: { type: "STRING" }
+                  },
+                  required: ["original", "suggestion", "reason"]
+                }
+              },
+              editorNote: { type: "STRING" }
+            },
+            required: ["correctedText", "issuesFound", "editorNote"]
+          };
+
+          const sys = "คุณคือผู้ช่วยบรรณาธิการพิสูจน์อักษรนิยายไทยมืออาชีพ หน้าที่ของคุณคือตรวจจับคำสะกดผิด คำพ้องเสียงที่มักใช้ผิด พิมพ์ตกหล่น และคำซ้ำในประโยค โดยต้องรักษาน้ำเสียงและสำนวนเดิมของนักเขียนไว้ 100% ห้ามแต่งเรื่องใหม่เด็ดขาด";
+          const prompt = `บริบทเรื่อง:\n${contextInfo}\n\nข้อความที่ต้องการตรวจคำผิด:\n"""\n${targetText}\n"""`;
+          const data = await callGeminiStructured(sys, prompt, schema);
+          renderProofreadResult(data, hasSelection);
+
+        } else if (commandType === "polish") {
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              options: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    styleName: { type: "STRING" },
+                    rewrittenText: { type: "STRING" },
+                    note: { type: "STRING" }
+                  },
+                  required: ["styleName", "rewrittenText", "note"]
+                }
+              }
+            },
+            required: ["options"]
+          };
+
+          const sys = "คุณคือผู้ช่วยบรรณาธิการเกลาสำนวนนิยายไทย ช่วยเสนอทางเลือกการเกลาประโยคที่ผู้ใช้เลือกให้สละสลวยขึ้น 3 ระดับ (1. คงสำนวนเดิมแต่ลื่นไหลขึ้น, 2. เน้นอารมณ์ลึกซึ้งขึ้น, 3. กระชับฉับไว) โดยไม่เปลี่ยนเหตุการณ์หลักของนักเขียน";
+          const prompt = `บริบทเรื่อง:\n${contextInfo}\n\nข้อความที่ต้องการเกลาสำนวน:\n"""\n${targetText}\n"""`;
+          const data = await callGeminiStructured(sys, prompt, schema);
+          renderPolishResult(data, hasSelection);
+
+        } else if (commandType === "continuity") {
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              status: { type: "STRING" },
+              conflicts: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    point: { type: "STRING" },
+                    detail: { type: "STRING" },
+                    fixSuggestion: { type: "STRING" }
+                  },
+                  required: ["point", "detail", "fixSuggestion"]
+                }
+              },
+              overallFeedback: { type: "STRING" }
+            },
+            required: ["status", "conflicts", "overallFeedback"]
+          };
+
+          const sys = "คุณคือผู้ช่วยบรรณาธิการตรวจสอบความต่อเนื่องของนิยาย (Continuity & Plot Hole Checker) หน้าที่คือเปรียบเทียบเนื้อหาที่เขียนกับข้อมูลตัวละคร มุมมองการเล่าเรื่อง (POV) และพล็อตย่อ ว่ามีจุดขัดแย้งกันเองหรือไม่";
+          const prompt = `ข้อมูลตัวละครและบริบทเรื่อง:\n${contextInfo}\n\nเนื้อหานิยายที่ต้องการตรวจเช็คจุดต่าง:\n"""\n${targetText}\n"""`;
+          const data = await callGeminiStructured(sys, prompt, schema);
+          renderContinuityResult(data);
+
+        } else if (commandType === "translate") {
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              translatedText: { type: "STRING" },
+              tonePreservedNote: { type: "STRING" },
+              glossaryUsed: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+              }
+            },
+            required: ["translatedText", "tonePreservedNote", "glossaryUsed"]
+          };
+
+          const sys = `คุณคือนักแปลนิยายมืออาชีพ แปลเนื้อหานิยายเป็นภาษา ${appState.targetTranslateLang} โดยอ้างอิงข้อมูลตัวละคร สรรพนาม และโทนอารมณ์ของเรื่องให้ลื่นไหลเป็นธรรมชาติระดับวรรณกรรมสากล`;
+          const prompt = `บริบทเรื่องและตัวละคร:\n${contextInfo}\n\nแปลข้อความต่อไปนี้เป็น ${appState.targetTranslateLang}:\n"""\n${targetText}\n"""`;
+          const data = await callGeminiStructured(sys, prompt, schema);
+          renderTranslateResult(data, hasSelection);
+
+        } else if (commandType === "plotBranch") {
+          const schema = {
+            type: "OBJECT",
+            properties: {
+              branches: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    rankLabel: { type: "STRING" },
+                    title: { type: "STRING" },
+                    rationale: { type: "STRING" },
+                    leadInParagraph: { type: "STRING" }
+                  },
+                  required: ["rankLabel", "title", "rationale", "leadInParagraph"]
+                }
+              }
+            },
+            required: ["branches"]
+          };
+
+          const sys = "คุณคือที่ปรึกษาโครงเรื่องนิยาย (Interactive Plot Branching) ช่วยวิเคราะห์เนื้อหาปัจจุบันและเสนอแนวทางเหตุการณ์ถัดไป 3 ตัวเลือก โดยจัดอันดับตัวเลือกที่แนะนำที่สุดไว้ลำดับแรก พร้อมเขียน 'ย่อหน้าเกริ่นนำเบื้องต้น' (ประมาณ 2-4 ประโยค) ให้นักเขียนนำไปปรับแก้และเขียนต่อเอง";
+          const prompt = `บริบทเรื่องและตัวละคร:\n${contextInfo}\n\nเนื้อหาล่าสุดในกระดาษ:\n"""\n${fullText || "เพิ่งเริ่มเปิดตอนใหม่ ยังไม่มีเนื้อหา กรุณาเสนอฉากเปิดเรื่อง 3 แนวทางตามหมวดหมู่และข้อมูลตัวละคร"}\n"""`;
+          const data = await callGeminiStructured(sys, prompt, schema);
+          renderPlotBranchResult(data);
+        }
+      } catch (err) {
+        resultBox.innerHTML = `
+          <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center justify-between">
+            <div class="text-xs font-medium">เกิดข้อผิดพลาดในการเชื่อมต่อ AI กรุณาลองใหม่อีกครั้ง (ระบบได้คืนเหรียญ +${cost} Trix ให้แล้ว)</div>
+            <button onclick="closeAIDrawer()" class="text-xs font-bold underline">ปิด</button>
+          </div>
+        `;
+        appState.trixBalance += cost;
+        renderTrixUI();
+      }
+    }
+
+    // =========================================================================
+    // 7. RENDER AI RESULT CARDS & APPLY ACTIONS
+    // =========================================================================
+    let lastAIReplacementText = "";
+    let lastAIUsedSelection = false;
+    let lastPlotBranches = [];
+    let lastPolishOptions = [];
+
+    function closeAIDrawer() {
+      document.getElementById("ai-result-container").classList.add("hidden");
+    }
+
+    function renderProofreadResult(data, usedSelection) {
+      lastAIReplacementText = data.correctedText;
+      lastAIUsedSelection = usedSelection;
+      const issuesHtml = (data.issuesFound && data.issuesFound.length > 0)
+        ? data.issuesFound.map(item => `
+            <div class="p-2.5 rounded-xl themed-subpanel border text-xs flex flex-wrap items-center gap-2">
+              <span class="line-through text-rose-600 font-semibold">${escapeHtml(item.original)}</span>
+              <i class="ph-bold ph-arrow-right text-slate-400"></i>
+              <span class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">${escapeHtml(item.suggestion)}</span>
+              <span class="themed-muted text-[11px]">(${escapeHtml(item.reason)})</span>
+            </div>
+          `).join("")
+        : `<div class="p-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold">ไม่พบคำสะกดผิดหรือคำพ้องเสียงที่ผิดพลาด สำนวนของคุณยอดเยี่ยมมาก!</div>`;
+
+      document.getElementById("ai-result-container").innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-emerald-400 shadow-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1">
+                <i class="ph-bold ph-check-circle"></i> ผลตรวจคำผิด & เช็คคำ (1 Trix)
+              </span>
+              <span class="text-xs themed-muted">${escapeHtml(data.editorNote || "")}</span>
+            </div>
+            <button onclick="closeAIDrawer()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="space-y-1.5 max-h-40 overflow-y-auto">${issuesHtml}</div>
+          <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs sm:text-sm font-reading leading-relaxed text-slate-800">
+            <div class="text-[11px] font-bold text-emerald-800 mb-1">ข้อความหลังแก้คำผิด (คงสำนวนเดิมของนักเขียน):</div>
+            ${escapeHtml(data.correctedText)}
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button onclick="closeAIDrawer()" class="px-3.5 py-2 rounded-xl themed-subpanel border text-xs font-semibold">คงข้อความเดิมไว้</button>
+            <button onclick="applyAIReplacement()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm">
+              <i class="ph-bold ph-check"></i> แทนที่คำที่ตรวจแล้วลงในกระดาษ
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPolishResult(data, usedSelection) {
+      lastAIUsedSelection = usedSelection;
+      lastPolishOptions = (data.options || []).map(o => o.rewrittenText);
+
+      const optionsHtml = (data.options || []).map((opt, idx) => `
+        <div class="p-3.5 rounded-xl themed-subpanel border hover:border-indigo-300 transition space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md">${idx + 1}. ${escapeHtml(opt.styleName)}</span>
+            <button onclick="applyPolishOption(${idx})"
+              class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">
+              เลือกใช้สำนวนนี้
+            </button>
+          </div>
+          <p class="text-xs sm:text-sm font-reading leading-relaxed">${escapeHtml(opt.rewrittenText)}</p>
+          <p class="text-[11px] themed-muted">${escapeHtml(opt.note)}</p>
+        </div>
+      `).join("");
+
+      document.getElementById("ai-result-container").innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-indigo-400 shadow-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center gap-1">
+              <i class="ph-bold ph-sparkle"></i> ตัวเลือกเกลาสำนวนเฉพาะจุด (1 Trix)
+            </span>
+            <button onclick="closeAIDrawer()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="grid grid-cols-1 gap-2.5 max-h-80 overflow-y-auto">${optionsHtml}</div>
+        </div>
+      `;
+    }
+
+    function renderContinuityResult(data) {
+      const conflictsHtml = (data.conflicts && data.conflicts.length > 0)
+        ? data.conflicts.map(c => `
+            <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1 text-xs text-slate-800">
+              <div class="font-bold text-amber-900 flex items-center gap-1.5">
+                <i class="ph-fill ph-warning-circle text-amber-600"></i> ${escapeHtml(c.point)}
+              </div>
+              <div class="text-slate-700">${escapeHtml(c.detail)}</div>
+              <div class="text-emerald-700 font-medium pt-1">💡 คำแนะนำ: ${escapeHtml(c.fixSuggestion)}</div>
+            </div>
+          `).join("")
+        : `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">ไม่พบจุดขัดแย้งกับข้อมูลตัวละครหรือพล็อตย่อ เนื้อเรื่องมีความต่อเนื่องสอดคล้องกันดีมาก</div>`;
+
+      document.getElementById("ai-result-container").innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-amber-400 shadow-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-bold text-xs flex items-center gap-1">
+                <i class="ph-bold ph-detective"></i> ผลเช็คจุดต่าง & ความต่อเนื่อง (3 Trix)
+              </span>
+              <span class="text-xs font-bold">${escapeHtml(data.status || "")}</span>
+            </div>
+            <button onclick="closeAIDrawer()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="space-y-2 max-h-60 overflow-y-auto">${conflictsHtml}</div>
+          <div class="text-xs themed-muted themed-subpanel p-3 rounded-xl border">
+            <strong>ความเห็นบรรณาธิการ:</strong> ${escapeHtml(data.overallFeedback || "")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTranslateResult(data, usedSelection) {
+      lastAIReplacementText = data.translatedText;
+      lastAIUsedSelection = usedSelection;
+
+      const langs = ["English (ภาษาอังกฤษ)", "Chinese (ภาษาจีน)", "Japanese (ภาษาญี่ปุ่น)", "Korean (ภาษาเกาหลี)", "Spanish (ภาษาสเปน)"];
+      const langSelectHtml = langs.map(l => `<option value="${l}" ${appState.targetTranslateLang === l ? 'selected' : ''}>${l}</option>`).join("");
+
+      document.getElementById("ai-result-container").innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-sky-400 shadow-xl space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-900 font-bold text-xs flex items-center gap-1">
+                <i class="ph-bold ph-translate"></i> แปลภาษาคงบริบทตัวละคร (3 Trix)
+              </span>
+              <select onchange="changeTranslateLanguage(this.value)" class="text-xs themed-input border rounded-lg px-2 py-1 font-semibold outline-none">
+                ${langSelectHtml}
+              </select>
+            </div>
+            <button onclick="closeAIDrawer()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="p-4 rounded-xl bg-sky-50/50 border border-sky-200 text-sm font-reading leading-relaxed select-all text-slate-800">
+            ${escapeHtml(data.translatedText)}
+          </div>
+          <div class="text-xs themed-muted flex flex-wrap items-center justify-between gap-2">
+            <span><strong>การรักษาโทนเรื่อง:</strong> ${escapeHtml(data.tonePreservedNote || "")}</span>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button onclick="copyTextDirect(lastAIReplacementText)" class="px-3.5 py-2 rounded-xl themed-subpanel border text-xs font-semibold flex items-center gap-1">
+              <i class="ph-bold ph-copy"></i> คัดลอกคำแปล
+            </button>
+            <button onclick="applyAIReplacement()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm">
+              <i class="ph-bold ph-arrows-left-right"></i> แทนที่ลงในหน้ากระดาษ
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function changeTranslateLanguage(newLang) {
+      appState.targetTranslateLang = newLang;
+      triggerAICommand("translate");
+    }
+
+    function renderPlotBranchResult(data) {
+      lastPlotBranches = (data.branches || []).map(b => b.leadInParagraph);
+
+      const branchesHtml = (data.branches || []).map((b, idx) => {
+        const isRecommended = idx === 0;
+        return `
+          <div class="p-4 rounded-2xl border transition space-y-2 ${
+            isRecommended
+              ? 'bg-violet-50/60 border-2 border-violet-500 shadow-sm text-slate-900'
+              : 'themed-subpanel hover:border-violet-300'
+          }">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  isRecommended ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-700'
+                }">${ isRecommended ? '★ แนะนำอันดับ 1 • ' : '' }${escapeHtml(b.rankLabel)}</span>
+                <span class="font-bold text-xs sm:text-sm">${escapeHtml(b.title)}</span>
+              </div>
+              <button onclick="insertPlotBranch(${idx})"
+                class="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition">
+                <i class="ph-bold ph-plus"></i> นำบทเกริ่นนำนี้ไปเขียนต่อ
+              </button>
+            </div>
+            <p class="text-xs opacity-80">${escapeHtml(b.rationale)}</p>
+            <div class="p-3 rounded-xl themed-panel border text-xs sm:text-sm font-reading leading-relaxed">
+              <span class="text-[10px] font-bold text-violet-600 block mb-0.5">ย่อหน้าเกริ่นนำสำหรับแต่งต่อ:</span>
+              “${escapeHtml(b.leadInParagraph)}”
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("ai-result-container").innerHTML = `
+        <div class="p-5 rounded-2xl themed-panel border-2 border-violet-400 shadow-xl space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-900 font-bold text-xs flex items-center gap-1">
+                <i class="ph-bold ph-git-branch"></i> ตัวเลือกเส้นเรื่องตอนต่อไป (Interactive Plot Branching • 5 Trix)
+              </span>
+            </div>
+            <button onclick="closeAIDrawer()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="space-y-3 max-h-96 overflow-y-auto">${branchesHtml}</div>
+        </div>
+      `;
+    }
+
+    function applyAIReplacement() {
+      const editor = document.getElementById("novel-editor");
+      if (lastAIUsedSelection && currentSelection.text.length > 0) {
+        const before = editor.value.substring(0, currentSelection.start);
+        const after = editor.value.substring(currentSelection.end);
+        editor.value = before + lastAIReplacementText + after;
+      } else {
+        editor.value = lastAIReplacementText;
+      }
+      currentSelection = { text: "", start: 0, end: 0 };
+      handleEditorInput();
+      closeAIDrawer();
+      showToast("แทนที่ข้อความลงในกระดาษเรียบร้อยแล้ว", "emerald");
+    }
+
+    function applyPolishOption(idx) {
+      if (lastPolishOptions[idx]) {
+        lastAIReplacementText = lastPolishOptions[idx];
+        applyAIReplacement();
+      }
+    }
+
+    function insertPlotBranch(idx) {
+      const paragraph = lastPlotBranches[idx];
+      if (!paragraph) return;
+      const editor = document.getElementById("novel-editor");
+      const prefix = editor.value.trim().length > 0 ? "\n\n    " : "    ";
+      editor.value = editor.value + prefix + paragraph;
+      handleEditorInput();
+      closeAIDrawer();
+      editor.focus();
+      editor.scrollTop = editor.scrollHeight;
+      showToast("แทรกย่อหน้าเกริ่นนำลงท้ายกระดาษแล้ว เขียนต่อในสไตล์คุณได้เลย!", "violet");
+    }
+
+    // =========================================================================
+    // 8. RIGHT SIDEBAR: CHARACTERS, PLOT NOTES & VOCABULARY BANK
+    // =========================================================================
+    function switchRightTab(tab) {
+      const tabs = ["chars", "plot", "vocab"];
+      tabs.forEach(t => {
+        const panel = document.getElementById(`right-panel-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tab) {
+          panel.classList.remove("hidden");
+          btn.className = "py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm border border-slate-200/80 transition";
+        } else {
+          panel.classList.add("hidden");
+          btn.className = "py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 themed-muted hover:text-indigo-600 transition";
+        }
+      });
+    }
+
+    function addCharacter() {
+      const nameEl = document.getElementById("char-name-input");
+      const roleEl = document.getElementById("char-role-input");
+      const pronounEl = document.getElementById("char-pronoun-input");
+      const traitsEl = document.getElementById("char-traits-input");
+
+      const name = nameEl.value.trim();
+      if (!name) {
+        showToast("กรุณาระบุชื่อตัวละครก่อนบันทึก", "amber");
+        nameEl.focus();
+        return;
+      }
+
+      appState.characters.push({
+        id: Date.now(),
+        name,
+        role: roleEl.value.trim(),
+        pronoun: pronounEl.value.trim(),
+        traits: traitsEl.value.trim()
+      });
+
+      nameEl.value = "";
+      roleEl.value = "";
+      pronounEl.value = "";
+      traitsEl.value = "";
+      renderCharacters();
+      showToast(`บันทึกตัวละคร "${name}" เรียบร้อยแล้ว`, "indigo");
+    }
+
+    function deleteCharacter(id) {
+      appState.characters = appState.characters.filter(c => c.id !== id);
+      renderCharacters();
+    }
+
+    function renderCharacters() {
+      const container = document.getElementById("characters-list-container");
+      if (appState.characters.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 rounded-2xl border border-dashed border-slate-300 text-center space-y-1">
+            <i class="ph-duotone ph-users-three text-2xl themed-muted"></i>
+            <p class="text-xs font-semibold themed-muted">ยังไม่มีข้อมูลตัวละคร</p>
+            <p class="text-[11px] themed-muted">เพิ่มชื่อและบุคลิกตัวละครด้านบน เพื่อให้ AI ช่วยเช็คความต่อเนื่องและแปลสรรพนามได้อย่างแม่นยำ</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = appState.characters.map(c => `
+        <div class="p-3 rounded-2xl themed-subpanel border shadow-sm space-y-1">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-xs">${escapeHtml(c.name)}</span>
+              ${c.role ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">${escapeHtml(c.role)}</span>` : ""}
+            </div>
+            <button onclick="deleteCharacter(${c.id})" class="text-slate-400 hover:text-rose-600 p-1">
+              <i class="ph ph-trash text-xs"></i>
+            </button>
+          </div>
+          ${c.pronoun ? `<div class="text-[11px] text-indigo-600 font-medium">สรรพนาม: ${escapeHtml(c.pronoun)}</div>` : ""}
+          ${c.traits ? `<p class="text-xs themed-muted leading-relaxed">${escapeHtml(c.traits)}</p>` : ""}
+        </div>
+      `).join("");
+    }
+
+    function saveChapterPlotNote(val) {
+      const ch = getActiveChapter();
+      ch.plotNote = val;
+      markAutoSaved();
+    }
+
+    function renderVocabCategories() {
+      const cats = ["ทั้งหมด", "อารมณ์ความรู้สึก", "กิริยาท่าทาง & สายตา", "บรรยากาศ & ฉาก", "ฉากต่อสู้ & แอ็กชัน", "คำราชาศัพท์ & ย้อนยุค"];
+      const container = document.getElementById("vocab-category-pills");
+      container.innerHTML = cats.map(cat => {
+        const active = cat === activeVocabCategory;
+        return `
+          <button onclick="selectVocabCategory('${cat}')"
+            class="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition ${
+              active ? 'bg-indigo-600 text-white shadow-sm' : 'themed-subpanel border hover:border-indigo-400'
+            }">
+            ${cat}
+          </button>
+        `;
+      }).join("");
+    }
+
+    function selectVocabCategory(cat) {
+      activeVocabCategory = cat;
+      renderVocabCategories();
+      renderVocabularyBank();
+    }
+
+    function renderVocabularyBank() {
+      const query = (document.getElementById("vocab-search-input")?.value || "").trim().toLowerCase();
+      const container = document.getElementById("vocab-items-container");
+
+      const filtered = VOCABULARY_BANK.filter(item => {
+        const matchCat = activeVocabCategory === "ทั้งหมด" || item.category === activeVocabCategory;
+        const matchQuery = !query || item.word.toLowerCase().includes(query) || item.meaning.toLowerCase().includes(query) || item.example.toLowerCase().includes(query);
+        return matchCat && matchQuery;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-xs themed-muted">ไม่พบคำศัพท์ที่ตรงกับคำค้นหา</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => `
+        <div onclick="insertAtCursor('${item.word}')"
+          class="p-3 rounded-2xl themed-subpanel border hover:border-indigo-400 cursor-pointer transition group space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs sm:text-sm text-indigo-600">${escapeHtml(item.word)}</span>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">+ แตะเพื่อแทรกคำ</span>
+          </div>
+          <p class="text-xs opacity-90">${escapeHtml(item.meaning)}</p>
+          <p class="text-[11px] themed-muted italic">“${escapeHtml(item.example)}”</p>
+        </div>
+      `).join("");
+    }
+
+    function insertAtCursor(textToInsert, cursorOffset = 0) {
+      const editor = document.getElementById("novel-editor");
+      const start = editor.selectionStart || editor.value.length;
+      const end = editor.selectionEnd || editor.value.length;
+      const before = editor.value.substring(0, start);
+      const after = editor.value.substring(end);
+
+      editor.value = before + textToInsert + after;
+      const newPos = start + textToInsert.length + cursorOffset;
+      editor.focus();
+      editor.setSelectionRange(newPos, newPos);
+      handleEditorInput();
+      showToast(`แทรก "${textToInsert.trim() || 'ย่อหน้า'}" ลงในกระดาษแล้ว`, "indigo");
+    }
+
+    // =========================================================================
+    // 9. IPAD ERGONOMICS, 4-THEME SWITCHER, FONT SELECTOR & RESET BLANK
+    // =========================================================================
+    function toggleSidebar(side) {
+      const el = document.getElementById(side === "left" ? "left-sidebar" : "right-sidebar");
+      if (el.classList.contains("hidden")) {
+        el.classList.remove("hidden");
+        el.classList.add("flex");
+      } else {
+        el.classList.add("hidden");
+        el.classList.remove("flex");
+      }
+    }
+
+    function toggleFocusMode() {
+      const left = document.getElementById("left-sidebar");
+      const right = document.getElementById("right-sidebar");
+      const bothHidden = left.classList.contains("hidden") && right.classList.contains("hidden");
+
+      if (bothHidden) {
+        left.classList.remove("hidden");
+        left.classList.add("flex");
+        right.classList.remove("hidden");
+        right.classList.add("flex");
+        showToast("แสดงแถบรายการตอนและข้อมูลตัวละครครบถ้วน", "slate");
+      } else {
+        left.classList.add("hidden");
+        left.classList.remove("flex");
+        right.classList.add("hidden");
+        right.classList.remove("flex");
+        showToast("เปิดโหมดโฟกัสเต็มจอบน iPad แล้ว", "indigo");
+      }
+    }
+
+    function toggleThemePopover(e) {
+      if (e) e.stopPropagation();
+      const pop = document.getElementById("theme-popover");
+      pop.classList.toggle("hidden");
+    }
+
+    function closeThemePopover() {
+      const pop = document.getElementById("theme-popover");
+      if (pop) pop.classList.add("hidden");
+    }
+
+    function changeFontSize(delta) {
+      appState.fontSize = Math.min(24, Math.max(16, appState.fontSize + delta));
+      applyFontSizeUI();
+      saveAppearancePreferences();
+    }
+
+    function applyFontSizeUI() {
+      const editor = document.getElementById("novel-editor");
+      editor.style.fontSize = `${appState.fontSize}px`;
+      document.getElementById("font-size-label").textContent = `${appState.fontSize}px`;
+      const popLabel = document.getElementById("popover-font-size-label");
+      if (popLabel) popLabel.textContent = `${appState.fontSize}px`;
+      autoResizeEditorTextarea();
+    }
+
+    function setEditorFontFamily(familyKey) {
+      appState.fontFamily = familyKey;
+      const editor = document.getElementById("novel-editor");
+      editor.classList.remove("font-reading", "font-serif", "font-modern");
+      editor.classList.add(`font-${familyKey}`);
+
+      ["reading", "serif", "modern"].forEach(k => {
+        const btn = document.getElementById(`font-opt-${k}`);
+        if (!btn) return;
+        if (k === familyKey) {
+          btn.className = `py-2 px-2 rounded-xl border-2 border-indigo-600 bg-indigo-50/40 text-xs font-bold text-center font-${k}`;
+        } else {
+          btn.className = `py-2 px-2 rounded-xl border-2 border-transparent themed-subpanel text-xs font-bold text-center font-${k}`;
+        }
+      });
+      autoResizeEditorTextarea();
+      saveAppearancePreferences();
+    }
+
+    function setWorkspaceTheme(theme) {
+      appState.paperTheme = theme;
+      document.body.classList.remove("theme-light", "theme-sepia", "theme-sage", "theme-dark");
+      document.body.classList.add(`theme-${theme}`);
+
+      const themes = ["light", "sepia", "sage", "dark"];
+      themes.forEach(t => {
+        const optBtn = document.getElementById(`theme-opt-${t}`);
+        if (!optBtn) return;
+        if (t === theme) {
+          optBtn.classList.add("border-indigo-600", "ring-2", "ring-indigo-500/30");
+          optBtn.classList.remove("border-transparent");
+        } else {
+          optBtn.classList.remove("border-indigo-600", "ring-2", "ring-indigo-500/30");
+          optBtn.classList.add("border-transparent");
+        }
+      });
+
+      saveAppearancePreferences();
+      const themeNames = {
+        light: "สว่างมาตรฐาน (Daylight Studio)",
+        sepia: "ถนอมสายตา (Warm Sepia)",
+        sage: "เขียวมิ้นต์ผ่อนคลาย (Sage Focus)",
+        dark: "มืดสบายตา (Midnight Dark)"
+      };
+      showToast(`เปลี่ยนโหมดธีมเป็น "${themeNames[theme]}" แล้ว`, "indigo");
+    }
+
+    function setPaperTheme(theme) {
+      setWorkspaceTheme(theme);
+    }
+
+    function saveAppearancePreferences() {
+      try {
+        localStorage.setItem("plottrix_appearance", JSON.stringify({
+          paperTheme: appState.paperTheme,
+          fontSize: appState.fontSize,
+          fontFamily: appState.fontFamily
+        }));
+      } catch (e) {}
+    }
+
+    function loadSavedAppearancePreferences() {
+      try {
+        const raw = localStorage.getItem("plottrix_appearance");
+        if (!raw) return;
+        const prefs = JSON.parse(raw);
+        if (prefs.paperTheme) {
+          appState.paperTheme = prefs.paperTheme;
+          document.body.classList.remove("theme-light", "theme-sepia", "theme-sage", "theme-dark");
+          document.body.classList.add(`theme-${prefs.paperTheme}`);
+        }
+        if (prefs.fontSize) {
+          appState.fontSize = prefs.fontSize;
+          applyFontSizeUI();
+        }
+        if (prefs.fontFamily) setEditorFontFamily(prefs.fontFamily);
+      } catch (e) {}
+    }
+
+    function confirmResetBlank() {
+      appState.novelTitle = "";
+      appState.activeChapterId = 1;
+      appState.activePageIdx = 0;
+      appState.chapters = [{ id: 1, number: 1, title: "", plotNote: "", pages: [""] }];
+      appState.characters = [];
+      document.getElementById("novel-title-input").value = "";
+      closeAIDrawer();
+      loadActiveChapterIntoEditor();
+      renderChapterList();
+      renderCharacters();
+      showToast("รีเซ็ตเป็นหน้ากระดาษเปล่า 100% เรียบร้อยแล้ว", "indigo");
+    }
+
+    function markAutoSaved() {
+      const now = new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+      document.getElementById("autosave-status").textContent = `บันทึกอัตโนมัติเมื่อ ${now} น.`;
+    }
+
+    // =========================================================================
+    // 10. TRIX WALLET, PLANS & IMPORT / EXPORT FUNCTIONS
+    // =========================================================================
+    function renderTrixUI() {
+      document.getElementById("trix-balance-display").textContent = appState.trixBalance.toLocaleString();
+      document.getElementById("modal-trix-balance").textContent = appState.trixBalance.toLocaleString();
+      document.getElementById("current-plan-badge").textContent = appState.plan;
+      document.getElementById("modal-current-plan").textContent = `แผนปัจจุบัน: ${appState.plan}`;
+
+      const histEl = document.getElementById("trix-history-list");
+      histEl.innerHTML = appState.trixHistory.map(h => `
+        <div class="flex items-center justify-between py-1 border-b border-slate-100">
+          <span><strong class="text-slate-400 mr-2">${h.time}</strong> ${escapeHtml(h.desc)}</span>
+          <span class="font-bold ${h.amount.startsWith('+') ? 'text-emerald-600' : 'text-amber-700'}">${h.amount}</span>
+        </div>
+      `).join("");
+    }
+
+    function selectPlan(planName, bonusTrix) {
+      appState.plan = planName;
+      appState.trixBalance += bonusTrix;
+      appState.trixHistory.unshift({
+        time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+        desc: `อัปเกรดแพ็กเกจเป็น ${planName}`,
+        amount: `+${bonusTrix} Trix`
+      });
+      renderTrixUI();
+      showToast(`เปิดใช้งาน ${planName} พร้อมรับ +${bonusTrix} Trix เรียบร้อย!`, "indigo");
+    }
+
+    function topUpTrix(amount, priceBaht) {
+      appState.trixBalance += amount;
+      appState.trixHistory.unshift({
+        time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+        desc: `เติมเหรียญ Trix (${priceBaht} บาท)`,
+        amount: `+${amount} Trix`
+      });
+      renderTrixUI();
+      showToast(`เติมเหรียญ +${amount} Trix สำเร็จ!`, "amber");
+    }
+
+    function handleFileImport(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const content = e.target.result || "";
+        const editor = document.getElementById("novel-editor");
+        editor.value = content;
+        if (!appState.novelTitle) {
+          const cleanName = file.name.replace(/\.[^/.]+$/, "");
+          appState.novelTitle = cleanName;
+          document.getElementById("novel-title-input").value = cleanName;
+        }
+        handleEditorInput();
+        showToast(`นำเข้าไฟล์ "${file.name}" เข้าสู่หน้ากระดาษเรียบร้อย`, "emerald");
+      };
+      reader.readAsText(file, "UTF-8");
+      event.target.value = "";
+    }
+
+    function openExportModal() {
+      saveCurrentEditorToState();
+      formatExportPreview("readawrite");
+      openModal("modal-export");
+    }
+
+    function formatExportPreview(mode) {
+      const ch = getActiveChapter();
+      const titleHeader = `ตอนที่ ${ch.number}${ch.title ? ' : ' + ch.title : ''}\n==============================\n\n`;
+      const rawText = mode === "allchapter" ? ch.pages.join("\n\n* * *\n\n") : (ch.pages[appState.activePageIdx] || "");
+
+      let formatted = "";
+      if (mode === "readawrite") {
+        const paragraphs = rawText.split(/\n+/).map(p => p.trim()).filter(Boolean);
+        formatted = titleHeader + paragraphs.join("\n\n");
+      } else if (mode === "dekd") {
+        const paragraphs = rawText.split(/\n+/).map(p => "    " + p.trim()).filter(p => p.trim().length > 0);
+        formatted = titleHeader + paragraphs.join("\n\n");
+      } else {
+        formatted = titleHeader + rawText;
+      }
+
+      document.getElementById("export-preview-textarea").value = formatted;
+
+      ["raw", "dekd", "all"].forEach(id => {
+        const btn = document.getElementById(`exp-btn-${id}`);
+        btn.className = "p-3 rounded-2xl border border-slate-200 hover:border-indigo-300 text-left transition";
+      });
+      const activeId = mode === "readawrite" ? "raw" : (mode === "dekd" ? "dekd" : "all");
+      document.getElementById(`exp-btn-${activeId}`).className = "p-3 rounded-2xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition";
+    }
+
+    function copyExportToClipboard() {
+      const textarea = document.getElementById("export-preview-textarea");
+      textarea.select();
+      document.execCommand("copy");
+      showToast("คัดลอกเนื้อหาพร้อมวางบน ReadAWrite / Dek-D เรียบร้อยแล้ว!", "emerald");
+    }
+
+    function copyTextDirect(txt) {
+      const temp = document.createElement("textarea");
+      temp.value = txt;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+      showToast("คัดลอกข้อความลงคลิปบอร์ดแล้ว", "emerald");
+    }
+
+    function downloadTxtFile() {
+      const text = document.getElementById("export-preview-textarea").value;
+      const ch = getActiveChapter();
+      const filename = `${appState.novelTitle || 'Plottrix_Novel'}_ตอนที่_${ch.number}.txt`;
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`ดาวน์โหลดไฟล์ ${filename} เรียบร้อย`, "indigo");
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove("hidden");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    function showToast(message, color = "indigo") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      const bgMap = {
+        indigo: "bg-indigo-950 text-white border-indigo-700",
+        emerald: "bg-emerald-900 text-white border-emerald-600",
+        amber: "bg-amber-900 text-white border-amber-600",
+        rose: "bg-rose-900 text-white border-rose-600",
+        violet: "bg-violet-950 text-white border-violet-600",
+        slate: "bg-slate-800 text-white border-slate-600"
+      };
+      toast.className = `px-4 py-2.5 rounded-2xl border shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 animate-pop ${bgMap[color] || bgMap.indigo}`;
+      toast.innerHTML = `<i class="ph-fill ph-sparkle text-amber-400"></i> <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity 0.25s ease";
+        setTimeout(() => toast.remove(), 250);
+      }, 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
