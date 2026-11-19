@@ -258,6 +258,18 @@ export function AppProvider({ children }) {
   // Modals & Drawers
   const [activeModal, setActiveModal] = useState(null) // 'characterBible', 'stylePersona', 'customDictionary', 'history', 'export', 'pricing', 'skills', 'settings'
 
+  // Reset body overflow when activeModal opens/closes
+  useEffect(() => {
+    if (activeModal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [activeModal])
+
   // Characters & Lore
   const [characters, setCharacters] = useState(() => {
     try {

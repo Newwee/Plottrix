@@ -35,31 +35,54 @@ export default function WorkspaceShowcaseSection() {
           </p>
         </div>
 
-        {/* Hotspot Switchers */}
-        <div className="hotspot-strip">
+        {/* Hotspot Switchers (Responsive, clear gaps, distinct styled pills/cards) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-8 p-1.5 sm:p-2 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              className={`px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm border transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                activeHotspot === 'editor'
+                  ? 'bg-purple-600/30 text-white border-purple-400/60 shadow-[0_0_15px_rgba(168,85,247,0.3)] font-semibold'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10 hover:border-white/20'
+              }`}
+              onClick={() => setActiveHotspot('editor')}
+            >
+              <span className="text-purple-300">▤</span>
+              <span>Distraction-free Editor</span>
+            </button>
+            <button
+              type="button"
+              className={`px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm border transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                activeHotspot === 'notes'
+                  ? 'bg-purple-600/30 text-white border-purple-400/60 shadow-[0_0_15px_rgba(168,85,247,0.3)] font-semibold'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10 hover:border-white/20'
+              }`}
+              onClick={() => setActiveHotspot('notes')}
+            >
+              <span className="text-purple-300">♙</span>
+              <span>Character &amp; Lore Bible</span>
+            </button>
+            <button
+              type="button"
+              className={`px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm border transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+                activeHotspot === 'assistant'
+                  ? 'bg-purple-600/30 text-white border-purple-400/60 shadow-[0_0_15px_rgba(168,85,247,0.3)] font-semibold'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10 hover:border-white/20'
+              }`}
+              onClick={() => setActiveHotspot('assistant')}
+            >
+              <span className="text-purple-300">✧</span>
+              <span>Style Persona &amp; Dictionary</span>
+            </button>
+          </div>
+
           <button
-            className={`hotspot-btn ${activeHotspot === 'editor' ? 'active' : ''}`}
-            onClick={() => setActiveHotspot('editor')}
-          >
-            <span>▤</span> Distraction-free Editor
-          </button>
-          <button
-            className={`hotspot-btn ${activeHotspot === 'notes' ? 'active' : ''}`}
-            onClick={() => setActiveHotspot('notes')}
-          >
-            <span>♙</span> Character &amp; Lore Bible
-          </button>
-          <button
-            className={`hotspot-btn ${activeHotspot === 'assistant' ? 'active' : ''}`}
-            onClick={() => setActiveHotspot('assistant')}
-          >
-            <span>✧</span> Style Persona &amp; Dictionary
-          </button>
-          <button
-            className="hotspot-btn hotspot-btn--primary"
+            type="button"
+            className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/25 border border-purple-400/40 transition-all duration-200 flex items-center gap-2 cursor-pointer hover:scale-105"
             onClick={() => navigateTo('workspace')}
           >
-            <span>✦</span> เข้าสู่เวิร์กสเปซเต็มจอ →
+            <span>✦</span>
+            <span>เข้าสู่เวิร์กสเปซเต็มจอ →</span>
           </button>
         </div>
 

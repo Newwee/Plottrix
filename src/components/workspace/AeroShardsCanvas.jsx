@@ -263,7 +263,7 @@ export default function AeroShardsCanvas() {
 
   return (
     <div
-      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
+      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
       aria-hidden="true"
       style={{
         position: 'fixed',
@@ -271,9 +271,8 @@ export default function AeroShardsCanvas() {
         width: '100vw',
         height: '100vh',
         pointerEvents: 'none',
-        zIndex: 0,
-        overflow: 'hidden',
-        background: '#090713'
+        zIndex: -1,
+        overflow: 'hidden'
       }}
     >
       <canvas

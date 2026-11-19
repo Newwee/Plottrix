@@ -116,6 +116,18 @@ export default function OnboardingTour() {
     }
   }, [isTourOpen, tourStep, currentView, updateRect])
 
+  // Reset body overflow when tour opens/closes
+  useEffect(() => {
+    if (isTourOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isTourOpen])
+
   if (!isTourOpen) return null
 
   const handleStepChange = (nextStep) => {
@@ -131,7 +143,10 @@ export default function OnboardingTour() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9990] pointer-events-auto overflow-hidden">
+    <div
+      onClick={skipTour}
+      className="fixed inset-0 z-[9990] pointer-events-auto overflow-hidden cursor-pointer"
+    >
       {/* SVG Spotlight Mask with Smooth Tweening */}
       <svg className="w-full h-full absolute inset-0 pointer-events-none">
         <defs>
@@ -180,7 +195,8 @@ export default function OnboardingTour() {
 
       {/* Floating Stepper Dialog */}
       <div
-        className="absolute z-10 p-4 transition-all duration-300"
+        onClick={(e) => e.stopPropagation()}
+        className="absolute z-10 p-4 transition-all duration-300 cursor-default"
         style={{
           top: targetRect ? Math.min(window.innerHeight - 380, Math.max(20, targetRect.top + targetRect.height + 24)) : '50%',
           left: targetRect ? Math.min(window.innerWidth - 480, Math.max(20, targetRect.left)) : '50%',

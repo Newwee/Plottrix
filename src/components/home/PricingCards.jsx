@@ -90,7 +90,7 @@ export default function PricingCards({ currentPlan = 'Free Plan', onSelectPlan }
           >
             {/* Best Value Badge: width fit-content, not stretched, positioned cleanly above plan title */}
             {planItem.badge && (
-              <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md border border-purple-300/30 w-fit">
+              <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md border border-purple-300/30 w-fit self-start">
                 {planItem.badge}
               </div>
             )}
