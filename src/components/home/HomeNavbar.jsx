@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'ฟีเจอร์', href: '#features' },
@@ -10,6 +11,7 @@ const NAV_LINKS = [
 
 export default function HomeNavbar() {
   const { navigateTo, setActiveModal } = useApp()
+  const { user, profile } = useAuth()
   const [activeIdx, setActiveIdx] = useState(0)
   const [hoveredIdx, setHoveredIdx] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -115,21 +117,55 @@ export default function HomeNavbar() {
 
         {/* Right Desktop Nav Action Buttons */}
         <div className="nav-actions">
-          <button
-            type="button"
-            className="login"
-            onClick={() => setActiveModal('auth')}
-          >
-            เข้าสู่ระบบ
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-small shadow-lg hover:shadow-purple-500/25 transition"
-            onClick={() => navigateTo('workspace')}
-          >
-            <span>เริ่มต้นใช้งานฟรี</span>
-            <span>↗</span>
-          </button>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveModal('settings')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/10 transition text-xs font-semibold text-white cursor-pointer"
+                title="ตั้งค่าบัญชีและโปรไฟล์"
+              >
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-purple-600/40 border border-purple-400/40 flex items-center justify-center text-[10px] font-bold">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    profile?.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()
+                  )}
+                </div>
+                <span className="max-w-[120px] truncate">
+                  {profile?.display_name || user.email?.split('@')[0]}
+                </span>
+                <span className="text-zinc-400 text-xs">⚙</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-primary btn-small shadow-lg hover:shadow-purple-500/25 transition cursor-pointer"
+                onClick={() => navigateTo('workspace')}
+              >
+                <span>เข้าสู่ Workspace</span>
+                <span>↗</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="login cursor-pointer"
+                onClick={() => setActiveModal('auth')}
+              >
+                เข้าสู่ระบบ
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-small shadow-lg hover:shadow-purple-500/25 transition cursor-pointer"
+                onClick={() => setActiveModal('auth')}
+              >
+                <span>เริ่มต้นใช้งานฟรี</span>
+                <span>↗</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Mobile Hamburger Toggle */}

@@ -239,6 +239,82 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ==============================================================================
+-- COLUMN-LEVEL PROTECTION TRIGGER (PREVENT CLIENT TRIX & PLAN TAMPERING)
+-- ==============================================================================
+create or replace function public.protect_profile_system_columns()
+returns trigger as $$
+begin
+  -- Prevent client-side manipulation of balance and plan tier
+  if current_user = 'authenticated' then
+    if new.trix_balance is distinct from old.trix_balance then
+      raise exception 'Direct modification of trix_balance from client is prohibited. Use deduct_trix_safely.';
+    end if;
+    if new.plan is distinct from old.plan then
+      raise exception 'Direct modification of plan from client is prohibited.';
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trg_protect_profile_system_columns on public.profiles;
+create trigger trg_protect_profile_system_columns
+  before update on public.profiles
+  for each row execute procedure public.protect_profile_system_columns();
+
+-- ==============================================================================
+-- ATOMIC TRIX DEDUCTION RPC (PREVENT RACE CONDITION & DOUBLE-SPENDING)
+-- ==============================================================================
+create or replace function public.deduct_trix_safely(
+  p_user_id uuid,
+  p_amount integer,
+  p_action text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_current_balance integer;
+  v_new_balance integer;
+begin
+  if p_amount <= 0 then
+    return jsonb_build_object('success', false, 'error', 'Invalid deduction amount');
+  end if;
+
+  -- Lock user row with FOR UPDATE to prevent concurrency exploitation
+  select trix_balance into v_current_balance
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error', 'User profile not found');
+  end if;
+
+  if v_current_balance < p_amount then
+    return jsonb_build_object('success', false, 'error', 'Insufficient Trix balance', 'current_balance', v_current_balance);
+  end if;
+
+  v_new_balance := v_current_balance - p_amount;
+
+  update public.profiles
+  set trix_balance = v_new_balance,
+      updated_at = timezone('utc'::text, now())
+  where id = p_user_id;
+
+  -- Log transaction
+  insert into public.trix_transactions (user_id, amount, type, action)
+  values (p_user_id, -p_amount, 'deduct', p_action);
+
+  return jsonb_build_object('success', true, 'remaining_balance', v_new_balance);
+end;
+$$;
+
+-- Grant execution to authenticated users
+grant execute on function public.deduct_trix_safely(uuid, integer, text) to authenticated;
+
+-- ==============================================================================
 -- STORAGE BUCKET CONFIGURATION (plottrix-assets)
 -- ==============================================================================
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

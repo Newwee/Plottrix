@@ -94,11 +94,60 @@ export function AuthProvider({ children }) {
     return data
   }
 
+  async function signInWithOAuth(provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider, // 'google' | 'discord' | 'github'
+      options: {
+        redirectTo: window.location.origin
+      }
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function signInWithOtp(email) {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function resetPassword(email) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    })
+    if (error) throw error
+    return data
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     setUser(null)
     setProfile(null)
+  }
+
+  async function uploadAvatar(file) {
+    if (!user) throw new Error('User not logged in')
+    const fileExt = file.name.split('.').pop()
+    const filePath = `${user.id}/avatar_${Date.now()}.${fileExt}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('plottrix-assets')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadError) throw uploadError
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('plottrix-assets')
+      .getPublicUrl(filePath)
+
+    await updateProfile({ avatar_url: publicUrl })
+    return publicUrl
   }
 
   async function updateProfile(fields) {
@@ -131,8 +180,12 @@ export function AuthProvider({ children }) {
         loading,
         signIn,
         signUp,
+        signInWithOAuth,
+        signInWithOtp,
+        resetPassword,
         signOut,
         updateProfile,
+        uploadAvatar,
         refreshProfile: () => user && fetchProfile(user.id)
       }}
     >

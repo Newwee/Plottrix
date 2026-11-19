@@ -11,6 +11,7 @@ import CompareSection from './CompareSection'
 import PricingSection from './PricingSection'
 import FinalCtaSection from './FinalCtaSection'
 import HomeFooter from './HomeFooter'
+import AnimatedContent from '../react-bits/AnimatedContent'
 
 export default function HomePage() {
   return (
@@ -21,17 +22,41 @@ export default function HomePage() {
       {/* Pill-Nav Header */}
       <HomeNavbar />
 
-      {/* Main Page Content */}
+      {/* Main Page Content with Scroll Animations */}
       <main>
         <HeroSection />
-        <FeaturesSection />
-        <WorkspaceShowcaseSection />
-        <InteractiveDemoSection />
-        <PlotBranchSection />
-        <TranslationSection />
-        <CompareSection />
-        <PricingSection />
-        <FinalCtaSection />
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <FeaturesSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <WorkspaceShowcaseSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <InteractiveDemoSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <PlotBranchSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <TranslationSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <CompareSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <PricingSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <FinalCtaSection />
+        </AnimatedContent>
       </main>
 
       {/* Footer */}

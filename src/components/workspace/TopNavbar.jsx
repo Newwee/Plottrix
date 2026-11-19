@@ -1,5 +1,6 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
 
@@ -16,6 +17,7 @@ const GENRES = [
 ]
 
 export default function TopNavbar() {
+  const { user, profile } = useAuth()
   const {
     novelTitle, setNovelTitle,
     genre, setGenre,
@@ -188,16 +190,49 @@ export default function TopNavbar() {
           </button>
         </WarmTooltip>
 
-        {/* Settings Button */}
-        <WarmTooltip content="การตั้งค่าหน้ากระดาษและการแจ้งเตือน" side="bottom">
-          <button
-            type="button"
-            onClick={() => setActiveModal('settings')}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-xs text-slate-300 transition"
-          >
-            ⚙
-          </button>
-        </WarmTooltip>
+        {/* Settings Button & Profile (Auth-Gated) */}
+        {user ? (
+          <div className="flex items-center gap-1.5">
+            <WarmTooltip content={`โปรไฟล์: ${profile?.display_name || user.email?.split('@')[0]}`} side="bottom">
+              <button
+                type="button"
+                onClick={() => setActiveModal('settings')}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition cursor-pointer"
+              >
+                <div className="w-5 h-5 rounded-full overflow-hidden bg-purple-600/50 flex items-center justify-center text-[10px] font-bold">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    profile?.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()
+                  )}
+                </div>
+                <span className="hidden xl:inline max-w-[100px] truncate text-[11px]">
+                  {profile?.display_name || user.email?.split('@')[0]}
+                </span>
+              </button>
+            </WarmTooltip>
+
+            <WarmTooltip content="การตั้งค่าห้องเขียนและโปรไฟล์" side="bottom">
+              <button
+                type="button"
+                onClick={() => setActiveModal('settings')}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-xs text-slate-300 transition cursor-pointer"
+              >
+                ⚙
+              </button>
+            </WarmTooltip>
+          </div>
+        ) : (
+          <WarmTooltip content="เข้าสู่ระบบเพื่อซิงก์ข้อมูลและบันทึกลงคลาวด์" side="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveModal('auth')}
+              className="px-3 py-1.5 rounded-full bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-xs font-semibold text-purple-200 transition cursor-pointer"
+            >
+              เข้าสู่ระบบ
+            </button>
+          </WarmTooltip>
+        )}
 
         {/* Export Button */}
         <WarmTooltip content="ส่งออกต้นฉบับ (ReadAWrite / Dek-D / TXT)" shortcut="⌘E" side="bottom">

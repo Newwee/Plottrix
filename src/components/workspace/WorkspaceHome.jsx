@@ -212,15 +212,31 @@ export default function WorkspaceHome() {
               <span>📚</span> ชั้นวางนิยายของคุณ ({novels.length})
             </h2>
             <p className="text-xs text-plottrix-muted mt-0.5">
-              เลื่อนซ้าย-ขวาเพื่อเลือกผลงาน หรือคลิกเปิดเพื่อเข้าสู่ห้องเขียนงาน
+              เลือกผลงานเพื่อเข้าสู่ห้องเขียนงาน Studio หรือเริ่มสร้างเรื่องใหม่
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              id="tour-target-create-novel"
+              type="button"
+              onClick={() => {
+                if (isQuotaFull) {
+                  setActiveModal('pricing')
+                } else {
+                  setIsCreating(true)
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>+</span>
+              <span>สร้างนิยายเรื่องใหม่</span>
+            </button>
+
+            <button
               type="button"
               onClick={() => handleScroll('left')}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm transition"
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm transition cursor-pointer"
               aria-label="Scroll left"
             >
               ◀
@@ -228,7 +244,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={() => handleScroll('right')}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm transition"
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm transition cursor-pointer"
               aria-label="Scroll right"
             >
               ▶
@@ -236,119 +252,119 @@ export default function WorkspaceHome() {
           </div>
         </div>
 
-        {/* Horizontal Scrollable Book Shelf */}
-        <div
-          ref={scrollRef}
-          className="flex items-stretch gap-6 overflow-x-auto pb-8 pt-2 scroll-smooth no-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {/* Card 1: Slot ว่างสำหรับสร้างนิยายใหม่ (Target for Tour Step 1) */}
+        {/* Horizontal Scrollable Book Shelf (ตรงตามแบบวาด 3 เล่มบนชั้นวาง) */}
+        <div className="relative w-full">
           <div
-            id="tour-target-create-novel"
-            className="w-64 sm:w-72 shrink-0 rounded-2xl border-2 border-dashed border-white/20 hover:border-purple-400/60 bg-[#16102a]/40 hover:bg-[#16102a]/80 transition-all duration-300 p-6 flex flex-col items-center justify-center text-center cursor-pointer group shadow-lg"
-            onClick={() => {
-              if (isQuotaFull) {
-                setActiveModal('pricing')
-              } else {
-                setIsCreating(true)
-              }
-            }}
+            ref={scrollRef}
+            className="flex items-stretch justify-start sm:justify-center gap-6 sm:gap-8 overflow-x-auto pb-4 pt-2 scroll-smooth no-scrollbar"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 group-hover:scale-110 group-hover:bg-purple-500/20 flex items-center justify-center text-2xl text-purple-300 transition-all duration-300 mb-4 shadow-inner">
-              +
-            </div>
-            <h3 className="font-bold text-base text-white group-hover:text-purple-300 transition">
-              สร้างนิยายเรื่องใหม่
-            </h3>
-            <p className="text-xs text-plottrix-muted mt-2 leading-relaxed">
-              {isQuotaFull
-                ? 'โควต้า Free Plan จำกัด 1 เรื่อง กรุณาอัปเกรดเพื่อสร้างเพิ่ม'
-                : 'คลิกเพื่อตั้งชื่อเรื่อง กำหนดแนว และเริ่มจรดปากกา'}
-            </p>
-            {isQuotaFull ? (
-              <span className="mt-4 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                🔒 อัปเกรดเพื่อปลดล็อก
-              </span>
-            ) : (
-              <span className="mt-4 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-300 border border-purple-400/20 group-hover:bg-purple-600 group-hover:text-white transition">
-                + เพิ่มผลงานใหม่
-              </span>
-            )}
-          </div>
+            {/* Cards: Novels on the Shelf */}
+            {novels.map((novel, index) => (
+              <article
+                key={novel.id}
+                id={index === 0 ? 'tour-target-novel-card' : undefined}
+                className="w-64 sm:w-72 md:w-80 shrink-0 rounded-2xl border border-white/15 bg-gradient-to-b from-[#1b1433] to-[#110d22] p-5 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:border-purple-400/50 hover:-translate-y-2 transition-all duration-300 group relative"
+              >
+                <div>
+                  {/* Book Cover 3:4 */}
+                  <div
+                    className="w-full h-64 rounded-xl overflow-hidden relative mb-4 shadow-md bg-black/40 cursor-pointer"
+                    onClick={() => openNovel(novel.id)}
+                  >
+                    <img
+                      src={novel.cover}
+                      alt={novel.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-600/80 text-white w-fit backdrop-blur-sm mb-1.5 border border-purple-400/30">
+                        {novel.genre}
+                      </span>
+                      <h3 className="font-bold text-sm sm:text-base text-white line-clamp-2 leading-snug">
+                        {novel.title}
+                      </h3>
+                    </div>
+                  </div>
 
-          {/* Cards: Existing Novels (Target for Tour Step 1 novel card) */}
-          {novels.map((novel, index) => (
-            <article
-              key={novel.id}
-              id={index === 0 ? 'tour-target-novel-card' : undefined}
-              className="w-64 sm:w-72 shrink-0 rounded-2xl border border-white/15 bg-gradient-to-b from-[#1b1433] to-[#110d22] p-5 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:border-purple-400/40 hover:-translate-y-1 transition-all duration-300 group relative"
-            >
-              <div>
-                {/* Book Cover 3:4 */}
-                <div
-                  className="w-full h-64 rounded-xl overflow-hidden relative mb-4 shadow-md bg-black/40 cursor-pointer"
-                  onClick={() => openNovel(novel.id)}
-                >
-                  <img
-                    src={novel.cover}
-                    alt={novel.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-600/80 text-white w-fit backdrop-blur-sm mb-1.5 border border-purple-400/30">
-                      {novel.genre}
-                    </span>
-                    <h3 className="font-bold text-sm sm:text-base text-white line-clamp-2 leading-snug">
-                      {novel.title}
-                    </h3>
+                  {/* Metadata */}
+                  <div className="space-y-1.5 text-xs text-plottrix-muted px-1">
+                    <div className="flex items-center justify-between">
+                      <span>จำนวนบท:</span>
+                      <span className="text-slate-200 font-semibold">{novel.chapterCount || novel.chapters?.length || 1} ตอน</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>คำบรรยาย:</span>
+                      <span className="text-slate-200 font-semibold">{novel.wordCount || 1420} คำ</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/10">
+                      <span>แก้ไขล่าสุด:</span>
+                      <span className="text-purple-300">{novel.updatedAt || 'วันนี้'}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Metadata */}
-                <div className="space-y-1.5 text-xs text-plottrix-muted px-1">
-                  <div className="flex items-center justify-between">
-                    <span>จำนวนบท:</span>
-                    <span className="text-slate-200 font-semibold">{novel.chapterCount || novel.chapters?.length || 1} ตอน</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>คำบรรยาย:</span>
-                    <span className="text-slate-200 font-semibold">{novel.wordCount || 1420} คำ</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/10">
-                    <span>แก้ไขล่าสุด:</span>
-                    <span className="text-purple-300">{novel.updatedAt || 'วันนี้'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-5 pt-3 border-t border-white/10 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openNovel(novel.id)}
-                  className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition flex items-center justify-center gap-1.5"
-                >
-                  <span>✍️</span>
-                  <span>เปิดทำงาน (Open Studio)</span>
-                </button>
-                <WarmTooltip content="ลบนิยายเรื่องนี้" side="top">
+                {/* Action Buttons */}
+                <div className="mt-5 pt-3 border-t border-white/10 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนิยาย "${novel.title}"?`)) {
-                        deleteNovel(novel.id)
-                      }
-                    }}
-                    className="w-8 h-8 rounded-xl bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-white/10 flex items-center justify-center text-xs transition"
+                    onClick={() => openNovel(novel.id)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    🗑
+                    <span>✍️</span>
+                    <span>เปิดทำงาน (Open Studio)</span>
                   </button>
-                </WarmTooltip>
+                  <WarmTooltip content="ลบนิยายเรื่องนี้" side="top">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนิยาย "${novel.title}"?`)) {
+                          deleteNovel(novel.id)
+                        }
+                      }}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-white/10 flex items-center justify-center text-xs transition cursor-pointer"
+                    >
+                      🗑
+                    </button>
+                  </WarmTooltip>
+                </div>
+              </article>
+            ))}
+
+            {/* Additional Slot: สร้างเรื่องใหม่ slot card */}
+            <div
+              className="w-64 sm:w-72 md:w-80 shrink-0 rounded-2xl border-2 border-dashed border-white/20 hover:border-purple-400/60 bg-[#16102a]/30 hover:bg-[#16102a]/70 transition-all duration-300 p-6 flex flex-col items-center justify-center text-center cursor-pointer group shadow-lg"
+              onClick={() => {
+                if (isQuotaFull) {
+                  setActiveModal('pricing')
+                } else {
+                  setIsCreating(true)
+                }
+              }}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 group-hover:scale-110 group-hover:bg-purple-500/20 flex items-center justify-center text-2xl text-purple-300 transition-all duration-300 mb-4 shadow-inner">
+                +
               </div>
-            </article>
-          ))}
+              <h3 className="font-bold text-base text-white group-hover:text-purple-300 transition">
+                เพิ่มเรื่องใหม่
+              </h3>
+              <p className="text-xs text-plottrix-muted mt-2 leading-relaxed">
+                {isQuotaFull
+                  ? 'โควต้า Free Plan จำกัด 1 เรื่อง กรุณาอัปเกรด'
+                  : 'คลิกเพื่อตั้งชื่อเรื่องและเปิดห้องเขียนใหม่'}
+              </p>
+            </div>
+          </div>
+
+          {/* Bookshelf Wooden Plank Rail (เส้นฐานรองชั้นวางหนังสือตรงตามรูปวาดเป๊ะ) */}
+          <div className="relative w-full max-w-5xl mx-auto mt-2 mb-6">
+            <div className="h-3 w-full bg-gradient-to-r from-[#21163e] via-[#482c82] to-[#21163e] rounded-full shadow-[0_8px_30px_rgba(168,85,247,0.45)] border-t border-purple-400/50 flex items-center justify-center">
+              <div className="h-0.5 w-11/12 bg-purple-300/40 rounded-full" />
+            </div>
+            <div className="h-1.5 w-4/5 mx-auto bg-black/50 blur-xs rounded-full" />
+          </div>
         </div>
       </main>
 

@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
 import { compressImageToWebP, uploadImageToSupabase } from '../../lib/imageCompressor'
+import { modalBackdropVariants, modalContentVariants } from '../../lib/animations'
 
 const CHARACTER_ROLES = [
   'ตัวเอก (Protagonist)',
@@ -33,8 +35,7 @@ export default function CharacterBibleModal() {
 
   const fileInputRef = useRef(null)
 
-  if (activeModal !== 'characterBible') return null
-
+  const isOpen = activeModal === 'characterBible'
   const currentChar = characters.find(c => c.id === selectedCharId) || characters[0]
 
   const handleAddNew = () => {
@@ -140,8 +141,25 @@ export default function CharacterBibleModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 select-none animate-fade-in">
-      <div className="glass-panel w-full max-w-4xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-line shadow-2xl bg-[#130e24]">
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 select-none overflow-y-auto">
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onClick={() => setActiveModal(null)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md cursor-pointer"
+          />
+          <motion.div
+            variants={modalContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 glass-panel w-full max-w-4xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-line shadow-2xl bg-[#130e24] my-auto"
+          >
         {/* Header */}
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-plottrix-panel2/60">
           <div className="flex items-center gap-3">
@@ -393,7 +411,9 @@ export default function CharacterBibleModal() {
             ) : null}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
+  )}
+</AnimatePresence>
   )
 }

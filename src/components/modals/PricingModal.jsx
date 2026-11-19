@@ -1,7 +1,9 @@
 import React from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
 import PricingCards from '../home/PricingCards'
 import confetti from 'canvas-confetti'
+import { modalBackdropVariants, modalContentVariants } from '../../lib/animations'
 
 export default function PricingModal() {
   const {
@@ -11,7 +13,7 @@ export default function PricingModal() {
     addToast
   } = useApp()
 
-  if (activeModal !== 'pricing') return null
+  const isOpen = activeModal === 'pricing'
 
   const handleTopup = (amount, price) => {
     setTrixBalance(b => b + amount)
@@ -29,127 +31,142 @@ export default function PricingModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 select-none animate-fade-in">
-      <div className="glass-panel w-full max-w-5xl max-h-[92vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-line shadow-2xl bg-[#120d22]/95">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-plottrix-line/40 flex items-center justify-between bg-plottrix-panel2/60">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🪙</span>
-            <div>
-              <h3 className="font-bold text-base sm:text-lg text-white">
-                Trix Coins & Membership (เหรียญและแพ็กเกจสมาชิก)
-              </h3>
-              <p className="text-xs text-plottrix-muted">
-                อัตราการใช้เหรียญโปร่งใส: ตรวจคำผิด (1 Trix), เกลาสำนวน (3 Trix), พล็อต (4 Trix)
-              </p>
-            </div>
-          </div>
-
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 select-none overflow-y-auto">
+          {/* Backdrop */}
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             onClick={() => setActiveModal(null)}
-            className="w-9 h-9 rounded-xl hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-lg transition"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md cursor-pointer"
+          />
+
+          {/* Modal Container */}
+          <motion.div
+            variants={modalContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 glass-panel w-full max-w-5xl max-h-[92vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-line shadow-2xl bg-[#120d22]/95 text-white my-auto"
           >
-            ✕
-          </button>
-        </div>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-plottrix-line/40 flex items-center justify-between bg-plottrix-panel2/60">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🪙</span>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-white">
+                    Trix Coins & Membership (เหรียญและแพ็กเกจสมาชิก)
+                  </h3>
+                  <p className="text-xs text-plottrix-muted">
+                    อัตราการใช้เหรียญโปร่งใส: ตรวจคำผิด (1 Trix), เกลาสำนวน (3 Trix), พล็อต (4 Trix)
+                  </p>
+                </div>
+              </div>
 
-        {/* Content */}
-        <div className="p-5 sm:p-8 overflow-y-auto space-y-8">
-          {/* Current Balance Card */}
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-900/30 via-plottrix-panel2 to-plottrix-panel2 border border-purple-500/30 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl sm:text-4xl">🪙</span>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-9 h-9 rounded-xl hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-lg transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-8">
+              {/* Membership Pricing Cards */}
               <div>
-                <span className="text-xs text-plottrix-muted block">ยอดเหรียญ Trix ของคุณ</span>
-                <span className="text-2xl sm:text-3xl font-extrabold text-amber-300">{trixBalance} Trix</span>
-              </div>
-            </div>
-
-            <div className="text-right">
-              <span className="text-xs text-plottrix-muted block mb-1">แพ็กเกจปัจจุบัน</span>
-              <span className="text-xs font-bold text-purple-300 bg-purple-500/20 px-3 py-1.5 rounded-full border border-purple-400/30">
-                {plan}
-              </span>
-            </div>
-          </div>
-
-          {/* Pricing Cards (Identical with Home) */}
-          <div>
-            <div className="text-center mb-6">
-              <h4 className="text-sm font-bold text-purple-300 uppercase tracking-wider">
-                เลือกแผนสมาชิกรายเดือน
-              </h4>
-              <p className="text-xs text-plottrix-muted mt-1">
-                อัปเกรดเพื่อรับ Trix รายเดือน ปลดล็อกความจุตอน และลดเวลา Cooldown
-              </p>
-            </div>
-
-            <PricingCards
-              currentPlan={plan}
-              onSelectPlan={(newPlan) => {
-                upgradePlanPrototype(newPlan)
-                setActiveModal(null)
-              }}
-            />
-          </div>
-
-          {/* Trix Coin Packs */}
-          <div className="pt-4 border-t border-white/10">
-            <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-4">
-              หรือเติมเหรียญ Trix รายครั้ง (ไม่มีวันหมดอายุ)
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-plottrix-panel2/60 border border-plottrix-line/40 hover:border-purple-400/40 transition flex flex-col justify-between space-y-3">
-                <div>
-                  <span className="text-xs text-plottrix-muted font-bold">ชุดเริ่มต้น (Starter)</span>
-                  <div className="text-xl font-bold text-white mt-1">60 Trix</div>
-                  <span className="text-xs text-plottrix-muted">เหมาะสำหรับทดลองเขียน 2-3 บท</span>
+                <div className="text-xs uppercase tracking-wider text-purple-300 font-bold mb-4">
+                  ★ เลือกแพ็กเกจสมาชิก (Plan Tiers)
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleTopup(60, 59)}
-                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white text-xs font-bold text-plottrix-text border border-plottrix-line transition"
-                >
-                  ฿59 บาท
-                </button>
+                <PricingCards onSelectPlan={upgradePlanPrototype} currentPlan={plan} />
               </div>
 
-              <div className="p-4 rounded-xl bg-purple-900/20 border border-purple-400/40 relative flex flex-col justify-between space-y-3 shadow-lg">
-                <span className="absolute -top-2.5 right-3 bg-purple-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                  ยอดนิยม
-                </span>
-                <div>
-                  <span className="text-xs text-purple-300 font-bold">ชุดคุ้มค่า (Author)</span>
-                  <div className="text-xl font-bold text-white mt-1">180 Trix <span className="text-xs text-emerald-400">+20 โบนัส</span></div>
-                  <span className="text-xs text-plottrix-muted">พอสำหรับแต่งนิยายจบเล่มสั้น</span>
+              {/* Trix Coin Top-up Packages */}
+              <div className="pt-6 border-t border-plottrix-line/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-amber-300 font-bold">
+                      🪙 เติมเหรียญ Trix แยกตามการใช้งาน (Pay-As-You-Go)
+                    </div>
+                    <div className="text-xs text-plottrix-muted">
+                      เหรียญไม่มีวันหมดอายุ ใช้งานได้กับฟีเจอร์ AI ทุกระดับ
+                    </div>
+                  </div>
+                  <div className="text-xs text-purple-300 bg-purple-600/20 border border-purple-500/30 px-3 py-1 rounded-full font-bold">
+                    ยอดปัจจุบัน: {trixBalance} Trix
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleTopup(200, 149)}
-                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md transition"
-                >
-                  ฿149 บาท
-                </button>
-              </div>
 
-              <div className="p-4 rounded-xl bg-plottrix-panel2/60 border border-plottrix-line/40 hover:border-purple-400/40 transition flex flex-col justify-between space-y-3">
-                <div>
-                  <span className="text-xs text-amber-300 font-bold">ชุดสุดคุ้ม (Pro Writer)</span>
-                  <div className="text-xl font-bold text-white mt-1">400 Trix <span className="text-xs text-emerald-400">+50 โบนัส</span></div>
-                  <span className="text-xs text-plottrix-muted">สำหรับนักเขียนมืออาชีพเขียนรายวัน</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-xl border border-plottrix-line/50 bg-white/5 hover:border-purple-400/50 transition flex flex-col justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-amber-300">50 Trix</div>
+                      <div className="text-[11px] text-plottrix-muted mb-3">เหมาะสำหรับทดลองเขียน</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTopup(50, 49)}
+                      className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white text-xs font-bold text-plottrix-text border border-plottrix-line transition cursor-pointer"
+                    >
+                      ฿49 บาท
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-plottrix-line/50 bg-white/5 hover:border-purple-400/50 transition flex flex-col justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-amber-300">120 Trix</div>
+                      <div className="text-[11px] text-plottrix-muted mb-3">+10 Trix โบนัส</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTopup(120, 99)}
+                      className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white text-xs font-bold text-plottrix-text border border-plottrix-line transition cursor-pointer"
+                    >
+                      ฿99 บาท
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-purple-400/50 bg-purple-950/20 transition flex flex-col justify-between relative overflow-hidden">
+                    <span className="absolute top-0 right-0 bg-purple-600 text-[9px] font-bold text-white px-2 py-0.5 rounded-bl-lg">
+                      ยอดนิยม
+                    </span>
+                    <div>
+                      <div className="text-lg font-bold text-amber-300">260 Trix</div>
+                      <div className="text-[11px] text-plottrix-muted mb-3">+40 Trix โบนัส</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTopup(260, 189)}
+                      className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition shadow-md cursor-pointer"
+                    >
+                      ฿189 บาท
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-plottrix-line/50 bg-white/5 hover:border-purple-400/50 transition flex flex-col justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-amber-300">450 Trix</div>
+                      <div className="text-[11px] text-plottrix-muted mb-3">+100 Trix จุใจ</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTopup(450, 299)}
+                      className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white text-xs font-bold text-plottrix-text border border-plottrix-line transition cursor-pointer"
+                    >
+                      ฿299 บาท
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleTopup(450, 299)}
-                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-purple-600 hover:text-white text-xs font-bold text-plottrix-text border border-plottrix-line transition"
-                >
-                  ฿299 บาท
-                </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   )
 }

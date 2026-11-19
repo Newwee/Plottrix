@@ -1,8 +1,10 @@
 import React, { Suspense, lazy } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { AuthProvider } from './context/AuthContext'
 import { AppProvider, useApp } from './context/AppContext'
 import HomePage from './components/home/HomePage'
 import SwipeToastContainer from './components/workspace/SwipeToastContainer'
+import { pageVariants } from './lib/animations'
 
 // Lazy load heavy views
 const WorkspaceHome = lazy(() => import('./components/workspace/WorkspaceHome'))
@@ -24,16 +26,27 @@ function ViewRouter() {
         </div>
       }
     >
-      {currentView === 'studio' || currentView === 'workspace' ? (
-        <WorkspaceLayout />
-      ) : currentView === 'workspace_home' ? (
-        <>
-          <WorkspaceHome />
-          <OnboardingTour />
-        </>
-      ) : (
-        <HomePage />
-      )}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentView}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="w-full h-full min-h-screen"
+        >
+          {currentView === 'studio' || currentView === 'workspace' ? (
+            <WorkspaceLayout />
+          ) : currentView === 'workspace_home' ? (
+            <>
+              <WorkspaceHome />
+              <OnboardingTour />
+            </>
+          ) : (
+            <HomePage />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Global Modals & Notifications accessible anywhere */}
       <PricingModal />
