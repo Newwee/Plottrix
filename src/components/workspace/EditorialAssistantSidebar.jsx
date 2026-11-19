@@ -8,19 +8,31 @@ export default function EditorialAssistantSidebar() {
     characters,
     activePersonaId, personas,
     triggerAiTask,
-    customDictionary
+    customDictionary,
+    setEditorialCheckOpen
   } = useApp()
 
   const activePersona = personas.find(p => p.id === activePersonaId) || personas[0]
   const [activeSuggestionTab, setActiveSuggestionTab] = useState(0)
 
   return (
-    <aside className="workspace-ai w-60 sm:w-64 border-l border-plottrix-line/40 bg-plottrix-panel2/30 flex flex-col justify-between shrink-0 select-none">
+    <aside className="workspace-ai w-72 sm:w-80 border-l border-plottrix-line/40 bg-[#16102a]/95 backdrop-blur-xl flex flex-col justify-between shrink-0 select-none h-full overflow-y-auto p-4 z-20 shadow-2xl">
       <div className="space-y-4">
-        {/* Header */}
-        <div className="ai-head flex items-center justify-between pb-2 border-b border-plottrix-line/30">
-          <span>✦ EDITORIAL CHECK</span>
-          <span className="w-2 h-2 rounded-full bg-plottrix-mint animate-pulse" />
+        {/* Header with Close Button */}
+        <div className="ai-head flex items-center justify-between pb-2.5 border-b border-plottrix-line/30">
+          <div className="flex items-center gap-2">
+            <span className="text-purple-400">✦</span>
+            <span className="font-bold text-xs tracking-wider text-purple-200">EDITORIAL CHECK</span>
+            <span className="w-2 h-2 rounded-full bg-plottrix-mint animate-pulse" />
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditorialCheckOpen(false)}
+            className="w-6 h-6 rounded-full hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-xs transition cursor-pointer"
+            title="ปิดแผงตรวจบรรณาธิการ"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Scan Card (Exactly matching ChangeSingleToTrio) */}

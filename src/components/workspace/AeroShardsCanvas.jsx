@@ -1,5 +1,11 @@
 import React, { useEffect, useRef } from 'react'
 
+/**
+ * AeroShardsCanvas
+ * 3D Ribbon Shards & Markers Ambient Engine
+ * Full-screen 100vw x 100vh canvas positioned behind UI content
+ * Driven by window-level mouse parallax & shockwaves (pointer-events: none)
+ */
 export default function AeroShardsCanvas() {
   const canvasRef = useRef(null)
 
@@ -9,91 +15,288 @@ export default function AeroShardsCanvas() {
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
-    let animationFrameId
-    let w = (canvas.width = window.innerWidth)
-    let h = (canvas.height = window.innerHeight)
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
-    const handleResize = () => {
-      w = canvas.width = window.innerWidth
-      h = canvas.height = window.innerHeight
+    let w = 0, h = 0, dpr = 1
+    const pointer = {
+      x: 0.5,
+      y: 0.5,
+      tx: 0.5,
+      ty: 0.5,
+      inside: true,
+      holding: false,
+      holdPower: 0
     }
-    window.addEventListener('resize', handleResize)
-
-    // Shards particles
-    const shardCount = 38
+    const rings = []
+    const DEPTHS = [1.0, 1.35, 1.8, 2.4, 3.2]
+    const FADE = [0.95, 0.75, 0.52, 0.34, 0.2]
     const shards = []
-    const colors = [
-      'rgba(155, 99, 255, 0.18)',
-      'rgba(194, 154, 255, 0.14)',
-      'rgba(110, 64, 217, 0.16)',
-      'rgba(116, 217, 180, 0.12)',
-      'rgba(233, 199, 140, 0.08)'
-    ]
+    const markers = []
 
-    for (let i = 0; i < shardCount; i++) {
-      shards.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        size: Math.random() * 60 + 20,
-        sides: Math.floor(Math.random() * 3) + 3,
-        angle: Math.random() * Math.PI * 2,
-        vAngle: (Math.random() - 0.5) * 0.005,
-        color: colors[Math.floor(Math.random() * colors.length)]
-      })
+    // Populate shards and markers across 5 depth levels
+    for (let lvl = 0; lvl < 5; lvl++) {
+      const count = lvl === 0 ? 28 : lvl === 1 ? 26 : 22
+      for (let i = 0; i < count; i++) {
+        shards.push({
+          lvl,
+          phase: (i / count) + Math.random() * 0.04,
+          lane: (Math.random() * 2 - 1) * 0.16,
+          size: (10 + Math.random() * 12) / DEPTHS[lvl],
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 1.2,
+          isAccent: Math.random() < 0.38,
+          sides: Math.random() < 0.6 ? 3 : 4,
+          ox: 0,
+          oy: 0,
+          vx: 0,
+          vy: 0,
+          flash: 0
+        })
+      }
+      for (let m = 0; m < 9; m++) {
+        markers.push({
+          lvl,
+          x: Math.random(),
+          y: Math.random(),
+          blinkPhase: Math.random() * Math.PI * 2,
+          size: lvl < 2 ? 4.5 : 3
+        })
+      }
     }
 
-    const draw = () => {
+    function resize() {
+      w = Math.max(1, window.innerWidth)
+      h = Math.max(1, window.innerHeight)
+      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      canvas.width = Math.round(w * dpr)
+      canvas.height = Math.round(h * dpr)
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    // Window-level pointer listeners for global interaction without blocking clicks
+    const handlePointerMove = (e) => {
+      pointer.tx = e.clientX / w
+      pointer.ty = e.clientY / h
+      pointer.inside = true
+    }
+
+    const handlePointerDown = (e) => {
+      if (e.button !== 0) return
+      pointer.tx = e.clientX / w
+      pointer.ty = e.clientY / h
+      pointer.holding = true
+      rings.push({
+        x: pointer.tx * w,
+        y: pointer.ty * h,
+        r: 0,
+        alpha: 0.9
+      })
+      if (rings.length > 5) rings.shift()
+    }
+
+    const handlePointerUp = () => {
+      pointer.holding = false
+    }
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true })
+    window.addEventListener('pointerup', handlePointerUp, { passive: true })
+
+    let animId
+    let last = performance.now()
+    let clock = 0
+
+    function tick(now) {
+      animId = requestAnimationFrame(tick)
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      if (!reduce) clock += dt
+
+      pointer.x += (pointer.tx - pointer.x) * (1 - Math.exp(-dt * 7))
+      pointer.y += (pointer.ty - pointer.y) * (1 - Math.exp(-dt * 7))
+      const targetHold = pointer.holding && !reduce ? 1 : 0
+      pointer.holdPower += (targetHold - pointer.holdPower) * (1 - Math.exp(-dt * 4))
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
 
-      shards.forEach(s => {
-        s.x += s.vx
-        s.y += s.vy
-        s.angle += s.vAngle
+      const px = pointer.x * w
+      const py = pointer.y * h
+      const camX = (pointer.x - 0.5) * 36
+      const camY = (pointer.y - 0.5) * 22
 
-        if (s.x < -s.size) s.x = w + s.size
-        if (s.x > w + s.size) s.x = -s.size
-        if (s.y < -s.size) s.y = h + s.size
-        if (s.y > h + s.size) s.y = -s.size
-
-        ctx.save()
-        ctx.translate(s.x, s.y)
-        ctx.rotate(s.angle)
-
-        ctx.beginPath()
-        for (let i = 0; i < s.sides; i++) {
-          const a = (i * 2 * Math.PI) / s.sides
-          const px = Math.cos(a) * (s.size / 2)
-          const py = Math.sin(a) * (s.size / 2)
-          if (i === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
+      // Shockwave rings
+      for (let i = rings.length - 1; i >= 0; i--) {
+        rings[i].r += dt * 520
+        rings[i].alpha *= Math.exp(-dt * 1.9)
+        if (rings[i].alpha < 0.02) {
+          rings.splice(i, 1)
         }
-        ctx.closePath()
+      }
 
-        ctx.fillStyle = s.color
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(203, 183, 255, 0.08)'
-        ctx.lineWidth = 1
-        ctx.stroke()
-        ctx.restore()
-      })
+      // Draw layers back-to-front
+      for (let lvl = 4; lvl >= 0; lvl--) {
+        const depth = DEPTHS[lvl]
+        const fade = FADE[lvl]
+        const parallaxX = -camX / depth
+        const parallaxY = -camY / depth
 
-      animationFrameId = requestAnimationFrame(draw)
+        // Survey plus markers
+        for (const mk of markers) {
+          if (mk.lvl !== lvl) continue
+          const mx = (((mk.x * w + clock * 8 / depth + parallaxX) % w) + w) % w
+          const my = mk.y * h + parallaxY
+          const distCursor = Math.hypot(mx - px, my - py)
+          const targetBracket = pointer.inside && lvl <= 2 && distCursor < 75 ? 1 - distCursor / 75 : 0
+          const blink = 0.35 + 0.45 * Math.sin(clock * 2.2 + mk.blinkPhase)
+          const alpha = fade * (blink + targetBracket * 0.8)
+          ctx.strokeStyle = `rgba(194, 154, 255, ${alpha.toFixed(3)})`
+          ctx.lineWidth = 1
+          const s = mk.size
+          ctx.beginPath()
+          ctx.moveTo(mx - s, my)
+          ctx.lineTo(mx + s, my)
+          ctx.moveTo(mx, my - s)
+          ctx.lineTo(mx, my + s)
+          ctx.stroke()
+
+          if (targetBracket > 0.05) {
+            const b = s * 2.6
+            ctx.strokeStyle = `rgba(216, 180, 254, ${(targetBracket * 0.85).toFixed(3)})`
+            ctx.strokeRect(mx - b, my - b, b * 2, b * 2)
+          }
+        }
+
+        // Flowing 3D ribbon glass shards
+        for (const sh of shards) {
+          if (sh.lvl !== lvl) continue
+          const s0 = (sh.phase + clock * (0.032 / depth)) % 1
+          const slope = (lvl % 2 === 0 ? -0.22 : 0.18) * (s0 - 0.5)
+          const wave = Math.sin(s0 * Math.PI * 2.2 + clock * 0.9 + lvl * 1.4) * 0.09 / depth
+          const bx = s0 * w + parallaxX
+          const by = (0.46 + slope + wave + sh.lane / depth) * h + parallaxY
+
+          let fx = 0
+          let fy = 0
+          const cx = bx + sh.ox
+          const cy = by + sh.oy
+
+          if (pointer.inside && !reduce) {
+            const dx = cx - px
+            const dy = cy - py
+            const dist = Math.hypot(dx, dy)
+            const reach = 130 / depth
+            if (dist < reach && dist > 0.1) {
+              const push = (1 - dist / reach) * 18 / depth
+              fx += (dx / dist) * push
+              fy += (dy / dist) * push
+            }
+          }
+
+          if (pointer.holdPower > 0.01 && lvl <= 2) {
+            const orbit = sh.phase * 24 + clock * 3.2
+            const rad = 45 + sh.phase * 65
+            const gx = px + Math.cos(orbit) * rad
+            const gy = py + Math.sin(orbit) * rad * 0.72
+            fx += (gx - cx) * pointer.holdPower * 0.18
+            fy += (gy - cy) * pointer.holdPower * 0.18
+          }
+
+          for (const rg of rings) {
+            const d = Math.hypot(cx - rg.x, cy - rg.y)
+            const band = Math.exp(-((d - rg.r) * (d - rg.r)) / 1800) * rg.alpha
+            if (band > 0.02) {
+              sh.flash = Math.max(sh.flash, band)
+              const ang = Math.atan2(cy - rg.y, cx - rg.x)
+              fx += Math.cos(ang) * band * 28 / depth
+              fy += Math.sin(ang) * band * 28 / depth
+            }
+          }
+
+          sh.vx = (sh.vx + fx - sh.ox * 0.08) * 0.82
+          sh.vy = (sh.vy + fy - sh.oy * 0.08) * 0.82
+          sh.ox += sh.vx
+          sh.oy += sh.vy
+          sh.flash *= Math.exp(-dt * 2.6)
+
+          const rot = sh.angle + clock * sh.spin + sh.vx * 0.03
+          const sz = sh.size * (1 + sh.flash * 0.35)
+
+          ctx.save()
+          ctx.translate(bx + sh.ox, by + sh.oy)
+          ctx.rotate(rot)
+          ctx.beginPath()
+          for (let k = 0; k < sh.sides; k++) {
+            const a = (k / sh.sides) * Math.PI * 2
+            const rx = Math.cos(a) * sz * 1.35
+            const ry = Math.sin(a) * sz * 0.65
+            if (k === 0) ctx.moveTo(rx, ry)
+            else ctx.lineTo(rx, ry)
+          }
+          ctx.closePath()
+
+          const baseAlpha = fade * (0.28 + sh.flash * 0.5)
+          ctx.fillStyle = sh.isAccent
+            ? `rgba(168, 85, 247, ${baseAlpha.toFixed(3)})`
+            : `rgba(137, 106, 189, ${baseAlpha.toFixed(3)})`
+          ctx.fill()
+
+          ctx.lineWidth = 1
+          ctx.strokeStyle = `rgba(233, 213, 255, ${Math.min(0.9, fade * (0.45 + sh.flash * 0.6)).toFixed(3)})`
+          ctx.stroke()
+          ctx.restore()
+        }
+      }
     }
 
-    draw()
+    animId = requestAnimationFrame(tick)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      cancelAnimationFrame(animationFrameId)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('pointerup', handlePointerUp)
+      cancelAnimationFrame(animId)
     }
   }, [])
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
-      <div className="absolute inset-0 bg-radial-gradient pointer-events-none" />
+    <div
+      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
+      aria-hidden="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: 0,
+        overflow: 'hidden',
+        background: '#090713'
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        className="aero-shards-canvas absolute inset-0 w-full h-full block pointer-events-none"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block'
+        }}
+      />
+      <div
+        className="aero-shards-vignette absolute inset-0 pointer-events-none"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(9,7,19,0.88) 100%), linear-gradient(180deg, rgba(9,7,19,0.35) 0%, transparent 22%, transparent 78%, rgba(9,7,19,0.96) 100%)'
+        }}
+      />
     </div>
   )
 }

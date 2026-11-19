@@ -23,7 +23,7 @@ const AuthModal = lazy(() => import('../modals/AuthModal'))
 const ApiTestModal = lazy(() => import('../modals/ApiTestModal'))
 
 export default function WorkspaceLayout() {
-  const { isFocusMode, setIsFocusMode } = useApp()
+  const { isFocusMode, setIsFocusMode, editorialCheckOpen, toggleEditorialCheck } = useApp()
 
   // Handle Escape key to exit focus mode
   useEffect(() => {
@@ -55,14 +55,27 @@ export default function WorkspaceLayout() {
             </span>
 
             <div className="toolbar-actions flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleEditorialCheck}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 transition ${
+                  editorialCheckOpen
+                    ? 'bg-purple-600/30 text-purple-200 border-purple-400/60 shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-purple-300 border-white/10'
+                }`}
+                title="เปิด/ปิด แผงตรวจความต่อเนื่องและข้อเสนอแนะบรรณาธิการ"
+              >
+                <span>✦</span>
+                <span>Editorial Check</span>
+              </button>
               <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-400/30">
                 Author Workspace
               </span>
             </div>
           </div>
 
-          {/* 3-Column Studio Body with Suspense for Editor */}
-          <div className="workspace-inner flex-1 overflow-hidden min-h-0">
+          {/* Flexible Studio Body with Suspense for Editor */}
+          <div className="workspace-inner flex-1 overflow-hidden min-h-0 flex flex-row w-full h-full">
             {!isFocusMode && <LeftSidebar />}
             <Suspense
               fallback={
@@ -74,7 +87,7 @@ export default function WorkspaceLayout() {
             >
               <StudioEditor />
             </Suspense>
-            {!isFocusMode && <EditorialAssistantSidebar />}
+            {!isFocusMode && editorialCheckOpen && <EditorialAssistantSidebar />}
           </div>
         </div>
 

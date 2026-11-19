@@ -156,6 +156,7 @@ export function AppProvider({ children }) {
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const [editorialCheckOpen, setEditorialCheckOpen] = useState(false)
   const [selection, setSelection] = useState({ text: '', start: 0, end: 0 })
 
   // Trix Economy & Plans
@@ -900,6 +901,8 @@ export function AppProvider({ children }) {
         isFocusMode, setIsFocusMode,
         leftSidebarOpen, setLeftSidebarOpen,
         rightSidebarOpen, setRightSidebarOpen,
+        editorialCheckOpen, setEditorialCheckOpen,
+        toggleEditorialCheck: () => setEditorialCheckOpen(prev => !prev),
         selection, setSelection,
 
         // Trix & Plans

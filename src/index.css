@@ -607,11 +607,11 @@ body::before {
 .doc-heading{font-size:15px;font-weight:700;margin:0 0 12px;color:#f3edff}
 .doc-text{font-size:10px;line-height:2.1;color:#c7bfd4}
 .spell{background:rgba(255,88,125,.16);border-bottom:1px dashed #ff789b;color:#ffe3eb;padding:0 2px}
-.suggestion{position:absolute;left:36%;bottom:20px;width:230px;border:1px solid rgba(188,157,255,.28);border-radius:10px;background:rgba(34,24,56,.97);padding:10px 12px;box-shadow:0 10px 28px #0008;animation:float 4s ease-in-out infinite}
-.suggestion small{display:flex;align-items:center;gap:6px;color:#c5a7ff;font-size:9px;font-weight:700}
-.suggestion strong{display:block;font-size:11px;margin:5px 0}
-.suggestion span{font-size:9px;color:#a99ebd}
-.fix-pill{position:absolute;right:10px;bottom:9px;padding:4px 8px;border-radius:5px;background:#8850e6;color:white;font-size:9px}
+.editor-window .suggestion{position:absolute;left:36%;bottom:20px;width:230px;border:1px solid rgba(188,157,255,.28);border-radius:10px;background:rgba(34,24,56,.97);padding:10px 12px;box-shadow:0 10px 28px #0008;animation:float 4s ease-in-out infinite}
+.editor-window .suggestion small{display:flex;align-items:center;gap:6px;color:#c5a7ff;font-size:9px;font-weight:700}
+.editor-window .suggestion strong{display:block;font-size:11px;margin:5px 0}
+.editor-window .suggestion span{font-size:9px;color:#a99ebd}
+.editor-window .fix-pill{position:absolute;right:10px;bottom:9px;padding:4px 8px;border-radius:5px;background:#8850e6;color:white;font-size:9px}
 .editor-right{padding:15px 11px;background:rgba(255,255,255,.018);border-left:1px solid var(--line)}
 .ai-head{font-size:10px;font-weight:700;margin-bottom:13px}
 .scan-card{border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:9px;background:rgba(255,255,255,.025)}
@@ -723,11 +723,13 @@ body::before {
 .workspace-demo{border:1px solid rgba(197,171,255,.24);border-radius:17px;background:rgba(24,18,41,.92);box-shadow:0 26px 70px #0006;overflow:hidden;position:relative}
 .workspace-toolbar{height:46px;padding:0 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
 .toolbar-brand{font-size:10px;font-weight:700}.toolbar-actions{display:flex;gap:7px}.toolbar-actions i{width:18px;height:18px;border-radius:5px;background:#2e2346}
-.workspace-inner{display:grid;grid-template-columns:120px 1fr 168px;min-height:315px}
+.workspace-inner{display:flex;flex-direction:row;width:100%;height:100%;min-height:0;overflow:hidden}
+.showcase-layout .workspace-inner{display:grid;grid-template-columns:120px 1fr 168px;min-height:315px}
 .workspace-rail{border-right:1px solid var(--line);padding:13px 9px}
 .rail-item{font-size:9px;color:#9489a6;padding:8px 7px;border-radius:6px;margin-bottom:3px}
 .rail-item.active{background:rgba(148,96,231,.17);color:#e2d2ff}
-.workspace-paper{padding:20px 22px;background:linear-gradient(110deg,rgba(255,255,255,.025),transparent)}
+.workspace-paper{padding:24px 32px;background:linear-gradient(110deg,rgba(255,255,255,.025),transparent);flex:1;min-height:0;overflow-y:auto;position:relative}
+.showcase-layout .workspace-paper{padding:20px 22px;min-height:auto;overflow:hidden}
 .paper-overline{font-size:8px;color:#9588a9;letter-spacing:.14em;text-transform:uppercase}
 .paper-title{font-family:'Playfair Display',serif;font-size:20px;margin:7px 0 13px;color:#f5efff}
 .paper-p{font-size:10px;line-height:2;color:#c6bdd3}
@@ -737,8 +739,8 @@ body::before {
 .inline-toolbar button:hover{background:#8e50f3;color:#fff;transform:translateY(-1px)}
 .workspace-ai{border-left:1px solid var(--line);padding:13px 10px;background:rgba(255,255,255,.018)}
 .ai-box-title{font-size:9px;font-weight:700;margin-bottom:10px}
-.ai-suggestion{padding:9px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px;background:rgba(255,255,255,.022)}
-.ai-suggestion b{font-size:9px;display:block;margin-bottom:3px}.ai-suggestion small{font-size:8px;line-height:1.5;color:#988da8}.ai-suggestion .good{color:var(--mint)}
+.ai-suggestion{padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:rgba(255,255,255,.022);box-sizing:border-box;word-break:break-word}
+.ai-suggestion b{font-size:11px;display:block;margin-bottom:4px;color:#e9e1f7}.ai-suggestion small{font-size:10px;line-height:1.5;color:#a498b8;display:block}.ai-suggestion .good{color:var(--mint)}
 .hotspot-detail{padding:12px 15px;border-top:1px solid var(--line);font-size:10px;color:#b8abc9;background:rgba(126,76,202,.07);min-height:43px}
 .hotspot-detail strong{color:#e7dcff}
 

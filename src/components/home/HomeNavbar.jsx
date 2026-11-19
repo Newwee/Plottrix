@@ -1,136 +1,161 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useApp } from '../../context/AppContext'
+
+const NAV_LINKS = [
+  { label: 'ฟีเจอร์', href: '#features' },
+  { label: 'เวิร์กสเปซ', href: '#workspace' },
+  { label: 'เปรียบเทียบ', href: '#about' },
+  { label: 'ราคา', href: '#pricing' }
+]
 
 export default function HomeNavbar() {
   const { navigateTo, setActiveModal } = useApp()
   const [activeIdx, setActiveIdx] = useState(0)
+  const [hoveredIdx, setHoveredIdx] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const navLinks = [
-    { label: 'ฟีเจอร์', href: '#features' },
-    { label: 'เวิร์กสเปซ', href: '#workspace' },
-    { label: 'เปรียบเทียบ', href: '#about' },
-    { label: 'ราคา', href: '#pricing' },
-  ]
+  const slotRefs = useRef([])
+  const dotRef = useRef(null)
+
+  // Move the glow dot under the active or hovered slot
+  useEffect(() => {
+    const targetIdx = hoveredIdx !== null ? hoveredIdx : activeIdx
+    const slot = slotRefs.current[targetIdx]
+    if (slot && dotRef.current) {
+      const x = slot.offsetLeft + slot.offsetWidth / 2
+      dotRef.current.style.transform = `translate3d(${x}px, 0, 0)`
+    }
+  }, [activeIdx, hoveredIdx])
+
+  const handleLinkClick = (e, href, idx) => {
+    setActiveIdx(idx)
+    setMobileMenuOpen(false)
+    const target = document.querySelector(href)
+    if (target) {
+      e.preventDefault()
+      target.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   return (
-    <header className="nav" id="top">
-      <nav className="pill-nav" id="pillNav" aria-label="Main navigation">
-        {/* Brand Logo */}
-        <a
-          href="#top"
-          className="pill-nav__logo pill-nav__surface"
-          aria-label="Plottrix Home"
-          onClick={(e) => {
-            e.preventDefault()
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-        >
-          <img
-            src="/Logo/PlottrixSingleLogo.png"
-            alt="Plottrix Logo"
-            className="pill-nav__logo-img"
-          />
-          <span>Plottrix</span>
-        </a>
-
-        {/* Desktop Navigation Track */}
-        <div className="pill-nav__track pill-nav__surface" id="pillTrack">
-          {navLinks.map((link, idx) => (
-            <div
-              key={link.href}
-              className="pill-nav__slot"
-              onPointerEnter={() => setActiveIdx(idx)}
-            >
-              <a
-                href={link.href}
-                className="pill-nav__link"
-                onClick={() => setActiveIdx(idx)}
-              >
-                {link.label}
-              </a>
-            </div>
-          ))}
-          <span
-            className="pill-nav__dot"
-            id="pillDot"
-            aria-hidden="true"
-            style={{
-              left: `${activeIdx * 25 + 12.5}%`,
-              transform: 'translateX(-50%)'
+    <header className={`nav ${mobileMenuOpen ? 'mobile-open' : ''}`} id="top">
+      <div className="wrap nav-inner">
+        {/* Authentic Pill-Nav Bar */}
+        <nav className="pill-nav" id="pillNav" aria-label="Main navigation">
+          {/* Brand Logo Surface */}
+          <a
+            className="pill-nav__logo pill-nav__surface"
+            href="#top"
+            aria-label="Plottrix home"
+            onClick={(e) => {
+              e.preventDefault()
+              window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
-          />
-        </div>
+          >
+            <span className="pill-nav__mark">
+              <img
+                src="/Logo/PlottrixSingleLogo.png"
+                alt="Plottrix Mark"
+                className="pill-nav__logo-img"
+              />
+            </span>
+            <span className="font-bold tracking-tight text-white font-sans text-[16px]">
+              Plottrix
+            </span>
+            <span className="pill-nav__rim" />
+          </a>
 
-        {/* Action Buttons */}
-        <div className="pill-nav__actions">
+          {/* Desktop Navigation Track Surface */}
+          <div className="pill-nav__bar pill-nav__surface">
+            <div className="pill-nav__track" id="pillTrack">
+              <ul className="pill-nav__list">
+                {NAV_LINKS.map((link, idx) => {
+                  const isActive = activeIdx === idx
+                  const isHovered = hoveredIdx === idx
+
+                  return (
+                    <li
+                      key={link.href}
+                      ref={(el) => (slotRefs.current[idx] = el)}
+                      className="pill-nav__slot"
+                      data-hover={isHovered ? '' : undefined}
+                      onPointerEnter={(e) => {
+                        if (e.pointerType !== 'touch') {
+                          setHoveredIdx(idx)
+                        }
+                      }}
+                      onPointerLeave={() => setHoveredIdx(null)}
+                    >
+                      <a
+                        className="pill-nav__item"
+                        href={link.href}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={(e) => handleLinkClick(e, link.href, idx)}
+                      >
+                        <span className="pill-nav__fill" aria-hidden="true" />
+                        <span className="pill-nav__face">{link.label}</span>
+                        <span className="pill-nav__face-alt" aria-hidden="true">
+                          {link.label}
+                        </span>
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+              <span
+                ref={dotRef}
+                className="pill-nav__dot"
+                id="pillDot"
+                aria-hidden="true"
+              />
+            </div>
+            <span className="pill-nav__rim" />
+          </div>
+        </nav>
+
+        {/* Right Desktop Nav Action Buttons */}
+        <div className="nav-actions">
           <button
             type="button"
-            className="pill-nav__cta pill-nav__cta--ghost"
-            onClick={() => setActiveModal('pricing')}
+            className="login"
+            onClick={() => setActiveModal('auth')}
           >
             เข้าสู่ระบบ
           </button>
           <button
             type="button"
-            className="pill-nav__cta pill-nav__cta--primary"
+            className="btn btn-primary btn-small shadow-lg hover:shadow-purple-500/25 transition"
             onClick={() => navigateTo('workspace')}
           >
-            เริ่มต้นใช้งาน
+            <span>เริ่มต้นใช้งานฟรี</span>
+            <span>↗</span>
           </button>
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Mobile Hamburger Toggle */}
         <button
+          type="button"
           className="menu-toggle"
           aria-label="เปิดเมนู"
           aria-expanded={mobileMenuOpen}
           id="menuToggle"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          <span></span>
-          <span></span>
-          <span></span>
+          <svg
+            className="icon w-5 h-5 mx-auto"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            {mobileMenuOpen ? (
+              <path d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            )}
+          </svg>
         </button>
-      </nav>
-
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && (
-        <div className="mobile-menu-overlay animate-pop">
-          <div className="mobile-menu-card">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="mobile-link"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="mobile-actions">
-              <button
-                className="btn btn-ghost w-full"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  setActiveModal('pricing')
-                }}
-              >
-                เข้าสู่ระบบ
-              </button>
-              <button
-                className="btn btn-primary w-full"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  navigateTo('workspace')
-                }}
-              >
-                เริ่มต้นใช้งานฟรี →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </header>
   )
 }

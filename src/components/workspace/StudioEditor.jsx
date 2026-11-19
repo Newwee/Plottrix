@@ -233,7 +233,7 @@ export default function StudioEditor() {
       </div>
 
       {/* Main Paper Content Area */}
-      <div className={`workspace-paper flex-1 paper-theme-${paperTheme}`}>
+      <div className={`workspace-paper flex-1 min-h-0 overflow-y-auto paper-theme-${paperTheme} relative`}>
         {/* Document Overline & Title */}
         <div className="paper-overline">
           CHAPTER {String(currentChapter?.number || 1).padStart(2, '0')} • PAGE {activePageIdx + 1}
@@ -313,7 +313,15 @@ export default function StudioEditor() {
 
         {/* Floating Style Persona Suggestion Card */}
         {showSuggestion && (
-          <div className="suggestion">
+          <div className="suggestion relative group">
+            <button
+              type="button"
+              onClick={() => setShowSuggestion(false)}
+              className="absolute top-2 right-2 w-5 h-5 rounded-full hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-[10px] transition cursor-pointer"
+              title="ปิดการ์ดคำแนะนำ"
+            >
+              ✕
+            </button>
             <small>
               <span>✦</span>
               <span>STYLE PERSONA · {activePersona.name.split(' ')[0]}</span>
