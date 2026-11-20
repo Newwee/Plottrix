@@ -26,12 +26,17 @@ export default function TestAiPlayground() {
     return localStorage.getItem('plottrix_test_ai_base_url') || DEFAULT_ASTRACODE_CONFIG.baseURL
   })
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem('plottrix_test_ai_api_key') || DEFAULT_ASTRACODE_CONFIG.apiKey
+    return localStorage.getItem('plottrix_test_ai_api_key') || DEFAULT_ASTRACODE_CONFIG.apiKey || ''
   })
   const [model, setModel] = useState(() => {
     return localStorage.getItem('plottrix_test_ai_model') || DEFAULT_ASTRACODE_CONFIG.model
   })
   const [showApiKey, setShowApiKey] = useState(false)
+
+  const handleClearApiKey = () => {
+    setApiKey('')
+    localStorage.removeItem('plottrix_test_ai_api_key')
+  }
 
   // Ping Test State
   const [pingStatus, setPingStatus] = useState(null) // null | 'testing' | 'success' | 'error'
@@ -60,7 +65,11 @@ export default function TestAiPlayground() {
   }, [baseURL])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_test_ai_api_key', apiKey)
+    if (apiKey) {
+      localStorage.setItem('plottrix_test_ai_api_key', apiKey)
+    } else {
+      localStorage.removeItem('plottrix_test_ai_api_key')
+    }
   }, [apiKey])
 
   useEffect(() => {
@@ -383,23 +392,48 @@ CRITICAL RULES:
 
             {/* API Key */}
             <div className="md:col-span-4 space-y-1">
-              <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
-                <span>API Key:</span>
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="text-[10px] text-purple-300 hover:underline cursor-pointer"
-                >
-                  {showApiKey ? 'ซ่อน' : 'แสดงรหัส'}
-                </button>
-              </label>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span>API Key:</span>
+                  {apiKey ? (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      🔒 ซ่อนอยู่ในเครื่อง
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      ⚠️ ยังไม่มีคีย์ (ปลอดภัย)
+                    </span>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  {apiKey && (
+                    <button
+                      type="button"
+                      onClick={handleClearApiKey}
+                      className="text-[10px] text-rose-300 hover:text-rose-200 hover:underline cursor-pointer"
+                      title="ลบ API Key ออกจากเบราว์เซอร์ทันที"
+                    >
+                      ล้างคีย์
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="text-[10px] text-purple-300 hover:underline cursor-pointer"
+                  >
+                    {showApiKey ? 'ซ่อน' : 'แสดงรหัส'}
+                  </button>
+                </div>
+              </div>
               <div className="relative">
                 <input
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-astra-... หรือ sk-..."
+                  placeholder="ใส่ API Key หรือใช้ค่าจาก .env.local ในเครื่องคุณ"
                   className="w-full px-3 py-2 rounded-xl bg-black/40 border border-purple-500/30 text-white font-mono text-xs focus:border-purple-400 outline-none pr-8"
+                  autoComplete="off"
+                  spellCheck="false"
                 />
               </div>
             </div>

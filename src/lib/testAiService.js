@@ -5,9 +5,9 @@
  */
 
 export const DEFAULT_ASTRACODE_CONFIG = {
-  baseURL: 'https://astracode.panderx.xyz/v1',
-  apiKey: 'sk-astra-43973d400f42c05dd2f4a611dda20f5f5cc0388f11a5a896',
-  model: 'gemini-3.8-flash'
+  baseURL: import.meta.env.VITE_ASTRACODE_BASE_URL || 'https://astracode.panderx.xyz/v1',
+  apiKey: import.meta.env.VITE_ASTRACODE_API_KEY || '',
+  model: import.meta.env.VITE_ASTRACODE_MODEL || 'gemini-3.8-flash'
 }
 
 export const PRESET_MODELS = [
