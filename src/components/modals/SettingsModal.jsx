@@ -22,7 +22,9 @@ export default function SettingsModal() {
     addToast,
     navigateTo,
     trixBalance,
-    plan
+    plan,
+    planTier,
+    trialCountdown
   } = useApp()
 
   const {
@@ -303,7 +305,14 @@ export default function SettingsModal() {
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
                     <span className="text-xs text-zinc-400 block font-medium">แพ็กเกจ & เหรียญ Trix</span>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-purple-300">{plan}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-purple-300">{plan}</span>
+                        {planTier === 'pro_trial' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                            เหลือ {trialCountdown || '3 วัน'}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-sm font-bold text-amber-300">🪙 {trixBalance} Trix</span>
                     </div>
                     <button
@@ -311,7 +320,7 @@ export default function SettingsModal() {
                       onClick={() => setActiveModal('pricing')}
                       className="text-xs text-purple-300 hover:text-purple-200 underline font-semibold mt-1 block cursor-pointer"
                     >
-                      อัปเกรดแพ็กเกจหรือเติมเหรียญ ↗
+                      จัดการแพ็กเกจสมาชิก ↗
                     </button>
                   </div>
                 </div>

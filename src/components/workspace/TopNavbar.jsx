@@ -22,6 +22,7 @@ function TopNavbar({ onOpenCommandPalette }) {
     novelTitle, setNovelTitle,
     genre, setGenre,
     trixBalance, claimDailyTrix,
+    plan, planTier, trialCountdown,
     saveStatus,
     setActiveModal,
     setRightSidebarOpen,
@@ -218,9 +219,24 @@ function TopNavbar({ onOpenCommandPalette }) {
           </button>
         </WarmTooltip>
 
+        {/* Live Pro Trial Countdown Badge (When active) */}
+        {planTier === 'pro_trial' && (
+          <WarmTooltip content={`สิทธิ์ทดลองใช้ Pro ฟรี 72 ชั่วโมง (เหลือเวลา ${trialCountdown || '3 วัน'}) - คลิกเพื่อดูรายละเอียด`} side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+            <button
+              type="button"
+              onClick={() => setActiveModal('pricing')}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/40 text-purple-200 text-xs font-bold transition shadow-sm animate-pulse cursor-pointer"
+            >
+              <span className="text-amber-300">⏱️</span>
+              <span className="hidden lg:inline text-[11px] font-semibold text-purple-300">เหลือเวลาทดลองใช้ Pro:</span>
+              <span className="text-amber-300 text-xs font-bold">{trialCountdown || '3 วัน'}</span>
+            </button>
+          </WarmTooltip>
+        )}
+
         {/* Trix Wallet with Daily Claim */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1a142e] border border-amber-500/30">
-          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI (คลิกเพื่อเติมเหรียญ)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI (ระบบเติมเหรียญปิดชั่วคราว - รอเปิดตัว Payment Gateway)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}

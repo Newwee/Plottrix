@@ -119,6 +119,10 @@ export default function WorkspaceHome() {
     updateNovel,
     deleteNovel,
     plan,
+    planTier,
+    trialUsed,
+    trialCountdown,
+    activateProTrial,
     trixBalance,
     claimDailyTrix,
     lastDailyClaim,
@@ -158,7 +162,8 @@ export default function WorkspaceHome() {
   const scrollLeftRef = useRef(0)
   const [isDragging, setIsDragging] = useState(false)
 
-  const isFreePlan = plan === 'Free Plan'
+  const isFreePlan = (planTier ? planTier === 'free' : plan === 'Free Plan')
+  const isProTrial = planTier === 'pro_trial'
   const FREE_PLAN_LIMIT = 3
   const isQuotaFull = isFreePlan && novels.length >= FREE_PLAN_LIMIT
   const today = new Date().toISOString().slice(0, 10)
@@ -316,14 +321,19 @@ export default function WorkspaceHome() {
             </button>
           </WarmTooltip>
 
-          {/* Plan Badge */}
-          <WarmTooltip content="คลิกเพื่ออัปเกรดหรือจัดการแพ็กเกจ" side="bottom">
+          {/* Plan Badge with Live Trial Countdown */}
+          <WarmTooltip content={isProTrial ? `สิทธิ์ทดลองใช้ Pro ฟรี 72 ชั่วโมง (เหลือเวลา ${trialCountdown || '3 วัน'}) - คลิกเพื่อดูรายละเอียด` : "คลิกเพื่อดูแพ็กเกจสมาชิก"} side="bottom">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
-              className="text-xs font-bold px-3 py-1.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 hover:bg-purple-500/30 transition cursor-pointer"
+              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition cursor-pointer flex items-center gap-1.5 ${
+                isProTrial
+                  ? 'bg-purple-600/30 text-amber-300 border-purple-400/50 hover:bg-purple-600/40 shadow-sm animate-pulse'
+                  : 'bg-purple-500/20 text-purple-200 border border-purple-400/30 hover:bg-purple-500/30'
+              }`}
             >
-              {plan}
+              {isProTrial && <span>⏱️</span>}
+              <span>{isProTrial ? `Pro Trial (${trialCountdown || '3 วัน'})` : plan}</span>
             </button>
           </WarmTooltip>
 
@@ -393,7 +403,9 @@ export default function WorkspaceHome() {
           {/* Quota Indicator */}
           <div className="bg-[#17112a] p-4 rounded-2xl border border-white/10 min-w-[260px] shadow-lg">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-plottrix-muted">โควต้านิยาย ({plan})</span>
+              <span className="text-plottrix-muted">
+                {isProTrial ? 'โควต้านิยาย (Pro Trial 3 วัน)' : `โควต้านิยาย (${plan})`}
+              </span>
               <span className="font-bold text-purple-300">
                 {isFreePlan ? `${novels.length} / ${FREE_PLAN_LIMIT} เรื่อง` : `${novels.length} เรื่อง (ไม่จำกัด)`}
               </span>
@@ -409,18 +421,42 @@ export default function WorkspaceHome() {
             {isQuotaFull ? (
               <div className="mt-2.5 flex items-center justify-between text-[11px]">
                 <span className="text-amber-400 font-semibold">ครบโควต้า Free Plan แล้ว ({novels.length}/{FREE_PLAN_LIMIT})</span>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal('pricing')}
-                  className="font-bold text-purple-400 hover:text-purple-300 underline cursor-pointer"
-                >
-                  อัปเกรด Pro++
-                </button>
+                {!trialUsed ? (
+                  <button
+                    type="button"
+                    onClick={() => activateProTrial()}
+                    className="font-black text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                  >
+                    ⚡ ทดลอง Pro ฟรี 3 วัน
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('pricing')}
+                    className="font-bold text-purple-400 hover:text-purple-300 underline cursor-pointer"
+                  >
+                    ดูแพ็กเกจ
+                  </button>
+                )}
+              </div>
+            ) : isProTrial ? (
+              <div className="mt-2 flex items-center justify-between text-[11px]">
+                <span className="text-emerald-400 font-medium">✓ สิทธิ์ทดลอง Pro: สร้างผลงานไม่จำกัด</span>
+                <span className="text-amber-300 font-bold">{trialCountdown}</span>
               </div>
             ) : isFreePlan ? (
-              <p className="text-[11px] text-emerald-400 mt-2 font-medium">
-                ✓ สามารถสร้างเพิ่มได้อีก {FREE_PLAN_LIMIT - novels.length} เรื่อง
-              </p>
+              <div className="mt-2 flex items-center justify-between text-[11px]">
+                <span className="text-emerald-400 font-medium">✓ สร้างเพิ่มได้อีก {FREE_PLAN_LIMIT - novels.length} เรื่อง</span>
+                {!trialUsed && (
+                  <button
+                    type="button"
+                    onClick={() => activateProTrial()}
+                    className="text-amber-300 hover:text-amber-200 font-bold underline cursor-pointer"
+                  >
+                    ทดลอง Pro ฟรี 3 วัน ↗
+                  </button>
+                )}
+              </div>
             ) : (
               <p className="text-[11px] text-emerald-400 mt-2 font-medium">
                 ✓ สมาชิก {plan} สิทธิ์สร้างผลงานไม่จำกัด

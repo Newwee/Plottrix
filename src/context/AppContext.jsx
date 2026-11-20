@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useMemo,
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthContext'
+import { getTierInfo, checkPlanTransition, getTrialCountdown, PLAN_TIERS } from '../lib/subscription'
 
 const AppContext = createContext(null)
 
@@ -175,7 +176,15 @@ export function AppProvider({ children }) {
     const saved = localStorage.getItem('plottrix_trix')
     return saved ? parseInt(saved, 10) : 30
   })
-  const [plan, setPlan] = useState('Free Plan')
+  const [plan, setPlan] = useState(() => localStorage.getItem('plottrix_plan') || 'Free Plan')
+  const [planTier, setPlanTier] = useState(() => localStorage.getItem('plottrix_plan_tier') || 'free')
+  const [trialUsed, setTrialUsed] = useState(() => localStorage.getItem('plottrix_trial_used') === 'true')
+  const [trialStartedAt, setTrialStartedAt] = useState(() => localStorage.getItem('plottrix_trial_started_at') || null)
+  const [trialEndsAt, setTrialEndsAt] = useState(() => localStorage.getItem('plottrix_trial_ends_at') || null)
+  const [trialCountdown, setTrialCountdown] = useState(() => {
+    const ends = localStorage.getItem('plottrix_trial_ends_at')
+    return ends ? getTrialCountdown(ends).formatted : ''
+  })
   const [lastDailyClaim, setLastDailyClaim] = useState(() => localStorage.getItem('plottrix_last_claim') || '')
 
   // Characters & Story Bible
@@ -321,6 +330,28 @@ export function AppProvider({ children }) {
   }, [trixBalance])
 
   useEffect(() => {
+    localStorage.setItem('plottrix_plan', plan)
+  }, [plan])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_plan_tier', planTier)
+  }, [planTier])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_trial_used', String(trialUsed))
+  }, [trialUsed])
+
+  useEffect(() => {
+    if (trialStartedAt) localStorage.setItem('plottrix_trial_started_at', trialStartedAt)
+    else localStorage.removeItem('plottrix_trial_started_at')
+  }, [trialStartedAt])
+
+  useEffect(() => {
+    if (trialEndsAt) localStorage.setItem('plottrix_trial_ends_at', trialEndsAt)
+    else localStorage.removeItem('plottrix_trial_ends_at')
+  }, [trialEndsAt])
+
+  useEffect(() => {
     localStorage.setItem('plottrix_settings', JSON.stringify(settings))
   }, [settings])
 
@@ -332,14 +363,36 @@ export function AppProvider({ children }) {
   // SUPABASE REAL-TIME DATABASE PERSISTENCE & SYNC
   // =========================================================================
 
-  // Sync profile data (trix balance, plan, last claim)
+  // Sync profile data (trix balance, plan, plan_tier, trial metadata)
   useEffect(() => {
     if (profile) {
       if (typeof profile.trix_balance === 'number') {
         setTrixBalance(profile.trix_balance)
       }
-      if (profile.plan) {
+      if (profile.trial_used !== undefined && profile.trial_used !== null) {
+        setTrialUsed(Boolean(profile.trial_used))
+      }
+      if (profile.trial_started_at) {
+        setTrialStartedAt(profile.trial_started_at)
+      }
+      if (profile.trial_ends_at) {
+        setTrialEndsAt(profile.trial_ends_at)
+      }
+      if (profile.plan_tier) {
+        setPlanTier(profile.plan_tier)
+        if (profile.plan_tier === 'pro_trial') {
+          setPlan('Pro Plan++')
+        } else if (profile.plan_tier === 'pro') {
+          setPlan('Pro Plan++')
+        } else if (profile.plan_tier === 'ultra') {
+          setPlan('Ultra Plan')
+        } else {
+          setPlan('Free Plan')
+        }
+      } else if (profile.plan) {
         setPlan(profile.plan)
+        const t = getTierInfo(profile.plan)
+        setPlanTier(t.id)
       }
       if (profile.last_claim_date) {
         setLastDailyClaim(profile.last_claim_date)
@@ -800,37 +853,111 @@ export function AppProvider({ children }) {
     addToast({ title: 'บันทึกการตั้งค่านิยายสำเร็จ!', duration: 2000, fuseColor: '#a855f7' })
   }, [user?.id, activeNovelId, addToast])
 
-  // Upgrade Plan Handler with Confetti
-  const upgradePlanPrototype = useCallback(async (newPlan) => {
-    setPlan(newPlan)
-    let addedTrix = 0
-    if (newPlan === 'Pro Plan++') addedTrix = 400
-    if (newPlan === 'Ultra Plan') addedTrix = 1000
-
-    const newBal = trixBalance + addedTrix
-    if (addedTrix > 0) {
-      setTrixBalance(newBal)
+  // Real-time 3-Day Pro Trial Countdown & Auto-Expiration
+  useEffect(() => {
+    if (planTier !== 'pro_trial' || !trialEndsAt) {
+      if (planTier !== 'pro_trial') {
+        setTrialCountdown('')
+      }
+      return
     }
 
-    if (user?.id) {
-      supabase.from('profiles').update({
-        plan: newPlan,
-        trix_balance: newBal,
-        updated_at: new Date().toISOString()
-      }).eq('id', user.id).then(({ error }) => {
-        if (error) console.error('Error updating plan in Supabase:', error.message)
-      })
+    const checkExpiration = () => {
+      const countdown = getTrialCountdown(trialEndsAt)
+      setTrialCountdown(countdown.formatted)
 
-      if (addedTrix > 0) {
-        supabase.from('trix_transactions').insert({
-          user_id: user.id,
-          amount: addedTrix,
-          type: 'topup',
-          action: `อัปเกรดแพ็กเกจ ${newPlan}`
-        }).then(({ error }) => {
-          if (error) console.error('Error logging upgrade transaction:', error.message)
+      if (countdown.isExpired) {
+        console.log('[Subscription] 3-Day Pro Trial has expired. Auto-reverting to Free Plan.')
+        setPlanTier('free')
+        setPlan('Free Plan')
+        setTrialCountdown('หมดเวลาแล้ว')
+
+        if (user?.id) {
+          supabase.from('profiles').update({
+            plan_tier: 'free',
+            plan: 'Free Plan',
+            updated_at: new Date().toISOString()
+          }).eq('id', user.id).then(({ error }) => {
+            if (error) console.warn('Error reverting expired trial in Supabase:', error.message)
+          })
+        }
+
+        addToast({
+          title: 'หมดเวลาทดลองใช้ Pro 3 วันแล้ว',
+          description: 'ระบบได้ปรับระดับบัญชีกลับเป็น Free Plan ตามปกติ ขอบคุณที่ร่วมทดลองใช้!',
+          fuseColor: '#eab308',
+          duration: 6000
         })
       }
+    }
+
+    checkExpiration()
+    const timer = setInterval(checkExpiration, 1000)
+    return () => clearInterval(timer)
+  }, [planTier, trialEndsAt, user?.id, addToast])
+
+  // Activate One-Time 3-Day Free Trial of Pro Plan
+  const activateProTrial = useCallback(async () => {
+    if (trialUsed) {
+      addToast({
+        title: 'คุณเคยใช้สิทธิ์ทดลองใช้ Pro 3 วันไปแล้ว',
+        description: 'สิทธิ์ทดลองใช้งานฟรี 72 ชั่วโมงสามารถเปิดใช้งานได้เพียง 1 ครั้งต่อบัญชีเท่านั้น',
+        fuseColor: '#ef4444',
+        duration: 4000
+      })
+      return false
+    }
+
+    if (planTier === 'pro' || planTier === 'ultra') {
+      addToast({
+        title: 'คุณกำลังใช้งานแพลนที่สูงกว่าอยู่แล้ว',
+        description: `บัญชีของคุณอยู่ในระดับ ${plan} เรียบร้อยแล้ว`,
+        fuseColor: '#a855f7',
+        duration: 3500
+      })
+      return false
+    }
+
+    const now = new Date()
+    const ends = new Date(now.getTime() + 72 * 60 * 60 * 1000) // 72 hours
+    const startIso = now.toISOString()
+    const endIso = ends.toISOString()
+
+    setPlanTier('pro_trial')
+    setPlan('Pro Plan++')
+    setTrialUsed(true)
+    setTrialStartedAt(startIso)
+    setTrialEndsAt(endIso)
+    setTrialCountdown('2 วัน 23 ชม. 59 นาที')
+
+    // Persist to Supabase
+    if (user?.id) {
+      supabase.from('profiles').update({
+        plan_tier: 'pro_trial',
+        plan: 'Pro Plan++',
+        trial_used: true,
+        trial_started_at: startIso,
+        trial_ends_at: endIso,
+        updated_at: startIso
+      }).eq('id', user.id).then(({ error }) => {
+        if (error) {
+          console.warn('Supabase update warning (fallback to plan):', error.message)
+          // Fallback if specific columns are not yet in remote table
+          supabase.from('profiles').update({
+            plan: 'Pro Plan++',
+            updated_at: startIso
+          }).eq('id', user.id)
+        }
+      })
+
+      supabase.from('trix_transactions').insert({
+        user_id: user.id,
+        amount: 0,
+        type: 'bonus',
+        action: 'เปิดใช้งานทดลองใช้ Pro ฟรี 3 วัน'
+      }).then(({ error }) => {
+        if (error) console.warn('Transaction log note:', error.message)
+      })
     }
 
     confetti({
@@ -841,11 +968,58 @@ export function AppProvider({ children }) {
     })
 
     addToast({
-      title: `อัปเกรดเป็น ${newPlan} สำเร็จ! 🎉`,
-      description: addedTrix > 0 ? `ได้รับเหรียญ +${addedTrix} Trix และสิทธิพิเศษของ ${newPlan} ทันที` : 'ยินดีต้อนรับสู่ Plottrix',
-      fuseColor: '#c084fc'
+      title: 'เปิดใช้งาน Pro Plan ฟรี 3 วันสำเร็จ! 🎉',
+      description: 'ปลดล็อกเครื่องมือระดับ Pro ทุกฟังก์ชันตลอด 72 ชั่วโมงข้างหน้า',
+      fuseColor: '#c084fc',
+      duration: 5000
     })
-  }, [user?.id, trixBalance, addToast])
+
+    return true
+  }, [trialUsed, planTier, plan, user?.id, addToast])
+
+  // Change Plan Handler with Strict No-Downgrade & Paid Plan Protection
+  const changePlan = useCallback(async (targetPlanNameOrTier) => {
+    const targetTier = getTierInfo(targetPlanNameOrTier)
+    const currentTier = getTierInfo(planTier || plan)
+
+    // 1. Strict No-Downgrade Policy
+    const transition = checkPlanTransition(currentTier.id, targetTier.id)
+    if (!transition.allowed) {
+      addToast({
+        title: 'ไม่สามารถลดระดับแพลนได้',
+        description: transition.reason,
+        fuseColor: '#ef4444',
+        duration: 4500
+      })
+      return false
+    }
+
+    // 2. Paid Plan Gate: Cannot activate paid plans instantly for free
+    if (targetTier.id === 'pro' || targetTier.id === 'ultra') {
+      addToast({
+        title: 'ระบบชำระเงินกำลังเปิดให้บริการเร็วๆ นี้',
+        description: `แพ็กเกจ ${targetTier.displayName} ต้องชำระเงินผ่านระบบ Payment Gateway ซึ่งกำลังเปิดให้บริการในเร็วๆ นี้`,
+        fuseColor: '#eab308',
+        duration: 4500
+      })
+      return false
+    }
+
+    return false
+  }, [planTier, plan, addToast])
+
+  // Backward-compatible alias
+  const upgradePlanPrototype = changePlan
+
+  // Temporarily Disabled Trix Top-Up Handler
+  const topupTrix = useCallback(() => {
+    addToast({
+      title: 'ปิดให้บริการเติมเหรียญชั่วคราว (เร็วๆ นี้)',
+      description: 'ระบบเติมเหรียญ Trix อยู่ระหว่างเตรียมเชื่อมต่อกับ Payment Gateway ขออภัยในความไม่สะดวก',
+      fuseColor: '#f59e0b',
+      duration: 4000
+    })
+  }, [addToast])
 
   // Daily Trix Claim with Supabase Persistence
   const claimDailyTrix = useCallback(async () => {
@@ -1562,6 +1736,14 @@ export function AppProvider({ children }) {
         // Trix & Plans
         trixBalance, setTrixBalance,
         plan, setPlan,
+        planTier, setPlanTier,
+        trialUsed,
+        trialStartedAt,
+        trialEndsAt,
+        trialCountdown,
+        activateProTrial,
+        changePlan,
+        topupTrix,
         claimDailyTrix,
         lastDailyClaim,
         deductTrix,

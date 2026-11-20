@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import https from 'https'
 import { processAiRequest } from './api/aiEngine.js'
+import subscriptionHandler from './api/subscription.js'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -39,6 +40,31 @@ export default defineConfig(({ mode }) => {
                     }
                   }
                 }))
+                return
+              }
+
+              // Handle /api/subscription
+              if (pathname === '/api/subscription') {
+                let body = ''
+                req.on('data', chunk => { body += chunk })
+                req.on('end', async () => {
+                  try {
+                    req.body = body ? JSON.parse(body) : {}
+                    res.status = (code) => {
+                      res.statusCode = code
+                      return res
+                    }
+                    res.json = (data) => {
+                      res.writeHead(res.statusCode || 200, { 'Content-Type': 'application/json; charset=utf-8' })
+                      res.end(JSON.stringify(data))
+                      return res
+                    }
+                    await subscriptionHandler(req, res)
+                  } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+                    res.end(JSON.stringify({ error: { message: e.message || 'Subscription API error' } }))
+                  }
+                })
                 return
               }
 

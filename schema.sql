@@ -13,11 +13,22 @@ create table if not exists public.profiles (
   display_name text default '',
   avatar_url text default '',
   plan text default 'Free Plan' check (plan in ('Free Plan', 'Pro Plan', 'Pro Plan++', 'Ultra Plan')),
+  plan_tier text default 'free' check (plan_tier in ('free', 'pro_trial', 'pro', 'ultra')),
+  trial_used boolean default false,
+  trial_started_at timestamptz,
+  trial_ends_at timestamptz,
   trix_balance integer default 30 check (trix_balance >= 0),
   last_claim_date text default '',
   created_at timestamptz default timezone('utc'::text, now()) not null,
   updated_at timestamptz default timezone('utc'::text, now()) not null
 );
+
+-- Ensure columns exist if table was already created
+alter table public.profiles
+  add column if not exists plan_tier text default 'free',
+  add column if not exists trial_used boolean default false,
+  add column if not exists trial_started_at timestamptz,
+  add column if not exists trial_ends_at timestamptz;
 
 -- 3. NOVELS TABLE
 create table if not exists public.novels (

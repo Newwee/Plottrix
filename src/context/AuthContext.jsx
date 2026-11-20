@@ -59,6 +59,10 @@ export function AuthProvider({ children }) {
           email: user?.email || '',
           display_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'นักเขียน',
           plan: 'Free Plan',
+          plan_tier: 'free',
+          trial_used: false,
+          trial_started_at: null,
+          trial_ends_at: null,
           trix_balance: 30,
           last_claim_date: ''
         }

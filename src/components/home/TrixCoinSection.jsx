@@ -121,7 +121,7 @@ export default function TrixCoinSection() {
                 onClick={() => setActiveModal('pricing')}
                 className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition cursor-pointer"
               >
-                ดูแพ็กเกจ &amp; เติมเหรียญ
+                ดูแพ็กเกจสมาชิก
               </button>
             </div>
           </div>
