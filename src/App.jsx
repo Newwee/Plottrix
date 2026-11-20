@@ -12,6 +12,7 @@ const WorkspaceLayout = lazy(() => import('./components/workspace/WorkspaceLayou
 const PublicReaderHub = lazy(() => import('./components/reader/PublicReaderHub'))
 const StoryDetailsView = lazy(() => import('./components/reader/StoryDetailsView'))
 const ReaderView = lazy(() => import('./components/reader/ReaderView'))
+const TestAiPlayground = lazy(() => import('./components/test-ai/TestAiPlayground'))
 const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'))
 const AuthModal = lazy(() => import('./components/modals/AuthModal'))
@@ -47,6 +48,8 @@ function ViewRouter() {
               <WorkspaceHome />
               <OnboardingTour />
             </>
+          ) : currentView === 'test_ai' ? (
+            <TestAiPlayground />
           ) : currentView === 'story_detail' ? (
             <StoryDetailsView />
           ) : currentView === 'reader' ? (

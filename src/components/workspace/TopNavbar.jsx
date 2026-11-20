@@ -391,6 +391,18 @@ function TopNavbar({ onOpenCommandPalette }) {
           </button>
         </WarmTooltip>
 
+        {/* Test AI Laboratory (Localhost) */}
+        <WarmTooltip content="เปิดห้องทดสอบ Test AI Lab (Localhost)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+          <button
+            type="button"
+            onClick={() => navigateTo('test_ai')}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-400/40 text-purple-200 text-xs font-semibold transition cursor-pointer shadow-sm"
+          >
+            <span>🧪</span>
+            <span className="hidden md:inline">Test AI</span>
+          </button>
+        </WarmTooltip>
+
         {/* Focus Mode Button */}
         <WarmTooltip content={isFocusMode ? "ออกจากโหมดสมาธิ (Esc)" : "โหมดสมาธิไร้สิ่งรบกวน (Focus Mode)"} shortcut="Esc" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button

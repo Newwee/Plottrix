@@ -43,6 +43,7 @@ export function AppProvider({ children }) {
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase()
+      if (path === '/test-ai' || path === '/test') return 'test_ai'
       if (path.startsWith('/read/')) return 'reader'
       if (path === '/read') return 'read'
       if (path === '/workspace' || path === '/studio') return 'studio'
@@ -116,6 +117,9 @@ export function AppProvider({ children }) {
         setActiveReadChapterIdx(null)
       }
       targetPath = sid ? `/read/${sid}` : '/read'
+    } else if (view === 'test_ai' || view === 'test') {
+      targetView = 'test_ai'
+      targetPath = '/test-ai'
     } else if (view === 'read') {
       targetView = 'read'
       targetPath = '/read'
@@ -153,6 +157,8 @@ export function AppProvider({ children }) {
         const sid = window.location.pathname.split('/read/')[1]?.split('/')[0]
         if (sid) setActiveReadStoryId(sid)
         setCurrentView('reader')
+      } else if (path === '/test-ai' || path === '/test') {
+        setCurrentView('test_ai')
       } else if (path === '/read') {
         setCurrentView('read')
       } else if (path === '/workspace' || path === '/studio') {
