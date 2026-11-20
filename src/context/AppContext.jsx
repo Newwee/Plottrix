@@ -43,11 +43,22 @@ export function AppProvider({ children }) {
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase()
+      if (path.startsWith('/read/')) return 'reader'
+      if (path === '/read') return 'read'
       if (path === '/workspace' || path === '/studio') return 'studio'
       if (path === '/home-workspace' || path === '/workspace-home') return 'workspace_home'
       if (path === '/home' || path === '/') return 'home'
     }
     return 'home'
+  })
+
+  // Public Reader Active Story ID
+  const [activeReadStoryId, setActiveReadStoryId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const match = window.location.pathname.match(/\/read\/([^\/]+)/i)
+      if (match) return match[1]
+    }
+    return ''
   })
 
   // Modals & Drawers
@@ -77,7 +88,7 @@ export function AppProvider({ children }) {
     }
   }, [activeModal])
 
-  const navigateTo = useCallback((view) => {
+  const navigateTo = useCallback((view, payload) => {
     let targetView = view
     let targetPath = '/home'
 
@@ -87,6 +98,14 @@ export function AppProvider({ children }) {
     } else if (view === 'workspace_home' || view === 'workspace') {
       targetView = 'workspace_home'
       targetPath = '/home-workspace'
+    } else if (view === 'reader' || (view === 'read' && payload)) {
+      targetView = 'reader'
+      const sid = payload || activeReadStoryId
+      if (sid) setActiveReadStoryId(sid)
+      targetPath = sid ? `/read/${sid}` : '/read'
+    } else if (view === 'read') {
+      targetView = 'read'
+      targetPath = '/read'
     } else {
       targetView = 'home'
       targetPath = '/home'
@@ -107,13 +126,19 @@ export function AppProvider({ children }) {
       }
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [])
+  }, [activeReadStoryId])
 
   // Listen to browser Back / Forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.toLowerCase()
-      if (path === '/workspace' || path === '/studio') {
+      if (path.startsWith('/read/')) {
+        const sid = window.location.pathname.split('/read/')[1]?.split('/')[0]
+        if (sid) setActiveReadStoryId(sid)
+        setCurrentView('reader')
+      } else if (path === '/read') {
+        setCurrentView('read')
+      } else if (path === '/workspace' || path === '/studio') {
         setCurrentView('studio')
       } else if (path === '/home-workspace' || path === '/workspace-home') {
         setCurrentView('workspace_home')
@@ -424,6 +449,9 @@ export function AppProvider({ children }) {
             genre: n.genre,
             pov: n.pov,
             synopsis: n.synopsis || '',
+            author_display_name: n.author_display_name || '',
+            is_published: Boolean(n.is_published),
+            published_at: n.published_at || null,
             cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
             wordCount: 0,
             chapterCount: 0,
@@ -1691,6 +1719,8 @@ export function AppProvider({ children }) {
         currentView,
         setCurrentView,
         navigateTo,
+        activeReadStoryId,
+        setActiveReadStoryId,
 
         // Novels Collection
         novels,

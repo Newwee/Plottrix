@@ -2,6 +2,7 @@ import React from 'react'
 import AeroShardsCanvas from '../workspace/AeroShardsCanvas'
 import HomeNavbar from './HomeNavbar'
 import HeroSection from './HeroSection'
+import PublishedNovelsShowcase from './PublishedNovelsShowcase'
 import FeaturesSection from './FeaturesSection'
 import TrixCoinSection from './TrixCoinSection'
 import WorkspaceShowcaseSection from './WorkspaceShowcaseSection'
@@ -26,6 +27,8 @@ export default function HomePage() {
       {/* Main Page Content with Scroll Animations */}
       <main className="relative z-10">
         <HeroSection />
+
+        <PublishedNovelsShowcase />
 
         <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
           <FeaturesSection />

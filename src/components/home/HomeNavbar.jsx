@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
+  { label: '📖 อ่านนิยาย', href: '#public-novels', isRead: true },
   { label: 'ฟีเจอร์', href: '#features' },
   { label: 'Coin Trix', href: '#coin-trix' },
   { label: 'เวิร์กสเปซ', href: '#workspace' },

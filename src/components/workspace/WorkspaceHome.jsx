@@ -118,6 +118,7 @@ export default function WorkspaceHome() {
     createNovel,
     updateNovel,
     deleteNovel,
+    setActiveNovelId,
     plan,
     planTier,
     trialUsed,
@@ -578,6 +579,19 @@ export default function WorkspaceHome() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                     />
+
+                    {/* Live Publish Status Badge */}
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border shadow-md ${
+                        novel.is_published
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-400/50'
+                          : 'bg-black/70 text-slate-300 border-white/20'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${novel.is_published ? 'bg-emerald-400 animate-ping' : 'bg-slate-400'}`} />
+                        <span>{novel.is_published ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span>
+                      </span>
+                    </div>
+
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-600/80 text-white w-fit backdrop-blur-sm mb-1.5 border border-purple-400/30">
                         {novel.genre}
@@ -613,8 +627,28 @@ export default function WorkspaceHome() {
                     className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>✍️</span>
-                    <span>เปิดทำงาน (Open Studio)</span>
+                    <span>เปิดสตูดิโอ</span>
                   </button>
+
+                  {/* Publish to Home Page Button */}
+                  <WarmTooltip content={novel.is_published ? "นิยายเรื่องนี้เผยแพร่อยู่บนหน้าหลัก (คลิกเพื่อแก้ไข/ยกเลิก)" : "เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้อ่านฟรี 5 ตอนแรก"} side="top">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveNovelId(novel.id)
+                        setActiveModal('publish')
+                      }}
+                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                        novel.is_published
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                          : 'bg-white/5 hover:bg-purple-600/20 text-purple-200 border-white/10 hover:border-purple-400/40'
+                      }`}
+                    >
+                      <span>🌐</span>
+                      <span className="hidden sm:inline">{novel.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่'}</span>
+                    </button>
+                  </WarmTooltip>
 
                   {/* Settings Button */}
                   <WarmTooltip content="ตั้งค่าผลงาน / เปลี่ยนชื่อ / เปลี่ยนรูปปก" side="top">
@@ -709,6 +743,18 @@ export default function WorkspaceHome() {
           >
             <span>⚙️</span>
             <span>ตั้งค่า (เปลี่ยนชื่อ / รูปปก / แนวเรื่อง)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveNovelId(contextMenu.novel.id)
+              setActiveModal('publish')
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-3 py-2 text-xs rounded-lg text-emerald-300 hover:bg-emerald-600/20 flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>🌐</span>
+            <span>เผยแพร่ขึ้นหน้าหลัก ({contextMenu.novel.is_published ? 'เผยแพร่อยู่' : 'ฉบับร่าง'})</span>
           </button>
           <div className="my-1 border-t border-white/10" />
           <button

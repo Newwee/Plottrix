@@ -9,9 +9,12 @@ import { pageVariants } from './lib/animations'
 // Lazy load heavy views
 const WorkspaceHome = lazy(() => import('./components/workspace/WorkspaceHome'))
 const WorkspaceLayout = lazy(() => import('./components/workspace/WorkspaceLayout'))
+const PublicReaderHub = lazy(() => import('./components/reader/PublicReaderHub'))
+const ReaderView = lazy(() => import('./components/reader/ReaderView'))
 const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'))
 const AuthModal = lazy(() => import('./components/modals/AuthModal'))
+const PublishModal = lazy(() => import('./components/modals/PublishModal'))
 const OnboardingTour = lazy(() => import('./components/workspace/OnboardingTour'))
 
 function ViewRouter() {
@@ -42,6 +45,10 @@ function ViewRouter() {
               <WorkspaceHome />
               <OnboardingTour />
             </>
+          ) : currentView === 'reader' ? (
+            <ReaderView />
+          ) : currentView === 'read' ? (
+            <PublicReaderHub />
           ) : (
             <HomePage />
           )}
@@ -52,6 +59,7 @@ function ViewRouter() {
       <PricingModal />
       <SettingsModal />
       <AuthModal />
+      <PublishModal />
       <SwipeToastContainer />
     </Suspense>
   )

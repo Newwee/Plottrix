@@ -34,20 +34,37 @@ export default function HeroSection() {
               ไม่ใช่ AI ที่แย่งนักเขียนแต่งนิยาย แต่เป็นผู้ช่วยที่แก้คำผิด เกลาสำนวนตามโปรไฟล์ของคุณ และเช็คความต่อเนื่อง — ให้คุณเป็นเจ้าของไอเดียและลงมือเขียนเอง 100%
             </p>
 
-            <div className="hero-actions">
+            <div className="hero-actions flex-wrap gap-3">
+              {/* #1 Primary Hero Action: Read Novels */}
               <button
-                className="btn btn-primary btn-hero-glow flex items-center gap-2"
+                type="button"
+                className="btn btn-primary btn-hero-glow flex items-center gap-2.5 text-base sm:text-lg font-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl shadow-[0_0_35px_rgba(168,85,247,0.5)] border border-purple-300/60 bg-gradient-to-r from-purple-500 via-indigo-500 to-fuchsia-500 hover:brightness-110 cursor-pointer transition-transform hover:scale-[1.02]"
+                onClick={() => {
+                  const target = document.getElementById('public-novels')
+                  if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' })
+                  } else {
+                    navigateTo('read')
+                  }
+                }}
+              >
+                <span className="text-xl">📖</span>
+                <span>อ่านนิยาย (Read Novels)</span>
+                <span>→</span>
+              </button>
+
+              {/* Secondary Action: Start Writing */}
+              <button
+                type="button"
+                className="btn btn-ghost flex items-center gap-2 font-bold px-5 py-3.5 rounded-2xl border border-white/15 hover:border-purple-400/50 hover:bg-white/5 cursor-pointer text-xs sm:text-sm"
                 onClick={() => navigateTo('workspace')}
               >
-                <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-5 h-5 object-contain inline-block" />
-                <span>รับฟรี 30 Trix เริ่มเขียนเลย</span> <span>→</span>
-              </button>
-              <a className="btn btn-ghost flex items-center gap-2" href="#coin-trix">
                 <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
+                <span>เริ่มเขียนเลย (Workspace)</span>
+              </button>
+
+              <a className="btn btn-ghost text-xs hidden md:flex items-center gap-1.5" href="#coin-trix">
                 <span>ทำความรู้จัก Coin Trix</span>
-              </a>
-              <a className="btn btn-ghost" href="#workspace">
-                <span>▷</span> สำรวจ Workspace
               </a>
             </div>
 

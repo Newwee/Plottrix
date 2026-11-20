@@ -1,0 +1,135 @@
+import React, { useState, useEffect } from 'react'
+import { useApp } from '../../context/AppContext'
+import { fetchPublishedStories } from '../../lib/publicStoriesService'
+
+export default function PublishedNovelsShowcase() {
+  const { navigateTo } = useApp()
+  const [stories, setStories] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadPublished() {
+      setLoading(true)
+      const data = await fetchPublishedStories()
+      if (isMounted) {
+        setStories(data)
+        setLoading(false)
+      }
+    }
+
+    loadPublished()
+    return () => { isMounted = false }
+  }, [])
+
+  return (
+    <section className="section py-20 px-4 sm:px-6 relative z-10" id="public-novels">
+      <div className="wrap max-w-6xl mx-auto">
+        {/* Section Head */}
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="eyebrow text-xs font-bold text-purple-400 tracking-widest uppercase block mb-2">
+            PUBLIC NOVEL SHOWCASE
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+            อ่านนิยายจาก <span className="grad bg-gradient-to-r from-purple-400 via-pink-300 to-indigo-400 bg-clip-text text-transparent">นักเขียนในคอมมูนิตี้</span>
+          </h2>
+          <p className="text-sm text-plottrix-muted leading-relaxed">
+            สำรวจผลงานคุณภาพที่รังสรรค์และขัดเกลาผ่าน Plottrix Studio อ่านฟรี 5 ตอนแรกโดยไม่ต้องสมัครสมาชิก
+          </p>
+        </div>
+
+        {/* Content State: Loading, Empty, or List */}
+        {loading ? (
+          <div className="p-12 text-center rounded-3xl bg-white/5 border border-purple-500/20 max-w-md mx-auto">
+            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <span className="text-xs text-purple-300 font-semibold">กำลังค้นหานิยายที่เผยแพร่...</span>
+          </div>
+        ) : stories.length === 0 ? (
+          /* ======================================================== */
+          /* Sleek Obsidian Glass Empty State Card                   */
+          /* ======================================================== */
+          <div className="max-w-lg mx-auto p-8 sm:p-12 rounded-3xl border border-purple-500/30 bg-gradient-to-br from-[#1c1333]/90 via-[#130d25]/90 to-[#0c0818]/95 text-center shadow-[0_20px_50px_rgba(147,51,234,0.15)] backdrop-blur-2xl">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-3xl shadow-inner">
+              📚
+            </div>
+
+            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+              ยังไม่มีใครเอานิยายมาลง
+            </h3>
+
+            <p className="text-xs sm:text-sm text-slate-300 mb-8 leading-relaxed">
+              เป็นนักเขียนคนแรกที่เผยแพร่ผลงานสู่หน้าหลัก — ปลดปล่อยจินตนาการของคุณสู่สายตานักอ่านทั่วประเทศ
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigateTo('workspace')}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:brightness-110 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-purple-600/30 transition cursor-pointer flex items-center justify-center gap-2 mx-auto"
+            >
+              <span>✍️</span>
+              <span>เริ่มเขียนและเผยแพร่นิยายของคุณ</span>
+              <span>→</span>
+            </button>
+          </div>
+        ) : (
+          /* Responsive Book Cards Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stories.map((story) => (
+              <div
+                key={story.id}
+                className="group relative rounded-3xl border border-purple-500/25 bg-[#15102a]/80 hover:bg-[#1a1336]/90 hover:border-purple-400/50 p-6 flex flex-col justify-between shadow-xl transition-all duration-300 backdrop-blur-md overflow-hidden"
+              >
+                <div>
+                  {/* Card Cover & Badge Top Row */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <img
+                      src={story.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
+                      alt={story.title}
+                      className="w-16 h-22 object-cover rounded-xl border border-white/10 shadow-md group-hover:scale-105 transition-transform duration-300 shrink-0"
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 mb-2 truncate max-w-full">
+                        {story.genre || 'แฟนตาซี'}
+                      </span>
+
+                      <h4 className="text-base sm:text-lg font-bold text-white group-hover:text-purple-200 transition line-clamp-2 leading-snug">
+                        {story.title}
+                      </h4>
+
+                      <p className="text-xs text-plottrix-muted mt-1 truncate">
+                        โดย <strong className="text-purple-300 font-semibold">{story.authorName}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Synopsis snippet */}
+                  <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-4">
+                    {story.synopsis || 'ร่วมติดตามเรื่องราวอันน่าติดตามที่เขียนและเรียบเรียงอย่างประณีต...'}
+                  </p>
+                </div>
+
+                {/* Footer Meta & Read Action */}
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                  <div className="text-[11px] text-plottrix-muted">
+                    <span className="text-purple-300 font-bold">{story.chapterCount || 0}</span> ตอน · {story.publishedDate}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('reader', story.id)}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>อ่านเลย</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}

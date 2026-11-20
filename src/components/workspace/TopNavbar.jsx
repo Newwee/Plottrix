@@ -19,6 +19,7 @@ const GENRES = [
 function TopNavbar({ onOpenCommandPalette }) {
   const { user } = useAuth()
   const {
+    activeNovel,
     novelTitle, setNovelTitle,
     genre, setGenre,
     trixBalance, claimDailyTrix,
@@ -299,6 +300,28 @@ function TopNavbar({ onOpenCommandPalette }) {
           >
             <span>📥</span>
             <span>นำเข้า</span>
+          </button>
+        </WarmTooltip>
+
+        {/* Publish to Home Page Button */}
+        <WarmTooltip
+          content={activeNovel?.is_published ? "นิยายเรื่องนี้เผยแพร่อยู่บนหน้าหลัก (คลิกเพื่อแก้ไขหรือยกเลิกการเผยแพร่)" : "เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้นักอ่านทั่วไปเข้าชม"}
+          side="bottom"
+          surfaceColor="#1e1b2e"
+          inkColor="#f4f4f5"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveModal('publish')}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer ${
+              activeNovel?.is_published
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                : 'bg-purple-600/25 hover:bg-purple-600/40 text-purple-200 border-purple-400/40'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${activeNovel?.is_published ? 'bg-emerald-400 animate-ping' : 'bg-purple-400'}`} />
+            <span className="hidden sm:inline">{activeNovel?.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่ขึ้นหน้าหลัก'}</span>
+            <span className="sm:hidden">{activeNovel?.is_published ? 'เผยแพร่' : 'เผยแพร่'}</span>
           </button>
         </WarmTooltip>
 

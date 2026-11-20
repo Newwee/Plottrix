@@ -376,3 +376,72 @@ drop policy if exists "Authenticated users can delete their own assets" on stora
 create policy "Authenticated users can delete their own assets" on storage.objects
   for delete to authenticated
   using (bucket_id = 'plottrix-assets');
+
+-- ==============================================================================
+-- 11. PUBLIC NOVEL PUBLISHING & READER PLATFORM (STORIES & COMMENTS)
+-- ==============================================================================
+
+-- Ensure novels table has all publishing fields
+alter table public.novels
+  add column if not exists is_published boolean default false,
+  add column if not exists published_at timestamptz,
+  add column if not exists author_display_name text default '',
+  add column if not exists synopsis text default '',
+  add column if not exists cover_url text default '';
+
+-- View: stories alias for novels
+create or replace view public.stories as 
+  select * from public.novels;
+
+-- Table: story_comments (open to everyone)
+create table if not exists public.story_comments (
+  id uuid primary key default gen_random_uuid(),
+  story_id uuid not null references public.novels(id) on delete cascade,
+  chapter_id uuid references public.chapters(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  commenter_name text not null,
+  content text not null,
+  created_at timestamptz default timezone('utc'::text, now()) not null
+);
+
+-- Indexes for performance
+create index if not exists idx_novels_published on public.novels(is_published, published_at desc);
+create index if not exists idx_story_comments_story_id on public.story_comments(story_id);
+create index if not exists idx_story_comments_chapter_id on public.story_comments(chapter_id);
+create index if not exists idx_story_comments_created_at on public.story_comments(created_at desc);
+
+-- RLS & Grants for Public Stories and Comments
+alter table public.story_comments enable row level security;
+
+drop policy if exists "Allow public read published novels" on public.novels;
+create policy "Allow public read published novels" 
+  on public.novels for select 
+  using (is_published = true or auth.uid() = user_id);
+
+drop policy if exists "Allow public read chapters of published novels" on public.chapters;
+create policy "Allow public read chapters of published novels" 
+  on public.chapters for select 
+  using (
+    exists (
+      select 1 from public.novels 
+      where public.novels.id = public.chapters.novel_id 
+        and (public.novels.is_published = true or public.novels.user_id = auth.uid())
+    )
+  );
+
+drop policy if exists "Allow public read story comments" on public.story_comments;
+create policy "Allow public read story comments" 
+  on public.story_comments for select 
+  to public, anon, authenticated 
+  using (true);
+
+drop policy if exists "Allow public insert story comments" on public.story_comments;
+create policy "Allow public insert story comments" 
+  on public.story_comments for insert 
+  to public, anon, authenticated 
+  with check (true);
+
+grant usage on schema public to anon, authenticated, service_role;
+grant all on public.story_comments to anon, authenticated, service_role;
+grant all on public.novels to anon, authenticated, service_role;
+grant all on public.chapters to anon, authenticated, service_role;
