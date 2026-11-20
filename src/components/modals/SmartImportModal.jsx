@@ -260,7 +260,7 @@ export default function SmartImportModal() {
         finalNovelId = `novel-${Date.now()}`
 
         if (user?.id) {
-          const { data: novRow, error: novErr } = await supabase
+          let { data: novRow, error: novErr } = await supabase
             .from('novels')
             .insert({
               user_id: user.id,
@@ -273,6 +273,23 @@ export default function SmartImportModal() {
             })
             .select()
             .single()
+
+          if (novErr && novErr.message?.includes('author_display_name')) {
+            const retry = await supabase
+              .from('novels')
+              .insert({
+                user_id: user.id,
+                title: finalNovelTitle,
+                genre: finalGenre,
+                pov: 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)',
+                synopsis: metadata.arc ? `${metadata.arc}\n${metadata.version}` : '',
+                cover_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80'
+              })
+              .select()
+              .single()
+            novRow = retry.data
+            novErr = retry.error
+          }
 
           if (!novErr && novRow) {
             finalNovelId = novRow.id

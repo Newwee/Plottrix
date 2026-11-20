@@ -167,12 +167,26 @@ export async function togglePublishStory(storyId, isPublished, metadata = {}) {
     if (metadata.author_display_name) payload.author_display_name = metadata.author_display_name
     if (metadata.cover_url) payload.cover_url = metadata.cover_url
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('novels')
       .update(payload)
       .eq('id', storyId)
       .select()
       .single()
+
+    // If column author_display_name does not exist in schema cache yet, retry without it
+    if (error && error.message?.includes('author_display_name')) {
+      console.warn('[StoriesService] author_display_name column missing in DB, retrying without it...')
+      delete payload.author_display_name
+      const retry = await supabase
+        .from('novels')
+        .update(payload)
+        .eq('id', storyId)
+        .select()
+        .single()
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) throw error
     return { success: true, data }

@@ -100,9 +100,12 @@ export default function PublishModal() {
         })
       }
     } else {
+      const isMissingCol = result.error?.includes('author_display_name') || result.error?.includes('is_published') || result.error?.includes('schema cache')
       addToast({
         title: 'เกิดข้อผิดพลาดในการบันทึกสถานะ',
-        description: result.error || 'กรุณาลองใหม่อีกครั้ง',
+        description: isMissingCol
+          ? 'ฐานข้อมูล Supabase ยังไม่มีคอลัมน์เผยแพร่ (is_published) — กรุณารันคำสั่ง SQL Migration ใน Supabase SQL Editor'
+          : (result.error || 'กรุณาลองใหม่อีกครั้ง'),
         fuseColor: '#ef4444'
       })
     }
