@@ -57,7 +57,7 @@ function LeftSidebar() {
         onClick={() => setLeftSidebarOpen(false)}
       />
 
-      <aside className="panel-surface border-r w-64 shrink-0 flex flex-col justify-between p-3.5 overflow-y-auto z-20 h-full select-none shadow-xl transition-all duration-200">
+      <aside className="fixed lg:relative inset-y-0 left-0 z-40 lg:z-20 w-72 max-w-[85vw] lg:w-64 panel-surface border-r shrink-0 flex flex-col justify-between p-3.5 overflow-y-auto h-full select-none shadow-2xl lg:shadow-none transition-all duration-300">
         <div className="space-y-5">
           {/* Mobile Header */}
           <div className="flex lg:hidden items-center justify-between pb-2 border-b border-white/10 mb-1">

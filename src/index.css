@@ -39,7 +39,13 @@ html, body {
   font-family: var(--thai);
   overflow-x: hidden;
   overflow-y: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
   -webkit-font-smoothing: antialiased;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
 }
 
 body::before {

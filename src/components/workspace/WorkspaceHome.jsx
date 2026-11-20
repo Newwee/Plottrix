@@ -643,10 +643,10 @@ export default function WorkspaceHome() {
                   <button
                     type="button"
                     onClick={() => openNovel(novel.id)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 min-w-0 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                   >
                     <span>✍️</span>
-                    <span>เปิดสตูดิโอ</span>
+                    <span className="whitespace-nowrap truncate">เปิดสตูดิโอ</span>
                   </button>
 
                   {/* Publish to Home Page Button */}
@@ -658,14 +658,14 @@ export default function WorkspaceHome() {
                         setActiveNovelId(novel.id)
                         setActiveModal('publish')
                       }}
-                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                         novel.is_published
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
                           : 'bg-white/5 hover:bg-purple-600/20 text-purple-200 border-white/10 hover:border-purple-400/40'
                       }`}
                     >
                       <span>🌐</span>
-                      <span className="hidden sm:inline">{novel.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่'}</span>
+                      <span className="hidden sm:inline whitespace-nowrap">{novel.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่'}</span>
                     </button>
                   </WarmTooltip>
 
@@ -677,7 +677,7 @@ export default function WorkspaceHome() {
                         e.stopPropagation()
                         openEditModal(novel)
                       }}
-                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-white/10 flex items-center justify-center text-xs transition cursor-pointer"
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-white/10 flex items-center justify-center text-xs transition cursor-pointer shrink-0"
                       aria-label="Settings"
                     >
                       ⚙️

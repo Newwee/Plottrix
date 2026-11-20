@@ -202,6 +202,73 @@ export default function HomeNavbar() {
             )}
           </svg>
         </button>
+
+        {/* Responsive Mobile Drawer Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden fixed inset-x-4 top-20 z-50 rounded-3xl bg-[#140e28]/98 border border-purple-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.8)] p-5 backdrop-blur-2xl flex flex-col gap-3 animate-fade-in">
+            <ul className="flex flex-col gap-1">
+              {NAV_LINKS.map((link, idx) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    onClick={(e) => handleLinkClick(e, link.href, idx)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-200 hover:text-white hover:bg-white/10 active:bg-white/15 transition min-h-[44px] flex items-center"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            <div className="pt-3 border-t border-white/10 flex flex-col gap-2.5">
+              <a
+                href="#coin-trix"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs font-bold min-h-[44px]"
+              >
+                <img src="/Logo/TrixCoinLogo.png" alt="Coin Trix" className="w-4 h-4 object-contain" />
+                <span>รับฟรี 30 Trix แรกเข้า</span>
+              </a>
+
+              {user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    navigateTo('workspace_home')
+                  }}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs shadow-lg min-h-[44px] flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>เข้าสู่ Workspace</span>
+                  <span>↗</span>
+                </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      setActiveModal('auth')
+                    }}
+                    className="py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs min-h-[44px] cursor-pointer"
+                  >
+                    เข้าสู่ระบบ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      setActiveModal('auth')
+                    }}
+                    className="py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs shadow-md min-h-[44px] cursor-pointer"
+                  >
+                    เริ่มต้นฟรี ↗
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   )

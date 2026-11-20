@@ -708,7 +708,7 @@ function StudioEditor() {
         return (
           <div
             id="editorScrollArea"
-            className={`flex-1 overflow-y-auto px-4 sm:px-10 lg:px-16 py-8 relative transition-colors duration-300 ${bgClass}`}
+            className={`flex-1 overflow-y-auto px-3.5 sm:px-8 lg:px-16 py-5 sm:py-8 relative transition-colors duration-300 ${bgClass}`}
           >
             <div className="max-w-3xl mx-auto">
               {/* Chapter & Page Header */}

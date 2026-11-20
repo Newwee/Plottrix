@@ -89,6 +89,42 @@ export default function HeroSection() {
         </div>
       ),
       title: "Smart Manuscript Import"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-purple-500/25 hover:border-purple-400/60 hover:bg-purple-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-sm shadow-inner text-purple-300 shrink-0">📖</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Public Reader &amp; ARC</div>
+            <div className="text-[11px] text-purple-200/70 whitespace-nowrap">อ่านฟรี 5 ตอนแรก พร้อมระบบคั่นหน้า</div>
+          </div>
+        </div>
+      ),
+      title: "Public Reader"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-blue-500/25 hover:border-blue-400/60 hover:bg-blue-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-sm shadow-inner text-blue-300 shrink-0">☁️</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">100% Supabase Cloud</div>
+            <div className="text-[11px] text-blue-200/70 whitespace-nowrap">บันทึกข้อมูลเรียลไทม์ ปลอดภัยบนคลาวด์</div>
+          </div>
+        </div>
+      ),
+      title: "Supabase Cloud"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-emerald-500/25 hover:border-emerald-400/60 hover:bg-emerald-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-sm shadow-inner text-emerald-300 shrink-0">🍃</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Low-Spec 60 FPS Mode</div>
+            <div className="text-[11px] text-emerald-200/70 whitespace-nowrap">โหมดอ่านสบายตา ประหยัดพลังงานมือถือ</div>
+          </div>
+        </div>
+      ),
+      title: "Low Spec Mode"
     }
   ]
 
@@ -244,13 +280,14 @@ export default function HeroSection() {
       </section>
 
       {/* Modern React Bits LogoLoop Infinite Feature Strip */}
-      <div className="py-7 border-y border-white/10 bg-[#0c0817]/70 backdrop-blur-xl relative overflow-hidden z-20">
+      <div className="py-5 sm:py-6 border-y border-white/10 bg-[#0c0817]/70 backdrop-blur-xl relative overflow-hidden z-20 shadow-lg">
         <LogoLoop
           logos={featureLogos}
-          speed={65}
+          speed={60}
           direction="left"
           logoHeight={48}
-          gap={28}
+          gap={32}
+          intro={false}
           pauseOnHover
           scaleOnHover
           fadeOut

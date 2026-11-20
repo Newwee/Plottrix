@@ -303,50 +303,61 @@ export default function SettingsModal() {
                   {/* 1. Profile Avatar & Display Name Card */}
                   <div className="p-6 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] border border-purple-500/20 backdrop-blur-xl shadow-xl flex flex-col sm:flex-row items-center gap-6">
                     {/* Avatar Area with crop button */}
-                    <div className="relative group shrink-0">
-                      <div className={`w-24 h-24 rounded-full overflow-hidden border-2 shadow-2xl bg-black/60 flex items-center justify-center text-3xl font-black transition duration-300 ${
-                        pendingAvatarPreview
-                          ? 'border-amber-400 ring-4 ring-amber-400/30 shadow-amber-500/20 animate-pulse'
-                          : 'border-purple-400/60 ring-4 ring-purple-500/10'
-                      }`}>
-                        {pendingAvatarPreview ? (
-                          <img
-                            src={pendingAvatarPreview}
-                            alt="Cropped Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : profile?.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt="Avatar"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-purple-300">
-                            {displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'P'}
-                          </span>
-                        )}
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="relative group">
+                        <div className={`w-24 h-24 rounded-full overflow-hidden border-2 shadow-2xl bg-black/60 flex items-center justify-center text-3xl font-black transition duration-300 ${
+                          pendingAvatarPreview
+                            ? 'border-amber-400 ring-4 ring-amber-400/30 shadow-amber-500/20 animate-pulse'
+                            : 'border-purple-400/60 ring-4 ring-purple-500/10'
+                        }`}>
+                          {pendingAvatarPreview ? (
+                            <img
+                              src={pendingAvatarPreview}
+                              alt="Cropped Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : profile?.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt="Avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-purple-300">
+                              {displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'P'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Always-visible Camera/Crop Badge Button */}
+                        <button
+                          type="button"
+                          disabled={isUploadingAvatar || isSavingProfile}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center text-xs shadow-lg border-2 border-[#120d24] transition cursor-pointer hover:scale-110 active:scale-95"
+                          title="เลือกรูปภาพใหม่และครอบตัด (Crop Avatar)"
+                        >
+                          📷
+                        </button>
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          className="hidden"
+                          onChange={handleAvatarFileSelected}
+                        />
                       </div>
 
-                      {/* Hover Overlay Button to trigger Crop */}
                       <button
                         type="button"
                         disabled={isUploadingAvatar || isSavingProfile}
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[10px] font-bold text-white transition duration-200 cursor-pointer backdrop-blur-sm"
-                        title="คลิกเพื่อเลือกรูปภาพและครอบตัด"
+                        className="mt-2 text-[11px] font-bold px-3 py-1 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 text-purple-200 border border-purple-400/30 flex items-center gap-1.5 cursor-pointer transition"
                       >
-                        <span className="text-sm mb-0.5">✂️</span>
-                        <span>{isUploadingAvatar ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูป'}</span>
+                        <span>✂️</span>
+                        <span>ครอบตัดรูปภาพ</span>
                       </button>
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png, image/jpeg, image/webp"
-                        className="hidden"
-                        onChange={handleAvatarFileSelected}
-                      />
                     </div>
 
                     {/* Display Name & Info */}
@@ -358,7 +369,7 @@ export default function SettingsModal() {
                           </label>
                           {pendingAvatarPreview && (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 font-semibold animate-pulse">
-                              ⏳ รูปใหม่รอการบันทึก
+                              ⏳ รูปใหม่รอการกดบันทึก
                             </span>
                           )}
                         </div>
@@ -374,9 +385,9 @@ export default function SettingsModal() {
                           <button
                             type="submit"
                             disabled={isSavingProfile || isUploadingAvatar}
-                            className={`px-6 py-2.5 rounded-2xl font-bold text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-2 ${
+                            className={`px-6 py-2.5 rounded-2xl font-bold text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap shrink-0 ${
                               pendingAvatarPreview
-                                ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 text-white hover:brightness-110 shadow-amber-500/25 ring-2 ring-amber-400/50'
+                                ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 text-white hover:brightness-110 shadow-amber-500/25 ring-2 ring-amber-400/50 animate-pulse'
                                 : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-purple-600/30'
                             }`}
                           >
@@ -387,7 +398,7 @@ export default function SettingsModal() {
                       </form>
 
                       <div className="mt-2.5 flex items-center justify-center sm:justify-start gap-2 text-[11px] text-zinc-400">
-                        <span>📸 ครอบตัดขนาดสี่เหลี่ยมจัตุรัสและบีบอัดเป็น WebP ความละเอียดสูง</span>
+                        <span>📸 ครอบตัดขนาดสี่เหลี่ยมจัตุรัสและบีบอัดเป็น WebP (กดบันทึกทุกครั้งเพื่อยืนยัน)</span>
                       </div>
                     </div>
                   </div>
@@ -409,17 +420,17 @@ export default function SettingsModal() {
                     {/* Subscription & Trix Coin Card */}
                     <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/10 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-400 font-bold">แพ็กเกจ & เหรียญ Trix</span>
+                        <span className="text-xs text-zinc-400 font-bold">แพ็กเกจ &amp; เหรียญ Trix</span>
                         <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
                           <span>🪙</span>
                           <span>{trixBalance} Trix</span>
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-sm font-black text-purple-300">{plan}</span>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-sm font-black text-purple-300 whitespace-nowrap">{plan}</span>
                         {planTier === 'pro_trial' && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 whitespace-nowrap">
                             เหลือ {trialCountdown || '3 วัน'}
                           </span>
                         )}

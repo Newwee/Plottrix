@@ -100,7 +100,7 @@ export default function PublishedNovelsShowcase() {
             {stories.map((story) => {
               const progress = readerProgressMap[story.id]
               const completion = completionMap[story.id]
-              const hasReadBefore = Boolean(progress && progress.chapterNumber)
+              const hasReadBefore = Boolean(progress && typeof progress.chapterNumber === 'number')
 
               // Check if author added new chapters after reader completed
               const hasNewChaptersAfterCompletion =
@@ -109,10 +109,27 @@ export default function PublishedNovelsShowcase() {
                 ? story.chapterCount - completion.completedChapterCount
                 : 0
 
+              const handleOpenStory = () => {
+                const b = typeof window !== 'undefined'
+                  ? (localStorage.getItem(`plottrix_bookmark_${story.id}`) || localStorage.getItem(`plottrix_read_progress_${story.id}`))
+                  : null
+                let targetChapter = undefined
+                if (b) {
+                  try {
+                    const parsed = JSON.parse(b)
+                    if (typeof parsed.chapterIdx === 'number') {
+                      targetChapter = parsed.chapterIdx
+                    }
+                  } catch {}
+                }
+                navigateTo('reader', { storyId: story.id, ...(typeof targetChapter === 'number' ? { chapterIdx: targetChapter } : {}) })
+              }
+
               return (
                 <div
                   key={story.id}
-                  className="group relative rounded-3xl border border-purple-500/25 bg-[#15102a]/80 hover:bg-[#1a1336]/90 hover:border-purple-400/50 p-6 flex flex-col justify-between shadow-xl transition-all duration-300 backdrop-blur-md overflow-hidden"
+                  className="group relative rounded-3xl border border-purple-500/25 bg-[#15102a]/80 hover:bg-[#1a1336]/90 hover:border-purple-400/50 p-6 flex flex-col justify-between shadow-xl transition-all duration-300 backdrop-blur-md overflow-hidden cursor-pointer"
+                  onClick={handleOpenStory}
                 >
                   <div>
                     {/* Card Cover & Badge Top Row */}
@@ -176,7 +193,10 @@ export default function PublishedNovelsShowcase() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => navigateTo('reader', { storyId: story.id, chapterIdx: hasReadBefore ? progress.chapterIdx : 0 })}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenStory()
+                        }}
                         className={`px-4 py-2 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ${
                           hasNewChaptersAfterCompletion
                             ? 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:brightness-110 shadow-pink-600/30 animate-pulse'

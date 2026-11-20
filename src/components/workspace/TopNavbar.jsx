@@ -20,12 +20,14 @@ function TopNavbar({ onOpenCommandPalette }) {
   const { user } = useAuth()
   const {
     activeNovel,
+    chapters,
     novelTitle, setNovelTitle,
     genre, setGenre,
     trixBalance, claimDailyTrix,
     plan, planTier, trialCountdown,
     saveStatus,
     setActiveModal,
+    leftSidebarOpen, setLeftSidebarOpen,
     setRightSidebarOpen,
     rightSidebarOpen,
     editorialCheckOpen,
@@ -88,6 +90,19 @@ function TopNavbar({ onOpenCommandPalette }) {
             Plottrix
           </span>
         </div>
+
+        {/* Mobile / Tablet Chapter Sidebar Drawer Toggle */}
+        <button
+          type="button"
+          onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+          className={`lg:hidden elevated-surface border px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer min-h-[36px] transition ${
+            leftSidebarOpen ? 'border-purple-400 bg-purple-600/30 text-white' : 'text-violet-200 hover:text-white'
+          }`}
+          title="เปิด/ปิด สารบัญตอนและเมนู"
+        >
+          <span>📑</span>
+          <span className="hidden sm:inline">ตอน ({chapters.length})</span>
+        </button>
 
         {/* Return to Bookshelf Button */}
         <WarmTooltip content="กลับสู่ชั้นวางนิยายของคุณ" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
@@ -310,6 +325,21 @@ function TopNavbar({ onOpenCommandPalette }) {
             <span className="sm:hidden">{activeNovel?.is_published ? 'เผยแพร่' : 'เผยแพร่'}</span>
           </button>
         </WarmTooltip>
+
+        {/* Tablet / Mobile AI Studio Toggle */}
+        <button
+          type="button"
+          onClick={() => setEditorialCheckOpen(!editorialCheckOpen)}
+          className={`lg:hidden px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer min-h-[36px] ${
+            editorialCheckOpen
+              ? 'bg-violet-600 border-violet-400 text-white shadow-md'
+              : 'elevated-surface border-purple-500/30 text-purple-200 active:bg-white/10'
+          }`}
+          title="เปิด/ปิด AI Studio"
+        >
+          <span className="text-violet-400">✦</span>
+          <span>AI</span>
+        </button>
 
         {/* Export Modal Button */}
         <WarmTooltip content="ส่งออกเป็นไฟล์ Word, PDF หรือ E-pub พร้อมลงเว็บนิยาย" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">

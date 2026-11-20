@@ -258,7 +258,7 @@ const createEngine = (root, track, config, setLayout) => {
     }
     const extra = cfg.links ? 2 : 0;
     geo.lead = (Math.max(0, Math.ceil((-geo.uMin - L / 2) / P)) + extra) * P;
-    const copies = Math.max(2, Math.ceil((geo.uMax + L / 2 + geo.lead) / P) + 2 + (extra ? 1 : 0));
+    const copies = Math.max(3, Math.ceil((geo.uMax + L / 2 + geo.lead) / P) + 2 + (extra ? 1 : 0));
     const primary = Math.min(copies - 1, Math.floor((geo.lead + L / 2) / P));
     st.geo = geo;
     root.style.setProperty('--logoloop-pad', `${Math.ceil(pad)}px`);

@@ -24,6 +24,11 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const [isArcCompleted, setIsArcCompleted] = useState(false)
   const isInitialRestoredRef = useRef(false)
 
+  // Auto-hide UI on scroll & distraction-free reading states
+  const [isUiVisible, setIsUiVisible] = useState(true)
+  const [comfortMenuOpen, setComfortMenuOpen] = useState(false)
+  const lastScrollY = useRef(0)
+
   // Reader Typography & Comfort Settings (persisted)
   const [fontSize, setFontSize] = useState(() => {
     return parseInt(localStorage.getItem('plottrix_reader_font_size') || '18', 10)
@@ -36,10 +41,55 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   })
   const [fontMenuOpen, setFontMenuOpen] = useState(false)
   const [showBackground, setShowBackground] = useState(() => {
+    // Low-spec & mobile optimization: default 3D canvas to OFF on mobile to ensure buttery 60fps scrolling
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return localStorage.getItem('plottrix_reader_bg_effect') === 'true'
+    }
     return localStorage.getItem('plottrix_reader_bg_effect') !== 'false'
   })
 
   const fontMenuRef = useRef(null)
+
+  // Distraction-Free: Auto-hide top header and bottom nav on scroll down, reveal on scroll up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      const delta = currentScrollY - lastScrollY.current
+
+      // Keep UI visible if comfort menu or drawer is open
+      if (drawerOpen || comfortMenuOpen) {
+        lastScrollY.current = currentScrollY
+        return
+      }
+
+      if (currentScrollY > 80) {
+        if (delta > 12) {
+          // Scrolling down: Hide bars to focus on prose
+          setIsUiVisible(false)
+          setFontMenuOpen(false)
+        } else if (delta < -8) {
+          // Scrolling up: Show bars immediately
+          setIsUiVisible(true)
+        }
+      } else {
+        // Near top of page: always show
+        setIsUiVisible(true)
+      }
+
+      lastScrollY.current = currentScrollY
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [drawerOpen, comfortMenuOpen])
+
+  // Tap-to-toggle UI visibility (for distraction-free mobile reading)
+  const handleToggleUi = (e) => {
+    if (e.target.closest('button, a, input, textarea, form, select, [role="button"]')) {
+      return
+    }
+    setIsUiVisible(prev => !prev)
+  }
 
   // Available Thai Typography Choices
   const FONTS = [
@@ -130,37 +180,37 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         let targetIdx = 0
         let foundSaved = null
 
-        // Priority 1: Explicit target chapter from navigation (e.g. from Showcase "อ่านต่อ (ตอนที่ 13)")
-        if (typeof activeReadChapterIdx === 'number' && activeReadChapterIdx >= 0 && activeReadChapterIdx < chaptersData.length) {
+        // Priority 1: User's manual bookmark has HIGHEST priority (e.g. user bookmarked Chapter 13)
+        const rawBookmark = localStorage.getItem(`plottrix_bookmark_${storyId}`)
+        if (rawBookmark) {
+          try {
+            const b = JSON.parse(rawBookmark)
+            if (b && typeof b.chapterIdx === 'number' && b.chapterIdx >= 0 && b.chapterIdx < chaptersData.length) {
+              targetIdx = b.chapterIdx
+              foundSaved = b
+            }
+          } catch (err) {
+            console.warn('[Reader] Parse bookmark failed:', err)
+          }
+        }
+
+        // Priority 2: Explicit target chapter from navigation (if no manual bookmark, or explicit TOC click > 0)
+        if (foundSaved === null && typeof activeReadChapterIdx === 'number' && activeReadChapterIdx >= 0 && activeReadChapterIdx < chaptersData.length) {
           targetIdx = activeReadChapterIdx
-        } else {
-          // Priority 2: Manual bookmark set by user
-          const rawBookmark = localStorage.getItem(`plottrix_bookmark_${storyId}`)
-          if (rawBookmark) {
+        }
+
+        // Priority 3: Automatic reading progress
+        if (foundSaved === null && typeof activeReadChapterIdx !== 'number') {
+          const rawProgress = localStorage.getItem(`plottrix_read_progress_${storyId}`)
+          if (rawProgress) {
             try {
-              const b = JSON.parse(rawBookmark)
-              if (b && typeof b.chapterIdx === 'number' && b.chapterIdx >= 0 && b.chapterIdx < chaptersData.length) {
-                targetIdx = b.chapterIdx
-                foundSaved = b
+              const prog = JSON.parse(rawProgress)
+              if (prog && typeof prog.chapterIdx === 'number' && prog.chapterIdx >= 0 && prog.chapterIdx < chaptersData.length) {
+                targetIdx = prog.chapterIdx
+                foundSaved = prog
               }
             } catch (err) {
-              console.warn('[Reader] Parse bookmark failed:', err)
-            }
-          }
-
-          // Priority 3: Automatic reading progress
-          if (foundSaved === null) {
-            const rawProgress = localStorage.getItem(`plottrix_read_progress_${storyId}`)
-            if (rawProgress) {
-              try {
-                const prog = JSON.parse(rawProgress)
-                if (prog && typeof prog.chapterIdx === 'number' && prog.chapterIdx >= 0 && prog.chapterIdx < chaptersData.length) {
-                  targetIdx = prog.chapterIdx
-                  foundSaved = prog
-                }
-              } catch (err) {
-                console.warn('[Reader] Parse progress failed:', err)
-              }
+              console.warn('[Reader] Parse progress failed:', err)
             }
           }
         }
@@ -169,6 +219,8 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         setCurrentChapterIdx(targetIdx)
         if (foundSaved) {
           setSavedBookmark(foundSaved)
+        } else if (rawBookmark) {
+          try { setSavedBookmark(JSON.parse(rawBookmark)) } catch {}
         }
         isInitialRestoredRef.current = true
 
@@ -507,15 +559,22 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   )
 
   return (
-    <div className={`reader-root min-h-[100dvh] relative ${themeClasses.page} transition-colors duration-300 font-thai`}>
+    <div
+      onClick={handleToggleUi}
+      className={`reader-root min-h-[100dvh] relative ${themeClasses.page} transition-colors duration-300 font-thai overflow-x-hidden`}
+    >
       {/* 3D Ambient Background Shards (Conditional for reading comfort) */}
       {showBackground && <AeroShardsCanvas />}
 
-      {/* Portal Chapter Drawer (always fixed to viewport, zero clipping) */}
-      {typeof document !== 'undefined' && createPortal(chapterDrawerContent, document.body)}
+      {/* Portal Chapter Drawer (only mounted to document.body when open, zero ghost artifacts) */}
+      {drawerOpen && typeof document !== 'undefined' && createPortal(chapterDrawerContent, document.body)}
 
-      {/* Floating Reader Top Bar */}
-      <header className={`sticky top-0 z-40 px-4 sm:px-6 py-3 border-b backdrop-blur-xl flex items-center justify-between gap-3 ${themeClasses.panel}`}>
+      {/* Floating Reader Top Bar (Auto-Hides on Scroll Down) */}
+      <header
+        className={`sticky top-0 z-40 px-3 sm:px-6 py-2.5 sm:py-3 border-b backdrop-blur-xl flex items-center justify-between gap-3 transition-transform duration-300 ease-in-out ${
+          isUiVisible ? 'translate-y-0' : '-translate-y-full'
+        } ${themeClasses.panel}`}
+      >
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -719,140 +778,143 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
       </AnimatePresence>
 
       {/* Main Reading Column Container */}
-      <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-8 py-10 sm:py-16">
-        {/* Chapter Header */}
-        <div className="text-center mb-10 pb-8 border-b border-white/10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-xs font-semibold mb-3">
-            <span>บทที่ {currentChapterNumber}</span>
-            <span>•</span>
-            <span>{story.genre || 'นิยาย'}</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
-            {currentChapter?.title || `บทที่ ${currentChapterNumber}`}
-          </h2>
-
-          <p className={`text-xs ${themeClasses.dimText}`}>
-            เรื่อง: <strong className="text-white">{story.title}</strong> · นามปากกา: {story.authorName}
-          </p>
-        </div>
-
-        {/* Chapter Content or 5-Chapter Guest Member Gate */}
-        {isLocked ? (
-          /* ======================================================== */
-          /* 5-CHAPTER GUEST FREEMIUM MEMBER GATE CARD               */
-          /* ======================================================== */
-          <div className="relative rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1b1233]/95 via-[#130d24]/95 to-[#0b0816]/95 p-8 sm:p-12 text-center shadow-[0_20px_60px_rgba(147,51,234,0.3)] backdrop-blur-2xl my-8">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-amber-500/20 border border-purple-400/40 flex items-center justify-center text-3xl shadow-lg animate-bounce">
-              🔒
+      <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-14">
+        {/* Reading Surface Card (Protects text contrast from 3D shards) */}
+        <div className={`p-6 sm:p-10 rounded-3xl border backdrop-blur-xl shadow-2xl transition-colors duration-300 ${themeClasses.panel}`}>
+          {/* Chapter Header */}
+          <div className="text-center mb-10 pb-8 border-b border-white/10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-xs font-semibold mb-3">
+              <span>บทที่ {currentChapterNumber}</span>
+              <span>•</span>
+              <span>{story.genre || 'นิยาย'}</span>
             </div>
 
-            <span className="inline-block px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30 mb-3">
-              อ่านฟรีครบ 5 ตอนแรกแล้ว
-            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
+              {currentChapter?.title || `บทที่ ${currentChapterNumber}`}
+            </h2>
 
-            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-3">
-              สมัครสมาชิกเพื่ออ่านต่อฟรีทุกตอน (ตอนที่ 6 เป็นต้นไป)
-            </h3>
-
-            <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed mb-8">
-              คุณอ่านสิทธิ์ฟรีสำหรับผู้เยี่ยมชมทั่วไปครบ 5 ตอนแล้ว — เพียงสมัครสมาชิกหรือเข้าสู่ระบบ Plottrix จะสามารถปลดล็อกอ่านฟรีได้ทุกตอนจนจบเรื่องทันที ไม่ต้องผูกบัตรเครดิต
+            <p className={`text-xs ${themeClasses.dimText}`}>
+              เรื่อง: <strong className="text-white">{story.title}</strong> · นามปากกา: {story.authorName}
             </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          {/* Chapter Content or 5-Chapter Guest Member Gate */}
+          {isLocked ? (
+            /* ======================================================== */
+            /* 5-CHAPTER GUEST FREEMIUM MEMBER GATE CARD               */
+            /* ======================================================== */
+            <div className="relative rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1b1233]/95 via-[#130d24]/95 to-[#0b0816]/95 p-8 sm:p-12 text-center shadow-[0_20px_60px_rgba(147,51,234,0.3)] backdrop-blur-2xl my-8">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-amber-500/20 border border-purple-400/40 flex items-center justify-center text-3xl shadow-lg animate-bounce">
+                🔒
+              </div>
+
+              <span className="inline-block px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30 mb-3">
+                อ่านฟรีครบ 5 ตอนแรกแล้ว
+              </span>
+
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-3">
+                สมัครสมาชิกเพื่ออ่านต่อฟรีทุกตอน (ตอนที่ 6 เป็นต้นไป)
+              </h3>
+
+              <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed mb-8">
+                คุณอ่านสิทธิ์ฟรีสำหรับผู้เยี่ยมชมทั่วไปครบ 5 ตอนแล้ว — เพียงสมัครสมาชิกหรือเข้าสู่ระบบ Plottrix จะสามารถปลดล็อกอ่านฟรีได้ทุกตอนจนจบเรื่องทันที ไม่ต้องผูกบัตรเครดิต
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('auth')}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:brightness-110 text-white font-black text-sm shadow-xl shadow-purple-600/30 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>✨</span>
+                  <span>สมัครสมาชิกฟรีเพื่ออ่านต่อ</span>
+                  <span>→</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('auth')}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition cursor-pointer"
+                >
+                  เข้าสู่ระบบ
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Reader Prose Body */
+            <article
+              className="reader-content space-y-6 select-text transition-all duration-200"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: 1.95,
+                fontFamily: FONTS.find(f => f.id === fontFamily)?.css || "'Sarabun', sans-serif"
+              }}
+            >
+              {currentChapter?.pages?.map((pageText, pIdx) => (
+                <div key={pIdx} className="whitespace-pre-wrap font-normal leading-[1.95]">
+                  {pageText}
+                </div>
+              ))}
+            </article>
+          )}
+
+          {/* Chapter Navigation Buttons */}
+          <div className="mt-14 pt-8 border-t border-white/10 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              disabled={currentChapterIdx === 0}
+              onClick={handlePrevChapter}
+              className={`px-4 sm:px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
+                currentChapterIdx === 0
+                  ? 'opacity-40 cursor-not-allowed bg-white/5 text-slate-500'
+                  : 'bg-white/10 hover:bg-white/15 text-white border border-white/10 shadow-md'
+              }`}
+            >
+              <span>←</span>
+              <span>ตอนก่อนหน้า</span>
+            </button>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setActiveModal('auth')}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 hover:brightness-110 text-white font-black text-sm shadow-xl shadow-purple-600/30 transition cursor-pointer flex items-center justify-center gap-2"
+                onClick={handleManualBookmark}
+                className={`px-3 sm:px-4 py-3 rounded-2xl border text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  savedBookmark?.chapterIdx === currentChapterIdx
+                    ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-2 ring-amber-400/30'
+                    : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
+                }`}
+                title="คั่นหน้านี้ไว้"
               >
-                <span>✨</span>
-                <span>สมัครสมาชิกฟรีเพื่ออ่านต่อ</span>
-                <span>→</span>
+                <span>🔖</span>
+                <span className="hidden sm:inline">
+                  {savedBookmark?.chapterIdx === currentChapterIdx ? 'คั่นหน้านี้แล้ว ✓' : 'คั่นหน้านี้'}
+                </span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setActiveModal('auth')}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition cursor-pointer"
+                onClick={() => setDrawerOpen(true)}
+                className="px-4 sm:px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-purple-500/40 text-xs font-bold text-purple-200 transition cursor-pointer flex items-center gap-2 shadow-md"
               >
-                เข้าสู่ระบบ
+                <span>📑</span>
+                <span>สารบัญตอน ({chapters.length})</span>
               </button>
             </div>
-          </div>
-        ) : (
-          /* Reader Prose Body */
-          <article
-            className="reader-content space-y-6 select-text transition-all duration-200"
-            style={{
-              fontSize: `${fontSize}px`,
-              lineHeight: 1.95,
-              fontFamily: FONTS.find(f => f.id === fontFamily)?.css || "'Sarabun', sans-serif"
-            }}
-          >
-            {currentChapter?.pages?.map((pageText, pIdx) => (
-              <div key={pIdx} className="whitespace-pre-wrap font-normal leading-[1.95]">
-                {pageText}
-              </div>
-            ))}
-          </article>
-        )}
 
-        {/* Chapter Navigation Buttons */}
-        <div className="mt-14 pt-8 border-t border-white/10 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            disabled={currentChapterIdx === 0}
-            onClick={handlePrevChapter}
-            className={`px-4 sm:px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
-              currentChapterIdx === 0
-                ? 'opacity-40 cursor-not-allowed bg-white/5 text-slate-500'
-                : 'bg-white/10 hover:bg-white/15 text-white border border-white/10 shadow-md'
-            }`}
-          >
-            <span>←</span>
-            <span>ตอนก่อนหน้า</span>
-          </button>
-
-          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleManualBookmark}
-              className={`px-3 sm:px-4 py-3 rounded-2xl border text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                savedBookmark?.chapterIdx === currentChapterIdx
-                  ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-2 ring-amber-400/30'
-                  : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
+              disabled={currentChapterIdx >= chapters.length - 1}
+              onClick={handleNextChapter}
+              className={`px-4 sm:px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
+                currentChapterIdx >= chapters.length - 1
+                  ? 'opacity-40 cursor-not-allowed bg-white/5 text-slate-500'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-lg shadow-purple-600/30'
               }`}
-              title="คั่นหน้านี้ไว้"
             >
-              <span>🔖</span>
-              <span className="hidden sm:inline">
-                {savedBookmark?.chapterIdx === currentChapterIdx ? 'คั่นหน้านี้แล้ว ✓' : 'คั่นหน้านี้'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="px-4 sm:px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-purple-500/40 text-xs font-bold text-purple-200 transition cursor-pointer flex items-center gap-2 shadow-md"
-            >
-              <span>📑</span>
-              <span>สารบัญตอน ({chapters.length})</span>
+              <span>ตอนถัดไป</span>
+              <span>→</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            disabled={currentChapterIdx >= chapters.length - 1}
-            onClick={handleNextChapter}
-            className={`px-4 sm:px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition cursor-pointer ${
-              currentChapterIdx >= chapters.length - 1
-                ? 'opacity-40 cursor-not-allowed bg-white/5 text-slate-500'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-lg shadow-purple-600/30'
-            }`}
-          >
-            <span>ตอนถัดไป</span>
-            <span>→</span>
-          </button>
         </div>
 
         {/* ======================================================== */}
@@ -999,21 +1061,25 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         </section>
       </main>
 
-      {/* Touch-Friendly Bottom Mobile Navigation Bar */}
-      <nav className={`sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-2.5 border-t backdrop-blur-xl flex items-center justify-around gap-2 shadow-2xl ${themeClasses.panel}`}>
+      {/* Touch-Friendly Bottom Mobile Navigation Bar (Auto-Hides on Scroll Down) */}
+      <nav
+        className={`sm:hidden fixed bottom-0 left-0 right-0 z-40 px-3 py-2 border-t backdrop-blur-xl flex items-center justify-between gap-2 shadow-2xl transition-transform duration-300 ease-in-out ${
+          isUiVisible ? 'translate-y-0' : 'translate-y-full'
+        } ${themeClasses.panel}`}
+      >
         <button
           type="button"
           disabled={currentChapterIdx === 0}
           onClick={handlePrevChapter}
-          className="flex-1 py-2 rounded-xl bg-white/5 disabled:opacity-30 text-xs font-bold text-center"
+          className="flex-1 py-2.5 min-h-[44px] rounded-xl bg-white/5 active:bg-white/10 disabled:opacity-30 text-xs font-bold text-center flex items-center justify-center transition cursor-pointer"
         >
-          ← ตอนก่อน
+          ← ก่อนหน้า
         </button>
 
         <button
           type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="flex-1 py-2 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-bold text-center flex items-center justify-center gap-1"
+          onClick={() => { setDrawerOpen(true); setComfortMenuOpen(false) }}
+          className="flex-1 py-2.5 min-h-[44px] rounded-xl bg-purple-500/20 active:bg-purple-500/30 border border-purple-400/30 text-purple-200 text-xs font-bold text-center flex items-center justify-center gap-1 transition cursor-pointer"
         >
           <span>📑</span>
           <span>สารบัญ</span>
@@ -1021,13 +1087,178 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
 
         <button
           type="button"
+          onClick={() => setComfortMenuOpen(!comfortMenuOpen)}
+          className={`flex-1 py-2.5 min-h-[44px] rounded-xl border text-xs font-bold text-center flex items-center justify-center gap-1 transition cursor-pointer ${
+            comfortMenuOpen
+              ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+              : 'bg-white/5 active:bg-white/10 border-white/10 text-slate-200'
+          }`}
+        >
+          <span>Aa</span>
+          <span>ปรับแต่ง</span>
+        </button>
+
+        <button
+          type="button"
           disabled={currentChapterIdx >= chapters.length - 1}
           onClick={handleNextChapter}
-          className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 disabled:opacity-30 text-white text-xs font-bold text-center shadow-md"
+          className="flex-1 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 active:brightness-95 disabled:opacity-30 text-white text-xs font-bold text-center shadow-md flex items-center justify-center transition cursor-pointer"
         >
-          ตอนถัดไป →
+          ถัดไป →
         </button>
       </nav>
+
+      {/* Mobile Reader Comfort Bottom Sheet (Font, Size, Theme, 3D Toggle) */}
+      <AnimatePresence>
+        {comfortMenuOpen && (
+          <div className="sm:hidden fixed inset-0 z-50 select-none">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer"
+              onClick={() => setComfortMenuOpen(false)}
+            />
+
+            {/* Bottom Sheet Drawer */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+              className={`fixed bottom-0 left-0 right-0 max-h-[80vh] rounded-t-[28px] border-t p-5 overflow-y-auto shadow-2xl z-10 ${themeClasses.panel}`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚙️</span>
+                  <span className="text-xs font-bold text-purple-200 tracking-wide uppercase">
+                    การตั้งค่าการอ่าน (Reading Comfort)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setComfortMenuOpen(false)}
+                  className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-xs text-zinc-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 1. Font Size Control */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">ขนาดตัวอักษร</span>
+                  <span className="font-mono text-purple-300 font-bold">{fontSize}px</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFontSize(s => Math.max(14, s - 2))}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 active:bg-white/15 text-sm font-bold flex items-center justify-center"
+                  >
+                    A-
+                  </button>
+                  <input
+                    type="range"
+                    min="14"
+                    max="26"
+                    step="1"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="flex-1 accent-purple-500 h-2 bg-black/40 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFontSize(s => Math.min(26, s + 2))}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 active:bg-white/15 text-sm font-bold flex items-center justify-center"
+                  >
+                    A+
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Theme Selector */}
+              <div className="space-y-2 mb-4">
+                <span className="text-xs font-bold text-slate-300 block">โทนสีพื้นหลัง</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('obsidian')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                      theme === 'obsidian' ? 'ring-2 ring-purple-400 bg-[#0d091a] text-white border-purple-400' : 'bg-[#15102a] text-slate-400 border-white/10'
+                    }`}
+                  >
+                    <span>🌙</span>
+                    <span>มืด</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('sepia')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                      theme === 'sepia' ? 'ring-2 ring-amber-400 bg-[#1e1915] text-amber-200 border-amber-400' : 'bg-[#29221b] text-stone-400 border-white/10'
+                    }`}
+                  >
+                    <span>📜</span>
+                    <span>ถนอมสายตา</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                      theme === 'light' ? 'ring-2 ring-purple-600 bg-white text-zinc-900 border-purple-500' : 'bg-slate-200 text-zinc-700 border-white/10'
+                    }`}
+                  >
+                    <span>☀️</span>
+                    <span>สว่าง</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Thai Typography Fonts */}
+              <div className="space-y-2 mb-4">
+                <span className="text-xs font-bold text-slate-300 block">รูปแบบตัวอักษร</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {FONTS.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFontFamily(f.id)}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                        fontFamily === f.id
+                          ? 'border-purple-400 bg-purple-600/30 text-white font-bold'
+                          : 'border-white/10 bg-white/5 text-slate-300'
+                      }`}
+                      style={{ fontFamily: f.css }}
+                    >
+                      <div className="truncate font-semibold">{f.name.split(' ')[0]}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{f.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. 3D Background Toggle */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-slate-300">เอฟเฟกต์ 3D ลอยตัว</div>
+                  <div className="text-[10px] text-zinc-400">ปิดเพื่อความลื่นไหลและประหยัดแบตเตอรี่บนมือถือ</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBackground(!showBackground)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition ${
+                    showBackground ? 'bg-purple-600/30 border-purple-400 text-purple-200' : 'bg-white/5 border-white/10 text-slate-400'
+                  }`}
+                >
+                  {showBackground ? 'เปิดอยู่ ✓' : 'ปิด'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
