@@ -12,6 +12,8 @@ import {
   toggleStoryFollow
 } from '../../lib/publicStoriesService'
 import { fetchComments, addComment } from '../../lib/commentsService'
+import { updatePageMeta, copyToClipboard } from '../../lib/seoHelper'
+import ShareStoryModal from '../modals/ShareStoryModal'
 import confetti from 'canvas-confetti'
 
 export default function StoryDetailsView({ storyId: propStoryId }) {
@@ -28,6 +30,8 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
   const [followingLoading, setFollowingLoading] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [savedBookmark, setSavedBookmark] = useState(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [copiedHero, setCopiedHero] = useState(false)
 
   // Comments input form
   const [newCommentName, setNewCommentName] = useState(() => {
@@ -62,6 +66,19 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
         if (storyData) {
           setStory(storyData)
           setFollowerCount(storyData.follower_count || 0)
+
+          // Update dynamic Document Title, Open Graph & Twitter Card tags
+          if (typeof window !== 'undefined') {
+            const primaryCover = (Array.isArray(storyData.cover_images) && storyData.cover_images[0]) || storyData.cover_url || storyData.cover || ''
+            updatePageMeta({
+              title: storyData.title,
+              description: storyData.synopsis,
+              image: primaryCover,
+              url: `${window.location.origin}/story/${storyId}`,
+              author: storyData.authorName || storyData.author_display_name,
+              type: 'book'
+            })
+          }
 
           // 2. Fetch published chapters
           const chs = await fetchStoryChapters(storyId, Boolean(user), storyData)
@@ -126,15 +143,31 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
     }
   }
 
-  // Handle Share Story Link
+  // Handle Share Story Link: Opens Interactive Share Modal
   const handleShare = () => {
-    if (typeof window !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href)
-      addToast({
-        title: 'คัดลอกลิงก์ผลงานแล้ว 📋',
-        description: 'แชร์ให้นักอ่านคนอื่นๆ เข้ามาติดตามได้เลย!',
-        fuseColor: '#a855f7'
-      })
+    setShareModalOpen(true)
+  }
+
+  // Handle 1-Click Fast Copy from CTA button
+  const handleQuickCopyLink = async () => {
+    if (typeof window !== 'undefined') {
+      const shareUrl = `${window.location.origin}/story/${storyId}`
+      const success = await copyToClipboard(shareUrl)
+      if (success) {
+        setCopiedHero(true)
+        confetti({
+          particleCount: 35,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: ['#a855f7', '#38bdf8', '#4ade80']
+        })
+        addToast({
+          title: 'คัดลอกลิงก์ผลงานแล้ว! 📋',
+          description: 'แชร์ใน LINE, Facebook หรือ Discord ได้ทันที พร้อมแสดงรูปปกและชื่อเรื่อง',
+          fuseColor: '#4ade80'
+        })
+        setTimeout(() => setCopiedHero(false), 2500)
+      }
     }
   }
 
@@ -439,6 +472,32 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
                   </span>
                   <span>→</span>
                 </button>
+
+                {/* 1-Click Fast Copy Link Button */}
+                <button
+                  type="button"
+                  onClick={handleQuickCopyLink}
+                  className={`px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm border transition flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                    copiedHero
+                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-200 shadow-emerald-500/20'
+                      : 'bg-white/5 hover:bg-white/10 border-white/15 text-slate-200 hover:text-white'
+                  }`}
+                  title="คัดลอกลิงก์ผลงานไปวางในแชททันที"
+                >
+                  <span>{copiedHero ? '✓' : '📋'}</span>
+                  <span>{copiedHero ? 'คัดลอกลิงก์แล้ว!' : 'คัดลอกลิงก์'}</span>
+                </button>
+
+                {/* Full Share Modal Button */}
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm border border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/35 text-purple-200 hover:text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-purple-950/40"
+                  title="เปิดหน้าต่างแชร์ไปยัง LINE, Facebook, Twitter"
+                >
+                  <span>🔗</span>
+                  <span>แชร์นิยาย</span>
+                </button>
               </div>
             </div>
           </div>
@@ -608,6 +667,14 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
           </div>
         </div>
       </main>
+
+      {/* Interactive Social Share Modal */}
+      <ShareStoryModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        story={story}
+        storyId={storyId}
+      />
     </div>
   )
 }

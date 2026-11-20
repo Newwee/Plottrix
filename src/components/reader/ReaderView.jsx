@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext'
 import AeroShardsCanvas from '../workspace/AeroShardsCanvas'
 import { fetchStoryById, fetchStoryChapters } from '../../lib/publicStoriesService'
 import { fetchComments, addComment } from '../../lib/commentsService'
+import { updatePageMeta } from '../../lib/seoHelper'
+import ShareStoryModal from '../modals/ShareStoryModal'
 import confetti from 'canvas-confetti'
 
 export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
@@ -22,6 +24,7 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const [showResumeBanner, setShowResumeBanner] = useState(false)
   const [savedBookmark, setSavedBookmark] = useState(null)
   const [isArcCompleted, setIsArcCompleted] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const isInitialRestoredRef = useRef(false)
 
   // Auto-hide UI on scroll & distraction-free reading states
@@ -245,6 +248,22 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const currentChapterNumber = currentChapter?.number || (currentChapterIdx + 1)
   const isLocked = !user && currentChapterNumber > 5
   const isLastChapter = chapters.length > 0 && currentChapterIdx === chapters.length - 1
+
+  // Update dynamic page meta & title for social preview & browser history
+  useEffect(() => {
+    if (story) {
+      const primaryCover = (Array.isArray(story.cover_images) && story.cover_images[0]) || story.cover_url || story.cover || ''
+      const chTitle = currentChapter?.title ? ` - ตอนที่ ${currentChapterNumber}: ${currentChapter.title}` : ''
+      updatePageMeta({
+        title: `${story.title}${chTitle}`,
+        description: story.synopsis,
+        image: primaryCover,
+        url: typeof window !== 'undefined' ? `${window.location.origin}/story/${storyId}` : '',
+        author: story.authorName || story.author_display_name,
+        type: 'book'
+      })
+    }
+  }, [story, currentChapter, currentChapterNumber, storyId])
 
   // Auto-save reading progress on chapter change (ONLY after initial restoration has completed!)
   useEffect(() => {
@@ -681,6 +700,17 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
             <span className="hidden md:inline">
               {savedBookmark?.chapterIdx === currentChapterIdx ? 'คั่นหน้านี้แล้ว' : 'คั่นหน้า'}
             </span>
+          </button>
+
+          {/* Share Button */}
+          <button
+            type="button"
+            onClick={() => setShareModalOpen(true)}
+            className="px-2.5 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/15 text-xs font-bold flex items-center gap-1.5 hover:bg-purple-500/25 text-purple-200 transition cursor-pointer"
+            title="แชร์นิยายเรื่องนี้ส่งให้เพื่อน"
+          >
+            <span>🔗</span>
+            <span className="hidden md:inline">แชร์</span>
           </button>
 
           {/* Chapter Drawer Toggle */}
@@ -1320,6 +1350,14 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Social Share Modal */}
+      <ShareStoryModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        story={story}
+        storyId={storyId}
+      />
     </div>
   )
 }

@@ -9,6 +9,28 @@
   },
   "rewrites": [
     {
+      "source": "/story/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Discordbot|TelegramBot|WhatsApp|Line|Slackbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider).*"
+        }
+      ],
+      "destination": "/api/og-preview?id=:id&type=story"
+    },
+    {
+      "source": "/read/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Discordbot|TelegramBot|WhatsApp|Line|Slackbot|SkypeUriPreview|Googlebot|bingbot|crawler|spider).*"
+        }
+      ],
+      "destination": "/api/og-preview?id=:id&type=read"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
