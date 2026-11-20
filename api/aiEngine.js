@@ -7,10 +7,11 @@
 import https from 'https'
 
 const MODEL_CHAIN = [
-  'gemini-3.8-flash',
-  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest'
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+  'gemini-3.8-flash'
 ]
 
 function callGemini(model, apiKey, payload) {
@@ -25,7 +26,7 @@ function callGemini(model, apiKey, payload) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData)
       },
-      timeout: 45000
+      timeout: 8000
     }
 
     const req = https.request(options, (res) => {

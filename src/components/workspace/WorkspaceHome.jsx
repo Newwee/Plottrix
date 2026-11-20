@@ -338,6 +338,18 @@ export default function WorkspaceHome() {
             </button>
           </WarmTooltip>
 
+          {/* API Diagnostics Dashboard */}
+          <WarmTooltip content="แดชบอร์ดตรวจสอบสถานะ API Key & AI Engine" side="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveModal('apiTest')}
+              className="px-3 py-1.5 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/30 text-xs font-semibold text-purple-200 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span className="text-amber-400 text-xs">⚡</span>
+              <span className="hidden sm:inline">สถานะ API</span>
+            </button>
+          </WarmTooltip>
+
           {/* Settings */}
           <WarmTooltip content="การตั้งค่าระบบ" side="bottom">
             <button

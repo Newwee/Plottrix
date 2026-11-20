@@ -19,16 +19,25 @@ export default defineConfig(({ mode }) => {
 
               // Handle /api/status
               if (pathname === '/api/status' && req.method === 'GET') {
+                const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''
+                const hasKey = Boolean(key)
+                const masked = hasKey ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({
-                  success: true,
-                  service: "Plottrix Studio API (Vercel Serverless)",
-                  routing: {
-                    light: "gemini-3.5-flash-lite",
-                    core: "gemini-3.8-flash",
-                    deep: "gemini-4-hydrogen"
-                  },
-                  keyConfigured: Boolean(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY)
+                  status: 'ok',
+                  version: '2.0.0-production',
+                  service: 'Plottrix Studio API (Local & Vercel)',
+                  timestamp: new Date().toISOString(),
+                  config: {
+                    geminiKeyConfigured: hasKey,
+                    geminiKeyMasked: masked,
+                    supabaseConfigured: Boolean(env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL),
+                    models: {
+                      primary: 'gemini-3.5-flash-lite (Speed: ~0.89s)',
+                      backup: 'gemini-3.1-flash-lite',
+                      heavy: 'gemini-3.8-flash'
+                    }
+                  }
                 }))
                 return
               }

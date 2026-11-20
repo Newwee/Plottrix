@@ -1,6 +1,6 @@
 /**
  * Vercel Serverless Function: /api/status
- * Quick health check and environment status
+ * Health check & Real-time AI Configuration Status
  */
 
 export default async function handler(req, res) {
@@ -12,7 +12,9 @@ export default async function handler(req, res) {
     return res.status(204).end()
   }
 
-  const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY)
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+  const hasGeminiKey = Boolean(key)
+  const maskedKey = hasGeminiKey ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null
   const hasSupabaseUrl = Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL)
 
   return res.status(200).json({
@@ -22,11 +24,12 @@ export default async function handler(req, res) {
     timestamp: new Date().toISOString(),
     config: {
       geminiKeyConfigured: hasGeminiKey,
+      geminiKeyMasked: maskedKey,
       supabaseConfigured: hasSupabaseUrl,
       models: {
-        light: 'gemini-3.5-flash-lite',
-        core: 'gemini-3.8-flash',
-        deep: 'gemini-4-hydrogen'
+        primary: 'gemini-3.5-flash-lite (Speed: ~0.89s)',
+        backup: 'gemini-3.1-flash-lite',
+        heavy: 'gemini-3.8-flash'
       }
     }
   })
