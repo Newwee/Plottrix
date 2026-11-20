@@ -625,11 +625,11 @@ export default function WorkspaceHome() {
                   <div className="space-y-1.5 text-xs text-plottrix-muted px-1">
                     <div className="flex items-center justify-between">
                       <span>จำนวนบท:</span>
-                      <span className="text-slate-200 font-semibold">{novel.chapterCount || novel.chapters?.length || 1} ตอน</span>
+                      <span className="text-slate-200 font-semibold">{novel.chapterCount ?? novel.chapters?.length ?? 0} ตอน</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>คำบรรยาย:</span>
-                      <span className="text-slate-200 font-semibold">{novel.wordCount || 1420} คำ</span>
+                      <span className="text-slate-200 font-semibold">{(novel.wordCount || 0).toLocaleString()} คำ</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/10">
                       <span>แก้ไขล่าสุด:</span>

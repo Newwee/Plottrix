@@ -23,13 +23,42 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const [savedBookmark, setSavedBookmark] = useState(null)
   const [isArcCompleted, setIsArcCompleted] = useState(false)
 
-  // Reader Settings (persisted)
+  // Reader Typography & Comfort Settings (persisted)
   const [fontSize, setFontSize] = useState(() => {
     return parseInt(localStorage.getItem('plottrix_reader_font_size') || '18', 10)
   })
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('plottrix_reader_theme') || 'obsidian' // 'obsidian' | 'sepia' | 'light'
   })
+  const [fontFamily, setFontFamily] = useState(() => {
+    return localStorage.getItem('plottrix_reader_font') || 'Sarabun'
+  })
+  const [fontMenuOpen, setFontMenuOpen] = useState(false)
+  const [showBackground, setShowBackground] = useState(() => {
+    return localStorage.getItem('plottrix_reader_bg_effect') !== 'false'
+  })
+
+  const fontMenuRef = useRef(null)
+
+  // Available Thai Typography Choices
+  const FONTS = [
+    { id: 'Sarabun', name: 'สารบรรณ (Sarabun)', sub: 'ทางการ สะอาดตา อ่านง่าย', css: "'Sarabun', sans-serif" },
+    { id: 'Prompt', name: 'พร้อมท์ (Prompt)', sub: 'โมเดิร์น ไร้หัว สไตล์แอพยุคใหม่', css: "'Prompt', sans-serif" },
+    { id: 'Noto Serif Thai', name: 'โนโตะ เซอริฟ (Noto Serif)', sub: 'วรรณกรรม คลาสสิก ละเมียดละไม', css: "'Noto Serif Thai', serif" },
+    { id: 'IBM Plex Sans Thai', name: 'ไอบีเอ็ม (IBM Plex Thai)', sub: 'โมเดิร์น คมชัด อ่านลื่นไหล', css: "'IBM Plex Sans Thai', sans-serif" },
+    { id: 'System', name: 'ฟอนต์ระบบ (System UI)', sub: 'เรียบง่าย มาตรฐานประจำเครื่อง', css: "system-ui, -apple-system, sans-serif" }
+  ]
+
+  // Click outside to close font picker
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (fontMenuRef.current && !fontMenuRef.current.contains(e.target)) {
+        setFontMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
 
   // Comments State
   const [comments, setComments] = useState([])
@@ -49,6 +78,14 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   useEffect(() => {
     localStorage.setItem('plottrix_reader_theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_reader_font', fontFamily)
+  }, [fontFamily])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_reader_bg_effect', String(showBackground))
+  }, [showBackground])
 
   // Sync user display name into comment input if logged in
   useEffect(() => {
@@ -429,8 +466,8 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
 
   return (
     <div className={`reader-root min-h-[100dvh] relative ${themeClasses.page} transition-colors duration-300 font-thai`}>
-      {/* 3D Ambient Background Shards */}
-      <AeroShardsCanvas />
+      {/* 3D Ambient Background Shards (Conditional for reading comfort) */}
+      {showBackground && <AeroShardsCanvas />}
 
       {/* Portal Chapter Drawer (always fixed to viewport, zero clipping) */}
       {typeof document !== 'undefined' && createPortal(chapterDrawerContent, document.body)}
@@ -461,6 +498,73 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
 
         {/* Reader Customization Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Zen Background Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showBackground
+              setShowBackground(next)
+              addToast({
+                title: next ? 'เปิดเอฟเฟกต์พื้นหลังแล้ว ✨' : 'โหมดอ่านสบายตา (ปิดพื้นหลัง) 🌙',
+                description: next ? 'แสดงเอฟเฟกต์พื้นหลัง 3D' : 'ปิดเอฟเฟกต์เคลื่อนไหวเพื่ออ่านสบายตา',
+                duration: 2000
+              })
+            }}
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+              showBackground
+                ? 'bg-purple-500/15 border-purple-400/30 text-purple-200 hover:bg-purple-500/25'
+                : 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30 shadow-sm'
+            }`}
+            title={showBackground ? "คลิกเพื่อปิดพื้นหลัง (อ่านสบายตา)" : "คลิกเพื่อเปิดพื้นหลัง 3D"}
+          >
+            <span>{showBackground ? '✨' : '🌙'}</span>
+            <span className="hidden lg:inline">{showBackground ? 'พื้นหลัง 3D' : 'อ่านสบายตา'}</span>
+          </button>
+
+          {/* Font Family Selector Dropdown */}
+          <div className="relative" ref={fontMenuRef}>
+            <button
+              type="button"
+              onClick={() => setFontMenuOpen(!fontMenuOpen)}
+              className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-purple-400/40 bg-white/5 hover:bg-white/10 text-xs text-slate-200 font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              title="เลือกรูปแบบตัวอักษร (Font)"
+            >
+              <span>🔤</span>
+              <span className="hidden md:inline">{FONTS.find(f => f.id === fontFamily)?.name.split(' ')[0] || 'ฟอนต์'}</span>
+              <span className="text-[10px] text-slate-400">▾</span>
+            </button>
+
+            {fontMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#140e28]/98 border border-purple-500/30 shadow-2xl p-2 z-50 backdrop-blur-2xl space-y-1">
+                <div className="text-[10px] font-bold text-purple-300 px-2.5 py-1 uppercase tracking-wider border-b border-white/10 mb-1">
+                  เลือกรูปแบบตัวอักษร
+                </div>
+                {FONTS.map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      setFontFamily(f.id)
+                      setFontMenuOpen(false)
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
+                      fontFamily === f.id
+                        ? 'bg-purple-600/30 text-white font-bold border border-purple-400/40 shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                    }`}
+                    style={{ fontFamily: f.css }}
+                  >
+                    <div>
+                      <div className="text-xs">{f.name}</div>
+                      <div className="text-[9px] text-slate-400 font-normal">{f.sub}</div>
+                    </div>
+                    {fontFamily === f.id && <span className="text-purple-300 text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Bookmark Button */}
           <button
             type="button"
@@ -630,8 +734,12 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         ) : (
           /* Reader Prose Body */
           <article
-            className="reader-content space-y-6 select-text"
-            style={{ fontSize: `${fontSize}px`, lineHeight: 1.95 }}
+            className="reader-content space-y-6 select-text transition-all duration-200"
+            style={{
+              fontSize: `${fontSize}px`,
+              lineHeight: 1.95,
+              fontFamily: FONTS.find(f => f.id === fontFamily)?.css || "'Sarabun', sans-serif"
+            }}
           >
             {currentChapter?.pages?.map((pageText, pIdx) => (
               <div key={pIdx} className="whitespace-pre-wrap font-normal leading-[1.95]">

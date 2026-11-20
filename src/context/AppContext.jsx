@@ -443,22 +443,57 @@ export function AppProvider({ children }) {
         if (!isMounted) return
 
         if (!novelsErr && dbNovels) {
-          const mappedNovels = dbNovels.map(n => ({
-            id: n.id,
-            title: n.title,
-            genre: n.genre,
-            pov: n.pov,
-            synopsis: n.synopsis || '',
-            author_display_name: n.author_display_name || '',
-            is_published: Boolean(n.is_published),
-            published_at: n.published_at || null,
-            cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
-            wordCount: 0,
-            chapterCount: 0,
-            updatedAt: new Date(n.updated_at || n.created_at).toLocaleDateString('th-TH'),
-            chapters: [],
-            characters: []
-          }))
+          // Fetch chapter stats (count & word count) for all user's novels
+          const novelIds = dbNovels.map(n => n.id)
+          const chapterStatsMap = {}
+          if (novelIds.length > 0) {
+            try {
+              const { data: allChs } = await supabase
+                .from('chapters')
+                .select('id, novel_id, word_count, pages')
+                .in('novel_id', novelIds)
+
+              if (allChs) {
+                allChs.forEach(ch => {
+                  if (!chapterStatsMap[ch.novel_id]) {
+                    chapterStatsMap[ch.novel_id] = { count: 0, words: 0 }
+                  }
+                  chapterStatsMap[ch.novel_id].count += 1
+                  let chWords = ch.word_count || 0
+                  if (!chWords && ch.pages) {
+                    const pagesArr = Array.isArray(ch.pages) ? ch.pages : [ch.pages]
+                    const fullText = pagesArr.join(' ')
+                    chWords = fullText.trim() ? fullText.trim().split(/\s+/).length : 0
+                  }
+                  chapterStatsMap[ch.novel_id].words += chWords
+                })
+              }
+            } catch (statsErr) {
+              console.warn('[AppContext] Could not fetch chapter stats:', statsErr)
+            }
+          }
+
+          const mappedNovels = dbNovels.map(n => {
+            const stats = chapterStatsMap[n.id] || { count: 0, words: 0 }
+            return {
+              id: n.id,
+              title: n.title,
+              genre: n.genre,
+              pov: n.pov,
+              synopsis: n.synopsis || '',
+              author_display_name: n.author_display_name || '',
+              is_published: Boolean(n.is_published),
+              published_at: n.published_at || null,
+              published_arc: n.published_arc || '',
+              published_snapshot: n.published_snapshot || null,
+              cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
+              wordCount: stats.words,
+              chapterCount: stats.count,
+              updatedAt: new Date(n.updated_at || n.created_at).toLocaleDateString('th-TH'),
+              chapters: [],
+              characters: []
+            }
+          })
 
           setNovels(mappedNovels)
 
@@ -650,10 +685,20 @@ export function AppProvider({ children }) {
         return ch
       })
 
-      // Sync back to active novel
+      // Sync back to active novel with real word count and chapter count
       setNovels(allNovs => allNovs.map(n => {
         if (n.id === activeNovelId) {
-          return { ...n, chapters: updated, updatedAt: 'บันทึกเมื่อสักครู่' }
+          const totalWords = updated.reduce((sum, ch) => {
+            const fullChText = (ch.pages || []).join(' ')
+            return sum + (fullChText.trim() ? fullChText.trim().split(/\s+/).length : 0)
+          }, 0)
+          return {
+            ...n,
+            chapters: updated,
+            chapterCount: updated.length,
+            wordCount: totalWords,
+            updatedAt: 'บันทึกเมื่อสักครู่'
+          }
         }
         return n
       }))

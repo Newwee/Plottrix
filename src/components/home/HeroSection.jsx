@@ -1,8 +1,96 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import LogoLoop from '../react-bits/LogoLoop'
 
 export default function HeroSection() {
   const { navigateTo } = useApp()
+
+  const featureLogos = [
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-purple-500/25 hover:border-purple-400/60 hover:bg-purple-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-sm shadow-inner text-purple-300 shrink-0">⌕</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Proofread &amp; Batch Check</div>
+            <div className="text-[11px] text-purple-200/70 whitespace-nowrap">แก้คำผิด คำพ้องเสียง &amp; ตรวจทั้งตอน</div>
+          </div>
+        </div>
+      ),
+      title: "Proofread & Batch Check"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-pink-500/25 hover:border-pink-400/60 hover:bg-pink-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-pink-500/20 border border-pink-400/30 flex items-center justify-center text-sm shadow-inner text-pink-300 shrink-0">✧</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Style Persona (3 Profiles)</div>
+            <div className="text-[11px] text-pink-200/70 whitespace-nowrap">บันทึกโปรไฟล์สำนวนเฉพาะตัว</div>
+          </div>
+        </div>
+      ),
+      title: "Style Persona"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-indigo-500/25 hover:border-indigo-400/60 hover:bg-indigo-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-sm shadow-inner text-indigo-300 shrink-0">⑂</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">15 Chapters Memory</div>
+            <div className="text-[11px] text-indigo-200/70 whitespace-nowrap">จำบริบทตัวละครย้อนหลังต่อเนื่อง</div>
+          </div>
+        </div>
+      ),
+      title: "Story Memory"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-cyan-500/25 hover:border-cyan-400/60 hover:bg-cyan-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-sm shadow-inner text-cyan-300 shrink-0">◎</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Context Translation</div>
+            <div className="text-[11px] text-cyan-200/70 whitespace-nowrap">แปลภาษาโดยรักษาบริบทตัวละคร</div>
+          </div>
+        </div>
+      ),
+      title: "Context Translation"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-emerald-500/25 hover:border-emerald-400/60 hover:bg-emerald-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-sm shadow-inner text-emerald-300 shrink-0">◇</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Novel Vocabulary Bank</div>
+            <div className="text-[11px] text-emerald-200/70 whitespace-nowrap">คลังคำศัพท์นิยายเปิดใช้ฟรีทุกแพลน</div>
+          </div>
+        </div>
+      ),
+      title: "Novel Vocabulary Bank"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-amber-500/25 hover:border-amber-400/60 hover:bg-amber-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-sm shadow-inner text-amber-300 shrink-0">⚡</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Gemini 2.5 AI Engine</div>
+            <div className="text-[11px] text-amber-200/70 whitespace-nowrap">ประมวลผลคำไทยลึกซึ้งระดับวรรณกรรม</div>
+          </div>
+        </div>
+      ),
+      title: "Gemini 2.5 AI Engine"
+    },
+    {
+      node: (
+        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-fuchsia-500/25 hover:border-fuchsia-400/60 hover:bg-fuchsia-500/15 transition backdrop-blur-md shadow-sm">
+          <span className="w-8 h-8 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/30 flex items-center justify-center text-sm shadow-inner text-fuchsia-300 shrink-0">📥</span>
+          <div className="text-left">
+            <div className="text-xs font-bold text-white whitespace-nowrap">Smart Manuscript Import</div>
+            <div className="text-[11px] text-fuchsia-200/70 whitespace-nowrap">นำเข้า .docx / .md ซิงค์บทและตัวละคร</div>
+          </div>
+        </div>
+      ),
+      title: "Smart Manuscript Import"
+    }
+  ]
 
   return (
     <>
@@ -155,45 +243,21 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* Trust Strip */}
-      <div className="feature-strip">
-        <div className="wrap strip-grid">
-          <div className="strip-item">
-            <div className="strip-icon">⌕</div>
-            <div>
-              <strong>Proofread &amp; Batch Check</strong>
-              <span>แก้คำผิด คำพ้องเสียง &amp; ตรวจทั้งตอน</span>
-            </div>
-          </div>
-          <div className="strip-item">
-            <div className="strip-icon">✧</div>
-            <div>
-              <strong>Style Persona (3 Profiles)</strong>
-              <span>บันทึกโปรไฟล์สำนวนเฉพาะตัว</span>
-            </div>
-          </div>
-          <div className="strip-item">
-            <div className="strip-icon">⑂</div>
-            <div>
-              <strong>15 Chapters Memory</strong>
-              <span>จำบริบทตัวละครย้อนหลังต่อเนื่อง</span>
-            </div>
-          </div>
-          <div className="strip-item">
-            <div className="strip-icon">◎</div>
-            <div>
-              <strong>Context Translation</strong>
-              <span>แปลภาษาโดยรักษาบริบทตัวละคร</span>
-            </div>
-          </div>
-          <div className="strip-item">
-            <div className="strip-icon">◇</div>
-            <div>
-              <strong>Novel Vocabulary Bank</strong>
-              <span>คลังคำศัพท์นิยายเปิดใช้ฟรีทุกแพลน</span>
-            </div>
-          </div>
-        </div>
+      {/* Modern React Bits LogoLoop Infinite Feature Strip */}
+      <div className="py-7 border-y border-white/10 bg-[#0c0817]/70 backdrop-blur-xl relative overflow-hidden z-20">
+        <LogoLoop
+          logos={featureLogos}
+          speed={65}
+          direction="left"
+          logoHeight={48}
+          gap={28}
+          pauseOnHover
+          scaleOnHover
+          fadeOut
+          fadeOutWidth={0.12}
+          draggable
+          ariaLabel="Plottrix Core Features Loop"
+        />
       </div>
     </>
   )
