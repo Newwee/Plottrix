@@ -24,7 +24,8 @@ function StudioEditor() {
     trixBalance,
     addToast,
     isAIProcessing,
-    activeAITool
+    activeAITool,
+    navigateTo
   } = useApp()
 
   const textareaRef = useRef(null)
@@ -280,14 +281,23 @@ function StudioEditor() {
               คุณสามารถสร้างตอนแรกเพื่อเริ่มต้นเขียนต้นฉบับ หรือจัดการโครงเรื่องได้ทันที
             </p>
           </div>
-          <button
-            type="button"
-            onClick={addChapter}
-            className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-lg shadow-violet-600/30 transition transform hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
-          >
-            <span>+</span>
-            <span>สร้างตอนแรก</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigateTo('workspace_home')}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-semibold text-xs transition cursor-pointer"
+            >
+              ← กลับชั้นวางนิยาย
+            </button>
+            <button
+              type="button"
+              onClick={addChapter}
+              className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-lg shadow-violet-600/30 transition transform hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+            >
+              <span>+</span>
+              <span>สร้างตอนแรก</span>
+            </button>
+          </div>
         </div>
       </div>
     )

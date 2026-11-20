@@ -13,6 +13,17 @@ export default function AiResultDrawer() {
 
   const [activeTab, setActiveTab] = useState('result')
 
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && aiDrawer.isOpen) {
+        setAiDrawer(prev => ({ ...prev, isOpen: false }))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [aiDrawer.isOpen, setAiDrawer])
+
   if (!aiDrawer.isOpen) return null
 
   const { loading, actionType, cost, result, error, steps, thoughtTime } = aiDrawer
@@ -36,8 +47,14 @@ export default function AiResultDrawer() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in select-none">
-      <div className="glass-panel w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-purple2/30 shadow-2xl">
+    <div
+      onClick={() => setAiDrawer(prev => ({ ...prev, isOpen: false }))}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in select-none cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="glass-panel w-full max-w-3xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden border border-plottrix-purple2/30 shadow-2xl cursor-default bg-[#151028]/95"
+      >
         {/* Header */}
         <div className="px-5 py-4 border-b border-plottrix-line/40 flex items-center justify-between bg-plottrix-panel2/60">
           <div className="flex items-center gap-2.5">
@@ -309,20 +326,41 @@ export default function AiResultDrawer() {
                     </p>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-plottrix-line/30">
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(result.translatedText)
-                        addToast({
-                          title: 'คัดลอกคำแปลลงคลิปบอร์ดแล้ว',
-                          description: 'พร้อมนำไปใช้งานหรือจัดพิมพ์ภาษาอังกฤษ',
-                          fuseColor: '#74d9b4'
-                        })
-                      }}
-                      className="px-4 py-2 rounded-xl btn-primary-purple text-xs font-bold shadow-md"
+                      type="button"
+                      onClick={() => setAiDrawer(prev => ({ ...prev, isOpen: false }))}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer"
                     >
-                      คัดลอกคำแปล (Copy)
+                      ✕ ปิดหน้าต่าง (Esc)
                     </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(result.translatedText)
+                          addToast({
+                            title: 'คัดลอกคำแปลลงคลิปบอร์ดแล้ว',
+                            description: 'พร้อมนำไปใช้งานหรือจัดพิมพ์ภาษาอังกฤษ',
+                            fuseColor: '#74d9b4'
+                          })
+                        }}
+                        className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition shadow-md cursor-pointer"
+                      >
+                        คัดลอกคำแปล (Copy)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          applyAiResult(result.translatedText)
+                          setAiDrawer(prev => ({ ...prev, isOpen: false }))
+                        }}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md cursor-pointer"
+                      >
+                        ✓ แทนที่ในหน้ากระดาษ
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

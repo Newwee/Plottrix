@@ -5,6 +5,8 @@ import { useAuth } from './AuthContext'
 
 const AppContext = createContext(null)
 
+const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+
 const DEFAULT_PERSONAS = [
   {
     id: 'persona-1',
@@ -47,6 +49,33 @@ export function AppProvider({ children }) {
     return 'home'
   })
 
+  // Modals & Drawers
+  const [activeModal, setActiveModal] = useState(null)
+
+  // AI Drawer State
+  const [aiDrawer, setAiDrawer] = useState({
+    isOpen: false,
+    loading: false,
+    actionType: null,
+    cost: 0,
+    result: null,
+    error: null,
+    steps: [],
+    thoughtTime: 0
+  })
+
+  // Reset body overflow when activeModal opens/closes
+  useEffect(() => {
+    if (activeModal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [activeModal])
+
   const navigateTo = useCallback((view) => {
     let targetView = view
     let targetPath = '/home'
@@ -60,6 +89,13 @@ export function AppProvider({ children }) {
     } else {
       targetView = 'home'
       targetPath = '/home'
+    }
+
+    // Always dismiss any open overlay/modal/drawer when changing view
+    setActiveModal(null)
+    setAiDrawer(prev => ({ ...prev, isOpen: false, loading: false }))
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = ''
     }
 
     setCurrentView(targetView)
@@ -142,21 +178,6 @@ export function AppProvider({ children }) {
   const [plan, setPlan] = useState('Free Plan')
   const [lastDailyClaim, setLastDailyClaim] = useState(() => localStorage.getItem('plottrix_last_claim') || '')
 
-  // Modals & Drawers
-  const [activeModal, setActiveModal] = useState(null)
-
-  // Reset body overflow when activeModal opens/closes
-  useEffect(() => {
-    if (activeModal) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [activeModal])
-
   // Characters & Story Bible
   const [characters, setCharacters] = useState(() => {
     try {
@@ -228,18 +249,6 @@ export function AppProvider({ children }) {
   // Debounced Auto-Save
   const [saveStatus, setSaveStatus] = useState('saved') // 'saving', 'saved', 'unsaved'
   const saveTimeoutRef = useRef(null)
-
-  // AI Drawer State
-  const [aiDrawer, setAiDrawer] = useState({
-    isOpen: false,
-    loading: false,
-    actionType: null,
-    cost: 0,
-    result: null,
-    error: null,
-    steps: [],
-    thoughtTime: 0
-  })
 
   // SwipeToast System
   const [toasts, setToasts] = useState([])
@@ -572,23 +581,44 @@ export function AppProvider({ children }) {
 
     clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(async () => {
-      if (user?.id && activeChapterId) {
+      if (user?.id) {
         try {
           const totalWords = (newText || '').trim() ? (newText || '').trim().split(/\s+/).length : 0
-          const { error } = await supabase
-            .from('chapters')
-            .update({
-              pages: updatedPages.length > 0 ? updatedPages : [newText],
-              word_count: totalWords,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', activeChapterId)
+          if (isUuid(activeChapterId)) {
+            const { error } = await supabase
+              .from('chapters')
+              .update({
+                pages: updatedPages.length > 0 ? updatedPages : [newText],
+                word_count: totalWords,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', activeChapterId)
 
-          if (error) {
-            console.error('Error auto-saving chapter to Supabase:', error.message)
+            if (error) {
+              console.warn('Auto-save warning (Supabase):', error.message)
+            }
+          } else if (isUuid(activeNovelId)) {
+            // Chapter has a client-generated ID; insert it to DB to get permanent UUID
+            const { data: newCh, error: insErr } = await supabase
+              .from('chapters')
+              .insert({
+                novel_id: activeNovelId,
+                user_id: user.id,
+                chapter_number: currentChapter?.number || 1,
+                title: currentChapter?.title || 'บทที่ 1 — จุดเริ่มต้น',
+                pages: updatedPages.length > 0 ? updatedPages : [newText],
+                word_count: totalWords
+              })
+              .select()
+              .single()
+
+            if (!insErr && newCh) {
+              setActiveChapterId(newCh.id)
+              setChapters(prev => prev.map(c => c.id === activeChapterId ? { ...c, id: newCh.id } : c))
+            }
           }
         } catch (err) {
-          console.error('Exception in auto-save:', err)
+          console.warn('Exception in auto-save:', err.message)
         }
       }
       setSaveStatus('saved')
@@ -707,9 +737,9 @@ export function AppProvider({ children }) {
 
   // Delete novel handler (supports deleting all novels down to 0)
   const deleteNovel = useCallback(async (id) => {
-    if (user?.id) {
+    if (user?.id && isUuid(id)) {
       supabase.from('novels').delete().eq('id', id).then(({ error }) => {
-        if (error) console.error('Error deleting novel from Supabase:', error.message)
+        if (error) console.warn('Error deleting novel from Supabase:', error.message)
       })
     }
 
@@ -1025,13 +1055,15 @@ export function AppProvider({ children }) {
 
       if (user?.id) {
         renumbered.forEach(ch => {
-          supabase
-            .from('chapters')
-            .update({ chapter_number: ch.number, updated_at: new Date().toISOString() })
-            .eq('id', ch.id)
-            .then(({ error }) => {
-              if (error) console.error('Error updating chapter order:', error.message)
-            })
+          if (isUuid(ch.id)) {
+            supabase
+              .from('chapters')
+              .update({ chapter_number: ch.number, updated_at: new Date().toISOString() })
+              .eq('id', ch.id)
+              .then(({ error }) => {
+                if (error) console.warn('Error updating chapter order:', error.message)
+              })
+          }
         })
       }
 
@@ -1043,9 +1075,9 @@ export function AppProvider({ children }) {
 
   // Delete Chapter (Supports true 0-item state down to 0 chapters)
   const deleteChapter = useCallback(async (chId) => {
-    if (user?.id) {
+    if (user?.id && isUuid(chId)) {
       supabase.from('chapters').delete().eq('id', chId).then(({ error }) => {
-        if (error) console.error('Error deleting chapter from Supabase:', error.message)
+        if (error) console.warn('Error deleting chapter from Supabase:', error.message)
       })
     }
 
@@ -1075,13 +1107,13 @@ export function AppProvider({ children }) {
     if (!newTitle?.trim()) return
     const trimmed = newTitle.trim()
 
-    if (user?.id) {
+    if (user?.id && isUuid(chId)) {
       supabase
         .from('chapters')
         .update({ title: trimmed, updated_at: new Date().toISOString() })
         .eq('id', chId)
         .then(({ error }) => {
-          if (error) console.error('Error updating chapter title in Supabase:', error.message)
+          if (error) console.warn('Error updating chapter title in Supabase:', error.message)
         })
     }
 

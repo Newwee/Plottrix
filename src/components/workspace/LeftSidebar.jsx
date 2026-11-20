@@ -18,7 +18,8 @@ function LeftSidebar() {
     characters,
     customDictionary,
     rightSidebarOpen,
-    setRightSidebarOpen
+    setRightSidebarOpen,
+    navigateTo
   } = useApp()
 
   const [draggedIdx, setDraggedIdx] = useState(null)
@@ -69,6 +70,22 @@ function LeftSidebar() {
               ✕
             </button>
           </div>
+
+          {/* Back to Workspace Home Button */}
+          <button
+            type="button"
+            onClick={() => navigateTo('workspace_home')}
+            className="w-full px-3 py-2 rounded-xl bg-violet-500/10 hover:bg-violet-600/25 border border-violet-500/20 hover:border-violet-400/50 text-violet-200 hover:text-white text-xs font-bold flex items-center justify-between transition group cursor-pointer shadow-xs"
+            title="กลับไปยังชั้นวางนิยาย (Workspace Home)"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-sm group-hover:-translate-x-1 transition-transform">←</span>
+              <span>ชั้นวางนิยายทั้งหมด</span>
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600/30 text-violet-300 group-hover:bg-violet-600 group-hover:text-white transition">
+              คลังนิยาย
+            </span>
+          </button>
 
           {/* CHAPTERS SECTION */}
           <div>
@@ -144,14 +161,21 @@ function LeftSidebar() {
                       isDragOver ? 'border-t-2 border-purple-400 scale-[1.02]' : ''
                     }`}
                   >
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         setActiveChapterId(ch.id)
                         setActivePageIdx(0)
                         if (window.innerWidth < 1024) setLeftSidebarOpen(false)
                       }}
-                      className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-grab active:cursor-grabbing ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setActiveChapterId(ch.id)
+                          setActivePageIdx(0)
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-grab active:cursor-grabbing outline-none ${
                         isActive
                           ? 'bg-violet-600/25 border border-violet-500/50 text-violet-100 font-semibold shadow-sm'
                           : 'hover:bg-violet-500/10 text-slate-300 opacity-80 hover:opacity-100'
@@ -181,13 +205,13 @@ function LeftSidebar() {
                               chapter: ch
                             })
                           }}
-                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
+                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs transition cursor-pointer"
                           title="เมนูตัวเลือก"
                         >
                           ⋯
                         </button>
                       </div>
-                    </button>
+                    </div>
                   </div>
                 )
               }))}
