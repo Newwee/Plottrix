@@ -6,6 +6,8 @@ import FloatingAiToolbar from './FloatingAiToolbar'
 
 function StudioEditor() {
   const {
+    chapters,
+    addChapter,
     currentChapter,
     activeChapterId,
     setChapters,
@@ -258,6 +260,38 @@ function StudioEditor() {
     if (!currentChapter?.pages) return 0
     return currentChapter.pages.reduce((acc, p) => acc + (p.trim() ? p.trim().replace(/\s+/g, ' ').length : 0), 0)
   }, [currentChapter, localText])
+
+  // Clean empty state when project has 0 chapters
+  if (!chapters || chapters.length === 0) {
+    return (
+      <div
+        id="tour-target-editor"
+        className="flex-1 flex flex-col items-center justify-center h-full studio-editor-area app-surface p-6 select-none"
+      >
+        <div className="max-w-md w-full text-center space-y-4 p-8 rounded-3xl elevated-surface border border-violet-500/20 shadow-2xl">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-violet-600/15 border border-violet-500/30 flex items-center justify-center text-3xl">
+            📖
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white mb-1.5">
+              ยังไม่มีตอนในนิยายเรื่องนี้ (0 ตอน)
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              คุณสามารถสร้างตอนแรกเพื่อเริ่มต้นเขียนต้นฉบับ หรือจัดการโครงเรื่องได้ทันที
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addChapter}
+            className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-lg shadow-violet-600/30 transition transform hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+          >
+            <span>+</span>
+            <span>สร้างตอนแรก</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

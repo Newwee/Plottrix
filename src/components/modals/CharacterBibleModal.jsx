@@ -17,6 +17,7 @@ export default function CharacterBibleModal() {
   const {
     activeModal, setActiveModal,
     characters, setCharacters,
+    saveCharacter, deleteCharacterFromDb,
     addToast
   } = useApp()
 
@@ -115,12 +116,16 @@ export default function CharacterBibleModal() {
       return
     }
 
-    setCharacters(prev => prev.map(c => {
-      if (c.id === selectedCharId) {
-        return { ...c, ...formData }
-      }
-      return c
-    }))
+    if (saveCharacter) {
+      saveCharacter({ ...formData, id: selectedCharId })
+    } else {
+      setCharacters(prev => prev.map(c => {
+        if (c.id === selectedCharId) {
+          return { ...c, ...formData }
+        }
+        return c
+      }))
+    }
     setIsEditing(false)
     addToast({
       title: 'บันทึกข้อมูลตัวละครสำเร็จ!',
@@ -130,12 +135,12 @@ export default function CharacterBibleModal() {
   }
 
   const handleDelete = (id) => {
-    if (characters.length <= 1) {
-      addToast({ title: 'ต้องมีตัวละครอย่างน้อย 1 ตัวในคัมภีร์', fuseColor: '#ef4444' })
-      return
+    if (deleteCharacterFromDb) {
+      deleteCharacterFromDb(id)
+    } else {
+      setCharacters(prev => prev.filter(c => c.id !== id))
     }
-    setCharacters(prev => prev.filter(c => c.id !== id))
-    setSelectedCharId(characters[0].id)
+    setSelectedCharId(null)
     setIsEditing(false)
     addToast({ title: 'ลบตัวละครเรียบร้อย', duration: 2500 })
   }
@@ -200,30 +205,43 @@ export default function CharacterBibleModal() {
             </div>
 
             <div className="space-y-1.5">
-              {characters.map(char => (
-                <div
-                  key={char.id}
-                  onClick={() => {
-                    setSelectedCharId(char.id)
-                    setIsEditing(false)
-                  }}
-                  className={`p-2.5 rounded-xl border flex items-center gap-3 cursor-pointer transition ${
-                    selectedCharId === char.id
-                      ? 'border-purple-400 bg-purple-600/20 text-white'
-                      : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-300'
-                  }`}
-                >
-                  <img
-                    src={char.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
-                    alt={char.name}
-                    className="w-9 h-9 rounded-full object-cover border border-white/20 shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h5 className="font-bold text-xs truncate">{char.name}</h5>
-                    <span className="text-[10px] text-plottrix-muted truncate block">{char.role}</span>
-                  </div>
+              {characters.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-white/10 text-center text-xs text-slate-400 space-y-2">
+                  <span>ยังไม่มีตัวละครในคัมภีร์</span>
+                  <button
+                    type="button"
+                    onClick={handleAddNew}
+                    className="block w-full py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white text-[11px] font-bold transition"
+                  >
+                    + เพิ่มตัวละคร
+                  </button>
                 </div>
-              ))}
+              ) : (
+                characters.map(char => (
+                  <div
+                    key={char.id}
+                    onClick={() => {
+                      setSelectedCharId(char.id)
+                      setIsEditing(false)
+                    }}
+                    className={`p-2.5 rounded-xl border flex items-center gap-3 cursor-pointer transition ${
+                      selectedCharId === char.id
+                        ? 'border-purple-400 bg-purple-600/20 text-white'
+                        : 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-300'
+                    }`}
+                  >
+                    <img
+                      src={char.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                      alt={char.name}
+                      className="w-9 h-9 rounded-full object-cover border border-white/20 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h5 className="font-bold text-xs truncate">{char.name}</h5>
+                      <span className="text-[10px] text-plottrix-muted truncate block">{char.role}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -408,7 +426,24 @@ export default function CharacterBibleModal() {
                   </div>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center m-auto space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl">
+                  👤
+                </div>
+                <h4 className="font-bold text-sm text-white">ยังไม่มีตัวละครในคัมภีร์</h4>
+                <p className="text-xs text-slate-400 max-w-xs">
+                  บันทึกตัวละครและความสัมพันธ์เพื่อให้ AI ช่วยคุมความต่อเนื่องและบทบาทในเนื้อเรื่อง
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAddNew}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition shadow-md"
+                >
+                  + เพิ่มตัวละคร
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

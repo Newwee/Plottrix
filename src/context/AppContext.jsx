@@ -1,187 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import confetti from 'canvas-confetti'
+import { supabase } from '../lib/supabaseClient'
+import { useAuth } from './AuthContext'
 
 const AppContext = createContext(null)
-
-const generateChapterOnePages = () => {
-  const pages = [
-    `เสียงฝนตกกระทบหลังคาไม้เก่าอย่างต่อเนื่อง เธอเดินผ่านประตูบานนั้นอีกครั้ง กลิ่นอายความชื้นและไอฝนอบอวลไปทั่วทางเดินแคบๆ เบื้องหน้าคือแสงตะเกียงที่สั่นไหวราวกับจะดับมอดลงได้ทุกเมื่อ
-
-รินลดาหยุดฝีเท้า ดวงตาคู่เรียวมองฝ่าม่านน้ำฝนไปยังเงาร่างลึกลับที่ยืนนิ่งอยู่ใต้ซุ้มไม้เลื้อย ชายหนุ่มคนนั้นไม่ได้ถือร่ม แต่ละอองน้ำกลับไม่สัมผัสผิวกายเขาเลยแม้แต่น้อย
-
-"ในที่สุดเจ้าก็ตามมาตามสัญญา" น้ำเสียงทุ้มต่ำแทรกผ่านสายลมหนาวเหน็บ`,
-
-    `รินลดากระชับด้ามกระบี่สั้นใต้ชายเสื้อคลุมแน่นขึ้น แม้หัวใจจะเต้นระรัวด้วยความหวาดหวั่น แต่แววตาของหญิงสาวยังคงแน่วแน่ไม่ถอยหนี
-
-"ข้ามาเพื่อทวงคำตอบเรื่องตระกูลของข้า ไม่ใช่มาเพื่อเป็นทาสคำสัญญาของปีศาจเช่นท่าน" เธอเอ่ยตอบด้วยน้ำเสียงเย็นเยียบ`
-  ]
-
-  const sampleScenes = [
-    `เปลวไฟในตะเกียงทองเหลืองพลันเปลี่ยนเป็นสีครามจาง ๆ เมื่อชายหนุ่มก้าวพ้นเงามืดออกมา เผยให้เห็นใบหน้าคมคายที่ดูราวกับหลุดออกมาจากภาพวาดโบราณ
-
-"ความจริงบางอย่าง... เมื่อได้ล่วงรู้แล้ว ย่อมไม่อาจหวนกลับไปเป็นคนเดิมได้อีก" อคินเอ่ยเสียงเรียบ`,
-    `สายลมพัดกรรโชกผ่านช่องหน้าต่างไม้แกะสลัก หอบเอาละอองพิรุณเข้ามาจนพื้นกระดานเปียกชื้น รินลดาขยับเท้าถอยหลังครึ่งก้าวเพื่อรักษาระยะห่าง
-
-"ท่านรู้จักชื่อของบิดาข้าได้อย่างไร ในเมื่อเรื่องราวของตระกูลเราถูกลบเลือนไปตั้งแต่สิบปีก่อน"`,
-    `เงาสะท้อนในกระจกทองแดงบานใหญ่กลางห้องโถงสั่นไหวเล็กน้อย ราวกับมีใครอีกคนกำลังจ้องมองออกมาจากอีกฟากฝั่งของมิติเวลา
-
-รินลดาสัมผัสปานรูปจันทร์เสี้ยวที่ข้อมือซ้ายซึ่งเริ่มร้อนผ่าวขึ้นมาอย่างประหลาด`
-  ]
-
-  for (let i = 3; i <= 65; i++) {
-    const scene = sampleScenes[(i - 3) % sampleScenes.length]
-    pages.push(`[ บทที่ 01 • เนื้อหาหน้าที่ ${i} จาก 65 ]\n\n` + scene)
-  }
-  return pages
-}
-
-const INITIAL_CHAPTERS = [
-  {
-    id: 'ch-1',
-    number: 1,
-    title: 'บทนำ — คืนฝนโปรยปราย',
-    pages: generateChapterOnePages()
-  },
-  {
-    id: 'ch-2',
-    number: 2,
-    title: 'บทที่ 2 — คำสาปแห่งจันทราสีเลือด',
-    pages: [
-      `หมอกสีเงินเริ่มลอยปกคลุมยอดเขาราวกับผืนผ้าไหมโบราณ ลมหนาวพัดผ่านแมกไม้ส่งเสียงหวีดหวิว รินลดาหันมองไปรอบตัว ดอกไม้กลางคืนเริ่มคลี่กลีบออกรับแสงจันทร์สีแดงก่ำ
-
-นี่คือเวลาที่พลังแห่งเผ่าพันธุ์จันทราจะตื่นขึ้นอย่างสมบูรณ์`
-    ]
-  },
-  {
-    id: 'ch-3',
-    number: 3,
-    title: 'บทที่ 3 — พันธสัญญาในเงามืด',
-    pages: [
-      `ความเงียบงันเข้าปกคลุมห้องโถงศิลา มีเพียงเสียงลมหายใจแผ่วเบาของพวกเขาสองคน ข้อตกลงที่ไม่อาจหลีกเลี่ยงกำลังจะเริ่มต้นขึ้น`
-    ]
-  }
-]
-
-const DEFAULT_CHARACTERS = [
-  {
-    id: 'char-1',
-    name: 'รินลดา (Rinlada)',
-    role: 'ตัวเอก (Protagonist)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    description: 'ทายาทคนสุดท้ายของตระกูลผู้พิทักษ์ผนึกจันทรา มีเวทมนตร์เยียวยาและอ่านความทรงจำของวัตถุได้',
-    traits: 'ฉลาด สุขุม เด็ดเดี่ยว มักเก็บซ่อนความรู้สึก ไม่ยอมก้มหัวให้ความอยุติธรรม',
-    secrets: 'แอบครอบครองศิลาจันทราครึ่งซีกที่ทุกคนคิดว่าถูกทำลายไปแล้ว',
-    relations: 'เป็นทั้งศัตรูและคู่ชะตากรรมของศรุต'
-  },
-  {
-    id: 'char-2',
-    name: 'ศรุต (Sarut)',
-    role: 'ตัวเอกฝ่ายตรงข้าม / พระเอก (Deuteragonist)',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    description: 'จอมเวทผู้ถูกเนรเทศ ครอบครองพลังแห่งเงาและความมืด ร่างกายมีรอยสักโบราณที่เรืองแสงได้ในคืนเดือนดับ',
-    traits: 'ลึกลับ พูดน้อย เย็นชา แต่รักษาคำพูดเสมอ มีอารมณ์ขันแบบประชดประชัน',
-    secrets: 'ถูกคำสาปกลืนวิญญาณ หากไม่ถอนคำสาปภายใน 1 ปีจะสูญเสียความเป็นมนุษย์',
-    relations: 'ติดหนี้ชีวิตรินลดาในอดีต'
-  }
-]
-
-const INITIAL_NOVELS = [
-  {
-    id: 'novel-1',
-    title: 'เงาในสายฝน (บททดลอง)',
-    genre: 'แฟนตาซี / กำลังภายใน',
-    pov: 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)',
-    synopsis: 'เรื่องราวของรินลดา ทายาทตระกูลผู้พิทักษ์ผนึกจันทรา ที่ต้องเผชิญหน้ากับศรุต จอมเวทแห่งเงามืดในคืนฝนกระหน่ำ',
-    cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
-    wordCount: 1420,
-    chapterCount: 3,
-    updatedAt: '19 พ.ย. 2026',
-    chapters: INITIAL_CHAPTERS,
-    characters: DEFAULT_CHARACTERS
-  },
-  {
-    id: 'novel-2',
-    title: 'คดีปริศนาคฤหาสน์รัตติกาล',
-    genre: 'สืบสวนสอบสวน',
-    pov: 'บุรุษที่ 1 (ฉัน/ข้าพเจ้า/ตัวฉัน)',
-    synopsis: 'นักสืบพชรได้รับเทียบเชิญลึกลับสู่คฤหาสน์ปิดตายกลางหุบเขา ท่ามกลางพายุหิมะและเงื่อนงำการฆาตกรรมที่ไร้ร่องรอย',
-    cover: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&auto=format&fit=crop&q=80',
-    wordCount: 2850,
-    chapterCount: 2,
-    updatedAt: '18 พ.ย. 2026',
-    chapters: [
-      {
-        id: 'ch-201',
-        number: 1,
-        title: 'บทที่ 1 — จดหมายไร้นาม',
-        pages: [
-          'จดหมายประทับตราครั่งสีเลือดวางเด่นอยู่บนโต๊ะทำงานไม้โอ๊กของผม ไม่มีชื่อผู้ส่ง ไม่มีแสตมป์ มีเพียงข้อความสั้นๆ: "หากท่านต้องการรู้ความจริงเกี่ยวกับการหายตัวไปของน้องสาว จงมาที่คฤหาสน์วรเวชก่อนเที่ยงคืน"'
-        ]
-      },
-      {
-        id: 'ch-202',
-        number: 2,
-        title: 'บทที่ 2 — ประตูปิดตาย',
-        pages: [
-          'เสียงกลอนประตูลั่นดังเอี๊ยดอ๊าด ความมืดมิดในโถงใหญ่ทำให้แสงจากไฟฉายดูริบหรี่ลงไปถนัดตา กลิ่นควันกำยานผสมกับกลิ่นโลหะสนิมลอยคลุ้งอยู่ในอากาศ'
-        ]
-      }
-    ],
-    characters: [
-      {
-        id: 'char-21',
-        name: 'พชร (Phachara)',
-        role: 'ตัวเอก / นักสืบเอกชน',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-        description: 'อดีตสารวัตรสืบสวนที่ลาออกมาเปิดสำนักงานเอง มีความสามารถในการอ่านภาษากายและสังเกตรายละเอียดเล็กๆ',
-        traits: 'ช่างสังเกต สุขุม พูดจาตรงไปตรงมา',
-        secrets: 'ตามหาเบาะแสคดีฆาตกรรมครอบครัวตนเองเมื่อสิบปีก่อน',
-        relations: 'ไม่ไว้ใจใครในคฤหาสน์'
-      }
-    ]
-  },
-  {
-    id: 'novel-3',
-    title: 'พันธนาการแห่งดวงดาว',
-    genre: 'ไซไฟ / โลกอนาคต',
-    pov: 'บุรุษที่ 3 (จำกัดมุมมอง)',
-    synopsis: 'ณ สถานีวิจัยอวกาศไคมีรา นักบินสำรวจเคออสตรวจพบสัญญาณชีพประหลาดจากแกนหลุมดำที่กำลังบิดเบือนกาลเวลา',
-    cover: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&auto=format&fit=crop&q=80',
-    wordCount: 3120,
-    chapterCount: 2,
-    updatedAt: '17 พ.ย. 2026',
-    chapters: [
-      {
-        id: 'ch-301',
-        number: 1,
-        title: 'บทที่ 1 — สัญญาณจากขอบฟ้าเหตุการณ์',
-        pages: [
-          'ไฟฉุกเฉินสีส้มกะพริบถี่รัวบนแผงควบคุมหลักของยานออดิสซีย์ เรดาร์ตรวจจับคลื่นความถี่ที่ไม่อยู่ในสารบบดาราศาสตร์ มันไม่ใช่สัญญาณวิทยุ แต่เป็นโครงสร้างคลื่นเสียงที่ซ้อนทับกันอย่างเป็นระเบียบ... ราวกับภาษาสื่อสาร'
-        ]
-      },
-      {
-        id: 'ch-302',
-        number: 2,
-        title: 'บทที่ 2 — จุดเอกฐาน',
-        pages: [
-          'เกราะพลังงานของสถานีเริ่มส่งเสียงครางแผ่วเบา ขณะที่ยานถูกดึงดูดเข้าสู่เขตอิทธิพลของหลุมดำ แรงโน้มถ่วงที่บิดเบี้ยวทำให้เข็มวัดมิติเวลาหมุนคว้าง'
-        ]
-      }
-    ],
-    characters: [
-      {
-        id: 'char-31',
-        name: 'เคออส (Chaos)',
-        role: 'ผู้บัญชาการยานสำรวจ',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        description: 'นักบินและวิศวกรไซเบอร์เนติกส์ ผู้รอดชีวิตเพียงคนเดียวจากอุบัติเหตุวงแหวนดาวเสาร์',
-        traits: 'ใจเย็น กล้าตัดสินใจในภาวะวิกฤต เชี่ยวชาญฟิสิกส์ดาราศาสตร์',
-        secrets: 'สมองฝังชิปประมวลผลควอนตัมโบราณที่สื่อสารกับ AI ยานได้',
-        relations: 'ภักดีต่อลูกเรือทุกคน'
-      }
-    ]
-  }
-]
 
 const DEFAULT_PERSONAS = [
   {
@@ -212,8 +34,9 @@ const DEFAULT_SKILLS = [
 ]
 
 export function AppProvider({ children }) {
+  const { user, profile, session } = useAuth()
+
   // Navigation / Views: 'home' | 'workspace_home' | 'studio'
-  // Auto-detect route from URL path: /home, /home-workspace, /workspace
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase()
@@ -265,35 +88,33 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  // Novels List & Active Novel (supports deleting down to 0, persists to localStorage)
+  // Novels List & Active Novel (supports deleting down to 0)
   const [novels, setNovels] = useState(() => {
     try {
       const saved = localStorage.getItem('plottrix_novels')
       if (saved !== null) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) {
-          return parsed
-        }
+        if (Array.isArray(parsed)) return parsed
       }
-      return INITIAL_NOVELS
+      return []
     } catch {
-      return INITIAL_NOVELS
+      return []
     }
   })
-  const [activeNovelId, setActiveNovelId] = useState(() => novels[0]?.id || 'novel-1')
+  const [activeNovelId, setActiveNovelId] = useState(() => novels[0]?.id || '')
   const activeNovel = useMemo(() => {
     if (!novels || novels.length === 0) return null
     return novels.find(n => n.id === activeNovelId) || novels[0] || null
   }, [novels, activeNovelId])
 
   // Novel Metadata
-  const [novelTitle, setNovelTitle] = useState(() => activeNovel?.title || 'เงาในสายฝน (บททดลอง)')
+  const [novelTitle, setNovelTitle] = useState(() => activeNovel?.title || '')
   const [genre, setGenre] = useState(() => activeNovel?.genre || 'แฟนตาซี / กำลังภายใน')
   const [pov, setPov] = useState(() => activeNovel?.pov || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)')
 
-  // Chapters & Content for current active novel
-  const [chapters, setChapters] = useState(() => activeNovel?.chapters || INITIAL_CHAPTERS)
-  const [activeChapterId, setActiveChapterId] = useState(() => chapters[0]?.id || 'ch-1')
+  // Chapters & Content for current active novel (supports deleting down to 0)
+  const [chapters, setChapters] = useState(() => activeNovel?.chapters || [])
+  const [activeChapterId, setActiveChapterId] = useState(() => chapters[0]?.id || '')
   const [activePageIdx, setActivePageIdx] = useState(0)
 
   // Current Chapter helper
@@ -316,13 +137,13 @@ export function AppProvider({ children }) {
   // Trix Economy & Plans
   const [trixBalance, setTrixBalance] = useState(() => {
     const saved = localStorage.getItem('plottrix_trix')
-    return saved ? parseInt(saved, 10) : 400
+    return saved ? parseInt(saved, 10) : 30
   })
-  const [plan, setPlan] = useState('Pro Plan++')
+  const [plan, setPlan] = useState('Free Plan')
   const [lastDailyClaim, setLastDailyClaim] = useState(() => localStorage.getItem('plottrix_last_claim') || '')
 
   // Modals & Drawers
-  const [activeModal, setActiveModal] = useState(null) // 'characterBible', 'stylePersona', 'customDictionary', 'history', 'export', 'pricing', 'skills', 'settings'
+  const [activeModal, setActiveModal] = useState(null)
 
   // Reset body overflow when activeModal opens/closes
   useEffect(() => {
@@ -336,23 +157,26 @@ export function AppProvider({ children }) {
     }
   }, [activeModal])
 
-  // Characters & Lore
+  // Characters & Story Bible
   const [characters, setCharacters] = useState(() => {
     try {
       const saved = localStorage.getItem('plottrix_characters')
-      return saved ? JSON.parse(saved) : DEFAULT_CHARACTERS
+      return saved ? JSON.parse(saved) : []
     } catch {
-      return DEFAULT_CHARACTERS
+      return []
     }
   })
+
+  // Custom Dictionary
   const [customDictionary, setCustomDictionary] = useState(() => {
     try {
       const saved = localStorage.getItem('plottrix_dictionary')
-      return saved ? JSON.parse(saved) : ['รินลดา', 'ศรุต', 'ศิลาจันทรา', 'เวทมนตร์ย้อนเงา', 'หอคอยรัตติกาล']
+      return saved ? JSON.parse(saved) : []
     } catch {
-      return ['รินลดา', 'ศรุต', 'ศิลาจันทรา', 'เวทมนตร์ย้อนเงา', 'หอคอยรัตติกาล']
+      return []
     }
   })
+
   const [personas, setPersonas] = useState(DEFAULT_PERSONAS)
   const [activePersonaId, setActivePersonaId] = useState('persona-1')
   const [skills, setSkills] = useState(DEFAULT_SKILLS)
@@ -363,7 +187,7 @@ export function AppProvider({ children }) {
     try {
       const saved = localStorage.getItem('plottrix_settings')
       return saved ? JSON.parse(saved) : {
-        notifySize: 'standard', // 'compact', 'standard', 'large'
+        notifySize: 'standard',
         notifyDuration: 3800,
         notifySound: true,
         editorFont: 'thai',
@@ -384,7 +208,7 @@ export function AppProvider({ children }) {
     }
   })
 
-  // Global AI Lock & Anti-Spam (Requirement 1)
+  // Global AI Lock & Anti-Spam
   const [isAIProcessing, setIsAIProcessing] = useState(false)
   const [activeAITool, setActiveAITool] = useState(null)
   const aiLockRef = useRef(false)
@@ -393,13 +217,15 @@ export function AppProvider({ children }) {
 
   // Snapshots (Version History)
   const [snapshots, setSnapshots] = useState(() => {
-    return [
-      { id: 'snap-1', timestamp: new Date(Date.now() - 3600000).toLocaleString('th-TH'), label: 'โครงร่างบทนำแรกเริ่ม', preview: 'เสียงฝนตกกระทบหลังคาไม้เก่าอย่างต่อเนื่อง...' },
-      { id: 'snap-2', timestamp: new Date(Date.now() - 1800000).toLocaleString('th-TH'), label: 'เพิ่มฉากบทสนทนารินลดา-ศรุต', preview: 'ในที่สุดเจ้าก็มาตามสัญญา น้ำเสียงทุ้มต่ำแทรกผ่านสายลม...' }
-    ]
+    try {
+      const saved = localStorage.getItem('plottrix_snapshots')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
   })
 
-  // Debounced Auto-Save (Requirement 2: 2.5 seconds)
+  // Debounced Auto-Save
   const [saveStatus, setSaveStatus] = useState('saved') // 'saving', 'saved', 'unsaved'
   const saveTimeoutRef = useRef(null)
 
@@ -464,10 +290,22 @@ export function AppProvider({ children }) {
     }
   }, [currentView])
 
-  // Persist important data
+  // Persist important data to localStorage as offline fallback
   useEffect(() => {
     localStorage.setItem('plottrix_novels', JSON.stringify(novels))
   }, [novels])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_characters', JSON.stringify(characters))
+  }, [characters])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_dictionary', JSON.stringify(customDictionary))
+  }, [customDictionary])
+
+  useEffect(() => {
+    localStorage.setItem('plottrix_snapshots', JSON.stringify(snapshots))
+  }, [snapshots])
 
   useEffect(() => {
     localStorage.setItem('plottrix_trix', trixBalance.toString())
@@ -481,18 +319,247 @@ export function AppProvider({ children }) {
     localStorage.setItem('plottrix_custom_skill_prompt', customSkillPrompt)
   }, [customSkillPrompt])
 
-  // Save chapters with 2.5s debounce and update saveStatus
+  // =========================================================================
+  // SUPABASE REAL-TIME DATABASE PERSISTENCE & SYNC
+  // =========================================================================
+
+  // Sync profile data (trix balance, plan, last claim)
+  useEffect(() => {
+    if (profile) {
+      if (typeof profile.trix_balance === 'number') {
+        setTrixBalance(profile.trix_balance)
+      }
+      if (profile.plan) {
+        setPlan(profile.plan)
+      }
+      if (profile.last_claim_date) {
+        setLastDailyClaim(profile.last_claim_date)
+      }
+    }
+  }, [profile])
+
+  // Load User Data from Supabase
+  useEffect(() => {
+    if (!user?.id) return
+
+    let isMounted = true
+
+    async function loadUserData() {
+      try {
+        // 1. Fetch Novels
+        const { data: dbNovels, error: novelsErr } = await supabase
+          .from('novels')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (!isMounted) return
+
+        if (!novelsErr && dbNovels) {
+          const mappedNovels = dbNovels.map(n => ({
+            id: n.id,
+            title: n.title,
+            genre: n.genre,
+            pov: n.pov,
+            synopsis: n.synopsis || '',
+            cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
+            wordCount: 0,
+            chapterCount: 0,
+            updatedAt: new Date(n.updated_at || n.created_at).toLocaleDateString('th-TH'),
+            chapters: [],
+            characters: []
+          }))
+
+          setNovels(mappedNovels)
+
+          if (mappedNovels.length > 0) {
+            const firstNov = mappedNovels[0]
+            setActiveNovelId(firstNov.id)
+            setNovelTitle(firstNov.title)
+            setGenre(firstNov.genre)
+            setPov(firstNov.pov)
+
+            // Load chapters for first novel
+            const { data: dbChapters } = await supabase
+              .from('chapters')
+              .select('*')
+              .eq('novel_id', firstNov.id)
+              .order('chapter_number', { ascending: true })
+
+            if (isMounted && dbChapters) {
+              const mappedChapters = dbChapters.map((c, i) => ({
+                id: c.id,
+                novel_id: firstNov.id,
+                number: c.chapter_number || i + 1,
+                title: c.title || `บทที่ ${c.chapter_number || i + 1}`,
+                pages: Array.isArray(c.pages) ? c.pages : (typeof c.pages === 'string' ? JSON.parse(c.pages) : [''])
+              }))
+              setChapters(mappedChapters)
+              setActiveChapterId(mappedChapters[0]?.id || '')
+            }
+
+            // Load characters for first novel
+            const { data: dbChars } = await supabase
+              .from('characters')
+              .select('*')
+              .eq('novel_id', firstNov.id)
+              .order('created_at', { ascending: true })
+
+            if (isMounted && dbChars) {
+              setCharacters(dbChars.map(c => ({
+                id: c.id,
+                name: c.name,
+                role: c.role || 'ตัวเอก',
+                avatar: c.avatar_url || '',
+                description: c.description || '',
+                traits: c.traits || '',
+                secrets: c.secrets || '',
+                relations: c.speech_pattern || ''
+              })))
+            }
+
+            // Load snapshots for first novel
+            const { data: dbSnaps } = await supabase
+              .from('version_history')
+              .select('*')
+              .eq('novel_id', firstNov.id)
+              .order('created_at', { ascending: false })
+              .limit(20)
+
+            if (isMounted && dbSnaps) {
+              setSnapshots(dbSnaps.map(s => ({
+                id: s.id,
+                timestamp: new Date(s.created_at).toLocaleString('th-TH'),
+                label: s.summary || 'จุดย้อนกลับ',
+                preview: s.content || ''
+              })))
+            }
+          } else {
+            // User has 0 novels in database
+            setActiveNovelId('')
+            setNovelTitle('')
+            setChapters([])
+            setActiveChapterId('')
+            setCharacters([])
+            setSnapshots([])
+          }
+        }
+
+        // 2. Load Custom Dictionary
+        const { data: dbDict } = await supabase
+          .from('custom_dictionary')
+          .select('word')
+          .eq('user_id', user.id)
+
+        if (isMounted && dbDict) {
+          setCustomDictionary(dbDict.map(d => d.word))
+        }
+
+      } catch (err) {
+        console.error('Error loading Supabase user data:', err)
+      }
+    }
+
+    loadUserData()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id])
+
+  // Open novel handler & fetch its chapters, characters, and history from DB
+  const openNovel = useCallback(async (id) => {
+    const target = novels.find(n => n.id === id)
+    if (target) {
+      setActiveNovelId(target.id)
+      setNovelTitle(target.title || '')
+      setGenre(target.genre || 'แฟนตาซี / กำลังภายใน')
+      setPov(target.pov || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)')
+
+      if (user?.id) {
+        // Fetch chapters from Supabase
+        const { data: chData } = await supabase
+          .from('chapters')
+          .select('*')
+          .eq('novel_id', target.id)
+          .order('chapter_number', { ascending: true })
+
+        const loadedChapters = (chData && chData.length > 0)
+          ? chData.map((c, i) => ({
+              id: c.id,
+              novel_id: target.id,
+              number: c.chapter_number || i + 1,
+              title: c.title || `บทที่ ${c.chapter_number || i + 1}`,
+              pages: Array.isArray(c.pages) ? c.pages : (typeof c.pages === 'string' ? JSON.parse(c.pages) : [''])
+            }))
+          : (target.chapters || [])
+
+        setChapters(loadedChapters)
+        setActiveChapterId(loadedChapters[0]?.id || '')
+        setActivePageIdx(0)
+
+        // Fetch characters from Supabase
+        const { data: charData } = await supabase
+          .from('characters')
+          .select('*')
+          .eq('novel_id', target.id)
+          .order('created_at', { ascending: true })
+
+        if (charData) {
+          setCharacters(charData.map(c => ({
+            id: c.id,
+            name: c.name,
+            role: c.role || 'ตัวเอก',
+            avatar: c.avatar_url || '',
+            description: c.description || '',
+            traits: c.traits || '',
+            secrets: c.secrets || '',
+            relations: c.speech_pattern || ''
+          })))
+        }
+
+        // Fetch snapshots from Supabase
+        const { data: snapData } = await supabase
+          .from('version_history')
+          .select('*')
+          .eq('novel_id', target.id)
+          .order('created_at', { ascending: false })
+          .limit(20)
+
+        if (snapData) {
+          setSnapshots(snapData.map(s => ({
+            id: s.id,
+            timestamp: new Date(s.created_at).toLocaleString('th-TH'),
+            label: s.summary || 'จุดย้อนกลับ',
+            preview: s.content || ''
+          })))
+        }
+      } else {
+        setChapters(target.chapters || [])
+        setActiveChapterId(target.chapters?.[0]?.id || '')
+        setActivePageIdx(0)
+        setCharacters(target.characters || [])
+      }
+    }
+    navigateTo('studio')
+  }, [novels, user?.id, navigateTo])
+
+  // Save chapters with 1.8s debounce and update saveStatus
   const updateCurrentPageText = useCallback((newText) => {
     setSaveStatus('saving')
+
+    let updatedPages = []
     setChapters(prev => {
       const updated = prev.map(ch => {
         if (ch.id === activeChapterId) {
           const newPages = [...ch.pages]
           newPages[activePageIdx] = newText
+          updatedPages = newPages
           return { ...ch, pages: newPages }
         }
         return ch
       })
+
       // Sync back to active novel
       setNovels(allNovs => allNovs.map(n => {
         if (n.id === activeNovelId) {
@@ -504,30 +571,34 @@ export function AppProvider({ children }) {
     })
 
     clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = setTimeout(() => {
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (user?.id && activeChapterId) {
+        try {
+          const totalWords = (newText || '').trim() ? (newText || '').trim().split(/\s+/).length : 0
+          const { error } = await supabase
+            .from('chapters')
+            .update({
+              pages: updatedPages.length > 0 ? updatedPages : [newText],
+              word_count: totalWords,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', activeChapterId)
+
+          if (error) {
+            console.error('Error auto-saving chapter to Supabase:', error.message)
+          }
+        } catch (err) {
+          console.error('Exception in auto-save:', err)
+        }
+      }
       setSaveStatus('saved')
-    }, 2500) // 2.5s Debounce as requested
-  }, [activeChapterId, activePageIdx, activeNovelId])
+    }, 1800)
+  }, [user?.id, activeChapterId, activePageIdx, activeNovelId])
 
-  // Open novel handler
-  const openNovel = useCallback((id) => {
-    const target = novels.find(n => n.id === id)
-    if (target) {
-      setActiveNovelId(target.id)
-      setNovelTitle(target.title)
-      setGenre(target.genre)
-      setPov(target.pov)
-      setChapters(target.chapters || INITIAL_CHAPTERS)
-      setActiveChapterId(target.chapters?.[0]?.id || 'ch-1')
-      setActivePageIdx(0)
-    }
-    navigateTo('studio')
-  }, [novels, navigateTo])
-
-  // Create novel handler with plan quota check (Free Plan allows 3 novels)
+  // Create novel handler with Supabase persistence
   const FREE_PLAN_LIMIT = 3
 
-  const createNovel = useCallback(({ title, genre: g, pov: p, synopsis, cover }) => {
+  const createNovel = useCallback(async ({ title, genre: g, pov: p, synopsis, cover }) => {
     if (plan === 'Free Plan' && novels.length >= FREE_PLAN_LIMIT) {
       addToast({
         title: `โควต้า Free Plan จำกัด ${FREE_PLAN_LIMIT} เรื่อง`,
@@ -540,40 +611,108 @@ export function AppProvider({ children }) {
       return false
     }
 
-    const newId = `novel-${Date.now()}`
+    const novelTitleToUse = title || 'นิยายเรื่องใหม่'
+    const genreToUse = g || 'แฟนตาซี / กำลังภายใน'
+    const povToUse = p || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)'
+    const coverToUse = cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80'
+
+    let novelId = `novel-${Date.now()}`
+    let initialChapterId = `ch-${Date.now()}`
+
+    if (user?.id) {
+      try {
+        const { data: novelRow, error: novelErr } = await supabase
+          .from('novels')
+          .insert({
+            user_id: user.id,
+            title: novelTitleToUse,
+            genre: genreToUse,
+            pov: povToUse,
+            synopsis: synopsis || '',
+            cover_url: coverToUse
+          })
+          .select()
+          .single()
+
+        if (novelErr) {
+          console.error('Error creating novel in Supabase:', novelErr.message)
+        } else if (novelRow) {
+          novelId = novelRow.id
+
+          const { data: chRow, error: chErr } = await supabase
+            .from('chapters')
+            .insert({
+              novel_id: novelId,
+              user_id: user.id,
+              chapter_number: 1,
+              title: 'บทที่ 1 — จุดเริ่มต้น',
+              pages: [''],
+              word_count: 0
+            })
+            .select()
+            .single()
+
+          if (chErr) {
+            console.error('Error creating first chapter in Supabase:', chErr.message)
+          } else if (chRow) {
+            initialChapterId = chRow.id
+          }
+        }
+      } catch (e) {
+        console.error('Exception creating novel:', e)
+      }
+    }
+
+    const firstChapter = {
+      id: initialChapterId,
+      novel_id: novelId,
+      number: 1,
+      title: 'บทที่ 1 — จุดเริ่มต้น',
+      pages: ['']
+    }
+
     const newNov = {
-      id: newId,
-      title: title || 'นิยายเรื่องใหม่',
-      genre: g || 'แฟนตาซี / กำลังภายใน',
-      pov: p || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)',
+      id: novelId,
+      title: novelTitleToUse,
+      genre: genreToUse,
+      pov: povToUse,
       synopsis: synopsis || '',
-      cover: cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
+      cover: coverToUse,
       wordCount: 0,
       chapterCount: 1,
       updatedAt: 'วันนี้',
-      chapters: [
-        {
-          id: `ch-${Date.now()}`,
-          number: 1,
-          title: 'บทที่ 1 — จุดเริ่มต้น',
-          pages: ['เริ่มจรดปลายปากกาเขียนเรื่องราวของคุณที่นี่...']
-        }
-      ],
+      chapters: [firstChapter],
       characters: []
     }
 
     setNovels(prev => [newNov, ...prev])
-    openNovel(newId)
+    setActiveNovelId(novelId)
+    setNovelTitle(newNov.title)
+    setGenre(newNov.genre)
+    setPov(newNov.pov)
+    setChapters([firstChapter])
+    setActiveChapterId(initialChapterId)
+    setActivePageIdx(0)
+    setCharacters([])
+    setSnapshots([])
+    navigateTo('studio')
+
     addToast({
       title: `สร้างนิยาย "${newNov.title}" สำเร็จ!`,
       description: 'เปิดห้องสตูดิโอพร้อมให้คุณเริ่มเขียนแล้ว',
       fuseColor: '#74d9b4'
     })
     return true
-  }, [plan, novels.length, openNovel, addToast])
+  }, [user?.id, plan, novels.length, navigateTo, addToast])
 
   // Delete novel handler (supports deleting all novels down to 0)
-  const deleteNovel = useCallback((id) => {
+  const deleteNovel = useCallback(async (id) => {
+    if (user?.id) {
+      supabase.from('novels').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Error deleting novel from Supabase:', error.message)
+      })
+    }
+
     setNovels(prev => {
       const remaining = prev.filter(n => n.id !== id)
       if (activeNovelId === id) {
@@ -581,15 +720,34 @@ export function AppProvider({ children }) {
           openNovel(remaining[0].id)
         } else {
           setActiveNovelId('')
+          setNovelTitle('')
+          setChapters([])
+          setActiveChapterId('')
+          setCharacters([])
+          setSnapshots([])
         }
       }
       return remaining
     })
     addToast({ title: 'ลบนิยายออกจากคลังแล้ว', duration: 2500 })
-  }, [activeNovelId, openNovel, addToast])
+  }, [user?.id, activeNovelId, openNovel, addToast])
 
   // Update novel metadata (title, genre, synopsis, cover)
-  const updateNovel = useCallback((id, updates) => {
+  const updateNovel = useCallback(async (id, updates) => {
+    if (user?.id) {
+      const dbPayload = {}
+      if (updates.title) dbPayload.title = updates.title
+      if (updates.genre) dbPayload.genre = updates.genre
+      if (updates.pov) dbPayload.pov = updates.pov
+      if (updates.synopsis !== undefined) dbPayload.synopsis = updates.synopsis
+      if (updates.cover) dbPayload.cover_url = updates.cover
+      dbPayload.updated_at = new Date().toISOString()
+
+      supabase.from('novels').update(dbPayload).eq('id', id).then(({ error }) => {
+        if (error) console.error('Error updating novel in Supabase:', error.message)
+      })
+    }
+
     setNovels(prev => {
       const next = prev.map(n => {
         if (n.id === id) {
@@ -603,23 +761,46 @@ export function AppProvider({ children }) {
       })
       return next
     })
+
     if (activeNovelId === id) {
       if (updates.title) setNovelTitle(updates.title)
       if (updates.genre) setGenre(updates.genre)
       if (updates.pov) setPov(updates.pov)
     }
     addToast({ title: 'บันทึกการตั้งค่านิยายสำเร็จ!', duration: 2000, fuseColor: '#a855f7' })
-  }, [activeNovelId, addToast])
+  }, [user?.id, activeNovelId, addToast])
 
   // Upgrade Plan Handler with Confetti
-  const upgradePlanPrototype = useCallback((newPlan) => {
+  const upgradePlanPrototype = useCallback(async (newPlan) => {
     setPlan(newPlan)
     let addedTrix = 0
     if (newPlan === 'Pro Plan++') addedTrix = 400
     if (newPlan === 'Ultra Plan') addedTrix = 1000
 
+    const newBal = trixBalance + addedTrix
     if (addedTrix > 0) {
-      setTrixBalance(b => b + addedTrix)
+      setTrixBalance(newBal)
+    }
+
+    if (user?.id) {
+      supabase.from('profiles').update({
+        plan: newPlan,
+        trix_balance: newBal,
+        updated_at: new Date().toISOString()
+      }).eq('id', user.id).then(({ error }) => {
+        if (error) console.error('Error updating plan in Supabase:', error.message)
+      })
+
+      if (addedTrix > 0) {
+        supabase.from('trix_transactions').insert({
+          user_id: user.id,
+          amount: addedTrix,
+          type: 'topup',
+          action: `อัปเกรดแพ็กเกจ ${newPlan}`
+        }).then(({ error }) => {
+          if (error) console.error('Error logging upgrade transaction:', error.message)
+        })
+      }
     }
 
     confetti({
@@ -634,10 +815,10 @@ export function AppProvider({ children }) {
       description: addedTrix > 0 ? `ได้รับเหรียญ +${addedTrix} Trix และสิทธิพิเศษของ ${newPlan} ทันที` : 'ยินดีต้อนรับสู่ Plottrix',
       fuseColor: '#c084fc'
     })
-  }, [addToast])
+  }, [user?.id, trixBalance, addToast])
 
-  // Daily Trix Claim
-  const claimDailyTrix = useCallback(() => {
+  // Daily Trix Claim with Supabase Persistence
+  const claimDailyTrix = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10)
     if (lastDailyClaim === today) {
       addToast({
@@ -647,9 +828,33 @@ export function AppProvider({ children }) {
       })
       return
     }
-    setTrixBalance(b => b + 3)
+
+    const newBal = trixBalance + 3
+    setTrixBalance(newBal)
     setLastDailyClaim(today)
     localStorage.setItem('plottrix_last_claim', today)
+
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .update({ trix_balance: newBal, last_claim_date: today, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .then(({ error }) => {
+          if (error) console.error('Error updating daily claim in profile:', error.message)
+        })
+
+      supabase
+        .from('trix_transactions')
+        .insert({
+          user_id: user.id,
+          amount: 3,
+          type: 'claim',
+          action: 'รับ Trix รายวัน'
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error logging daily claim transaction:', error.message)
+        })
+    }
 
     confetti({
       particleCount: 80,
@@ -663,20 +868,44 @@ export function AppProvider({ children }) {
       description: 'ยอดเหรียญ Trix ปัจจุบันของคุณพร้อมใช้งานสร้างสรรค์นิยาย',
       fuseColor: '#74d9b4'
     })
-  }, [lastDailyClaim, addToast])
+  }, [lastDailyClaim, trixBalance, user?.id, addToast])
 
-  // Deduct Trix helper
-  const deductTrix = useCallback((cost, reason) => {
+  // Deduct Trix helper with Supabase Persistence
+  const deductTrix = useCallback(async (cost, reason) => {
     if (trixBalance < cost) return false
-    setTrixBalance(b => b - cost)
+    const newBal = trixBalance - cost
+    setTrixBalance(newBal)
+
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .update({ trix_balance: newBal, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .then(({ error }) => {
+          if (error) console.error('Error updating trix balance in DB:', error.message)
+        })
+
+      supabase
+        .from('trix_transactions')
+        .insert({
+          user_id: user.id,
+          amount: -cost,
+          type: 'deduct',
+          action: reason || 'AI Execution'
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error logging deduction in DB:', error.message)
+        })
+    }
+
     addToast({
       title: `หัก ${cost} Trix (${reason})`,
-      description: `คงเหลือ ${trixBalance - cost} Trix`,
+      description: `คงเหลือ ${newBal} Trix`,
       duration: 3000,
       fuseColor: '#c29aff'
     })
     return true
-  }, [trixBalance, addToast])
+  }, [trixBalance, user?.id, addToast])
 
   // AI Task Guard (Anti-Spam & Global Processing Lock)
   const startAITask = useCallback((taskName) => {
@@ -711,7 +940,7 @@ export function AppProvider({ children }) {
     setActiveAITool(null)
     aiLockRef.current = false
     abortControllerRef.current = null
-    const cooldownMs = plan === 'Free Plan' ? 5000 : 2000
+    const cooldownMs = plan === 'Free Plan' ? 4000 : 1500
     aiCooldownRef.current = Date.now() + cooldownMs
   }, [plan])
 
@@ -731,16 +960,46 @@ export function AppProvider({ children }) {
     })
   }, [addToast])
 
-  // Add Chapter
-  const addChapter = useCallback(() => {
+  // Add Chapter with DB persistence
+  const addChapter = useCallback(async () => {
     const newNumber = chapters.length + 1
-    const newId = `ch-${Date.now()}`
+    let newId = `ch-${Date.now()}`
+    const chapterTitle = `บทที่ ${newNumber} — ตอนใหม่`
+    const defaultPages = ['']
+
+    if (user?.id && activeNovelId) {
+      try {
+        const { data, error } = await supabase
+          .from('chapters')
+          .insert({
+            novel_id: activeNovelId,
+            user_id: user.id,
+            chapter_number: newNumber,
+            title: chapterTitle,
+            pages: defaultPages,
+            word_count: 0
+          })
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error inserting chapter in Supabase:', error.message)
+        } else if (data) {
+          newId = data.id
+        }
+      } catch (err) {
+        console.error('Exception creating chapter:', err)
+      }
+    }
+
     const newCh = {
       id: newId,
+      novel_id: activeNovelId,
       number: newNumber,
-      title: `บทที่ ${newNumber} — ตอนใหม่`,
-      pages: ['เริ่มเขียนเนื้อหาของบทนี้ได้ที่นี่...']
+      title: chapterTitle,
+      pages: defaultPages
     }
+
     setChapters(prev => [...prev, newCh])
     setActiveChapterId(newId)
     setActivePageIdx(0)
@@ -749,10 +1008,10 @@ export function AppProvider({ children }) {
       description: 'เปิดหน้ากระดาษใหม่พร้อมให้คุณลุยต่อ',
       fuseColor: '#74d9b4'
     })
-  }, [chapters.length, addToast])
+  }, [user?.id, activeNovelId, chapters.length, addToast])
 
-  // Reorder Chapters with Drag & Drop (Slide animation & renumbering)
-  const reorderChapters = useCallback((fromIdx, toIdx) => {
+  // Reorder Chapters with DB persistence
+  const reorderChapters = useCallback(async (fromIdx, toIdx) => {
     if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return
     setChapters(prev => {
       const next = [...prev]
@@ -763,48 +1022,76 @@ export function AppProvider({ children }) {
         number: idx + 1,
         code: `บทที่ ${String(idx + 1).padStart(2, '0')}`
       }))
+
+      if (user?.id) {
+        renumbered.forEach(ch => {
+          supabase
+            .from('chapters')
+            .update({ chapter_number: ch.number, updated_at: new Date().toISOString() })
+            .eq('id', ch.id)
+            .then(({ error }) => {
+              if (error) console.error('Error updating chapter order:', error.message)
+            })
+        })
+      }
+
       setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: renumbered } : n))
       return renumbered
     })
     addToast({ title: 'สลับลำดับตอนเรียบร้อยแล้ว ✓', duration: 1800 })
-  }, [activeNovelId, addToast])
+  }, [user?.id, activeNovelId, addToast])
 
-  // Delete Chapter
-  const deleteChapter = useCallback((chId) => {
-    if (chapters.length <= 1) {
-      addToast({
-        title: 'ไม่สามารถลบตอนสุดท้ายได้',
-        description: 'นิยายต้องมีอย่างน้อย 1 ตอน',
-        fuseColor: '#ef4444'
+  // Delete Chapter (Supports true 0-item state down to 0 chapters)
+  const deleteChapter = useCallback(async (chId) => {
+    if (user?.id) {
+      supabase.from('chapters').delete().eq('id', chId).then(({ error }) => {
+        if (error) console.error('Error deleting chapter from Supabase:', error.message)
       })
-      return
     }
+
     setChapters(prev => {
       const remaining = prev.filter(c => c.id !== chId).map((ch, idx) => ({
         ...ch,
         number: idx + 1,
         code: `บทที่ ${String(idx + 1).padStart(2, '0')}`
       }))
-      if (activeChapterId === chId) {
+
+      if (remaining.length === 0) {
+        setActiveChapterId('')
+        setActivePageIdx(0)
+      } else if (activeChapterId === chId) {
         setActiveChapterId(remaining[0].id)
         setActivePageIdx(0)
       }
+
       setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: remaining, chapterCount: remaining.length } : n))
       return remaining
     })
     addToast({ title: 'ลบตอนเรียบร้อยแล้ว', duration: 2000 })
-  }, [chapters.length, activeChapterId, activeNovelId, addToast])
+  }, [user?.id, activeChapterId, activeNovelId, addToast])
 
-  // Rename Chapter
-  const renameChapter = useCallback((chId, newTitle) => {
+  // Rename Chapter with DB persistence
+  const renameChapter = useCallback(async (chId, newTitle) => {
     if (!newTitle?.trim()) return
+    const trimmed = newTitle.trim()
+
+    if (user?.id) {
+      supabase
+        .from('chapters')
+        .update({ title: trimmed, updated_at: new Date().toISOString() })
+        .eq('id', chId)
+        .then(({ error }) => {
+          if (error) console.error('Error updating chapter title in Supabase:', error.message)
+        })
+    }
+
     setChapters(prev => {
-      const updated = prev.map(ch => ch.id === chId ? { ...ch, title: newTitle.trim() } : ch)
+      const updated = prev.map(ch => ch.id === chId ? { ...ch, title: trimmed } : ch)
       setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: updated } : n))
       return updated
     })
     addToast({ title: 'เปลี่ยนชื่อตอนเรียบร้อย ✓', duration: 1800 })
-  }, [activeNovelId, addToast])
+  }, [user?.id, activeNovelId, addToast])
 
   // Add Page to current Chapter
   const addPage = useCallback(() => {
@@ -843,7 +1130,150 @@ export function AppProvider({ children }) {
     addToast({ title: 'ลบหน้ากระดาษเรียบร้อย', duration: 2500 })
   }, [currentChapter.pages.length, activeChapterId, addToast])
 
-  // AI Task Orchestrator with ThoughtLine & StatusMark
+  // Story Bible: Character CRUD with Supabase persistence
+  const saveCharacter = useCallback(async (charData) => {
+    if (!charData?.name?.trim()) return
+
+    const charToSave = {
+      name: charData.name.trim(),
+      role: charData.role || 'ตัวเอก',
+      description: charData.description || '',
+      traits: charData.traits || '',
+      secrets: charData.secrets || '',
+      speech_pattern: charData.speech_pattern || charData.relations || '',
+      avatar_url: charData.avatar || charData.avatar_url || ''
+    }
+
+    if (user?.id && activeNovelId) {
+      try {
+        if (charData.id && !charData.id.startsWith('char-temp-') && !charData.id.startsWith('char-')) {
+          const { data, error } = await supabase
+            .from('characters')
+            .update({
+              ...charToSave,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', charData.id)
+            .select()
+            .single()
+
+          if (!error && data) {
+            setCharacters(prev => prev.map(c => c.id === charData.id ? { ...c, ...data, avatar: data.avatar_url } : c))
+            return
+          }
+        } else {
+          const { data, error } = await supabase
+            .from('characters')
+            .insert({
+              novel_id: activeNovelId,
+              user_id: user.id,
+              ...charToSave
+            })
+            .select()
+            .single()
+
+          if (!error && data) {
+            setCharacters(prev => [...prev.filter(c => c.id !== charData.id), { ...data, avatar: data.avatar_url }])
+            return
+          }
+        }
+      } catch (err) {
+        console.error('Exception saving character to Supabase:', err)
+      }
+    }
+
+    // Local state fallback
+    setCharacters(prev => {
+      const existing = prev.find(c => c.id === charData.id)
+      if (existing) {
+        return prev.map(c => c.id === charData.id ? { ...c, ...charData } : c)
+      }
+      return [...prev, { id: charData.id || `char-${Date.now()}`, ...charData }]
+    })
+  }, [user?.id, activeNovelId])
+
+  const deleteCharacterFromDb = useCallback(async (charId) => {
+    if (user?.id && charId && !charId.startsWith('char-')) {
+      supabase
+        .from('characters')
+        .delete()
+        .eq('id', charId)
+        .then(({ error }) => {
+          if (error) console.error('Error deleting character from Supabase:', error.message)
+        })
+    }
+    setCharacters(prev => prev.filter(c => c.id !== charId))
+  }, [user?.id])
+
+  // Custom Dictionary CRUD with Supabase persistence
+  const addCustomWord = useCallback(async (word, description = '') => {
+    if (!word?.trim()) return
+    const trimmed = word.trim()
+
+    if (user?.id) {
+      supabase
+        .from('custom_dictionary')
+        .insert({ user_id: user.id, word: trimmed, description })
+        .then(({ error }) => {
+          if (error) console.error('Error inserting word to Supabase:', error.message)
+        })
+    }
+
+    setCustomDictionary(prev => {
+      if (prev.includes(trimmed)) return prev
+      return [...prev, trimmed]
+    })
+  }, [user?.id])
+
+  const deleteCustomWord = useCallback(async (word) => {
+    if (user?.id) {
+      supabase
+        .from('custom_dictionary')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('word', word)
+        .then(({ error }) => {
+          if (error) console.error('Error deleting word from Supabase:', error.message)
+        })
+    }
+    setCustomDictionary(prev => prev.filter(w => w !== word))
+  }, [user?.id])
+
+  // Version History Snapshot with Supabase persistence
+  const saveSnapshot = useCallback(async (label, customPreview = null) => {
+    const preview = customPreview !== null ? customPreview : (currentPageText || 'ว่างเปล่า')
+    const snapId = `snap-${Date.now()}`
+    const timestamp = new Date().toLocaleString('th-TH')
+
+    if (user?.id && activeNovelId) {
+      supabase
+        .from('version_history')
+        .insert({
+          chapter_id: activeChapterId && !activeChapterId.startsWith('ch-') ? activeChapterId : null,
+          novel_id: activeNovelId && !activeNovelId.startsWith('novel-') ? activeNovelId : null,
+          user_id: user.id,
+          page_index: activePageIdx || 0,
+          content: preview,
+          summary: label || 'บันทึกจุดย้อนกลับ'
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error inserting snapshot in Supabase:', error.message)
+        })
+    }
+
+    const newSnap = {
+      id: snapId,
+      timestamp,
+      label: label || 'จุดย้อนกลับใหม่',
+      preview
+    }
+    setSnapshots(prev => [newSnap, ...prev])
+  }, [user?.id, activeNovelId, activeChapterId, activePageIdx, currentPageText])
+
+  // =========================================================================
+  // REAL PRODUCTION AI ENGINE (ZERO MOCK DATA, REAL GEMINI ONLY)
+  // =========================================================================
+
   const triggerAiTask = async (actionType, textToProcess = null) => {
     const targetText = textToProcess !== null ? textToProcess : (selection.text || currentPageText)
     if (!targetText || targetText.trim().length === 0) {
@@ -864,9 +1294,10 @@ export function AppProvider({ children }) {
       continuity: 3,
       plotBranch: 4,
       translate: 2,
-      fullBook: 0
+      fullBook: 0,
+      custom: 2
     }
-    const cost = COSTS[actionType] || 1
+    const cost = COSTS[actionType] !== undefined ? COSTS[actionType] : 1
 
     if (trixBalance < cost) {
       endAITask(false)
@@ -906,14 +1337,19 @@ export function AppProvider({ children }) {
         'ร่างตัวอย่างย่อหน้าเริ่มต้นของแต่ละเส้นทาง'
       ],
       translate: [
-        'วิเคราะห์อรรถรสและโทนทางวรรณกรรม',
-        'แปลคำศัพท์พร้อมเลือกสำนวนที่สละสลวย',
-        'ขัดเกลาไวยากรณ์ให้ลื่นไหลเหมือนต้นฉบับ'
+        'วิเคราะห์ข้อความต้นฉบับอย่างเคร่งครัด',
+        'แปลคำศัพท์และสำนวนวรรณกรรมอย่างตรงไปตรงมา',
+        'ขัดเกลาไวยากรณ์ให้ถูกต้องโดยไม่ต่อเติมเนื้อหาเกินจริง'
       ],
       fullBook: [
         'อ่านโครงเรื่องภาพรวมทุกบทที่เขียน',
         'วิเคราะห์จังหวะการดำเนินเรื่อง (Pacing)',
         'ตรวจสอบพัฒนาการตัวละครและช่องโหว่พล็อต'
+      ],
+      custom: [
+        'ประมวลผลคำสั่งพิเศษจากผู้ใช้',
+        'ปรับแต่งเนื้อหาตามข้อกำหนด',
+        'จัดเตรียมผลลัพธ์พร้อมใช้งาน'
       ]
     }
 
@@ -933,13 +1369,13 @@ export function AppProvider({ children }) {
     const startTime = performance.now()
 
     try {
-      let parsedResult = null
-      let useMockFallback = false
-
-      // Pass custom skill prompt to payload if provided
-      const res = await fetch('/api/ai', {
+      const token = session?.access_token || ''
+      const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         signal: abortController.signal,
         body: JSON.stringify({
           actionType,
@@ -948,119 +1384,42 @@ export function AppProvider({ children }) {
             genre,
             pov,
             persona: personas.find(p => p.id === activePersonaId)?.name,
-            dictionary: customDictionary,
+            dictionary: customDictionary.map(d => typeof d === 'string' ? d : d.word),
+            characters: characters.map(c => ({
+              name: c.name,
+              role: c.role,
+              description: c.description,
+              traits: c.traits,
+              secrets: c.secrets
+            })),
             customSkillPrompt: customSkillPrompt || undefined
           }
         })
-      }).catch((err) => {
-        if (err.name === 'AbortError') {
-          throw err
-        }
-        return null
       })
 
-      if (res && res.ok) {
-        const data = await res.json()
-        if (data && !data.mock && data.result) {
-          parsedResult = data.result
-        } else {
-          useMockFallback = true
-        }
-      } else {
-        useMockFallback = true
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        const errMsg = errJson?.error?.message || errJson?.error || `HTTP ${res.status}: ไม่สามารถประมวลผลคำขอ AI ได้`
+        throw new Error(errMsg)
       }
 
-      if (useMockFallback || !parsedResult) {
-        await new Promise((r, rej) => {
-          const timeout = setTimeout(r, 2000)
-          abortController.signal.addEventListener('abort', () => {
-            clearTimeout(timeout)
-            rej(new Error('AbortError'))
-          })
-        })
-
-        if (actionType === 'proofread') {
-          parsedResult = {
-            explanation: 'ตรวจพบจุดที่สะกดผิดและการเว้นวรรคไม่ถูกต้อง 3 จุด ได้ทำการแก้ไขตามหลักภาษาไทยและคงสำนวนเดิมไว้ 100%',
-            corrections: [
-              { original: 'โซซัดโซเซ', replacement: 'ซวนเซ / โซซัดโซเซ', reason: 'คำว่าโซเซในบริบทนี้สามารถเลือกคำที่กระชับขึ้นได้' },
-              { original: 'ปาฏิหารย์', replacement: 'ปาฏิหาริย์', reason: 'สะกดด้วย สระอิ บน ร' },
-              { original: 'โอกาศ', replacement: 'โอกาส', reason: 'ใช้ ส เสือ' }
-            ],
-            correctedText: targetText
-              .replace(/ปาฏิหารย์/g, 'ปาฏิหาริย์')
-              .replace(/โอกาศ/g, 'โอกาส')
-          }
-        } else if (actionType === 'polish') {
-          const activePersona = personas.find(p => p.id === activePersonaId) || personas[0]
-          parsedResult = {
-            polishedText: targetText + '\n\nสายลมกรรโชกหวีดหวิวพาเอากลิ่นดินชื้นและไอเย็นยะเยือกมาปะทะผิวหน้า บรรยากาศรอบกายพลันเงียบสงัดลงจนได้ยินแม้กระทั่งเสียงหยดน้ำที่ร่วงหล่นจากปลายกิ่งไม้แห้งลงสู่ผิวดิน',
-            changesSummary: `ขัดเกลาสำนวนตามสไตล์ '${activePersona.name}' ${customSkillPrompt ? `(และตาม Custom Skill: ${customSkillPrompt.slice(0, 30)}...)` : ''} โดยเติมมิติทางประสาทสัมผัส เพิ่มคำไวพจน์ และตัดคำเชื่อมที่ฟุ่มเฟือยออก`,
-            suggestions: [
-              'ใช้คำว่า "สั่นไหว" แทน "ไหวไปมา" เพื่อขับเน้นความอ่อนแอของแสงไฟ',
-              'เพิ่มจังหวะเว้นวรรคก่อนบทสนทนาเพื่อเพิ่มความตึงเครียด (Tension)'
-            ]
-          }
-        } else if (actionType === 'continuity') {
-          parsedResult = {
-            consistencyScore: 94,
-            inconsistencies: [
-              {
-                issue: 'การใช้เวทมนตร์ในคืนเดือนดับ',
-                character: 'ศรุต',
-                severity: 'medium',
-                solution: 'ใน Character Bible ระบุว่าพลังของศรุตจะแปรปรวนในคืนจันทร์ดับ ควรระบุอาการเหนื่อยล้าหรือแสงประกายเวทสีดำที่กระตุกดับ'
-              }
-            ],
-            timelineCheck: 'ลำดับเวลาต่อเนื่องสมบูรณ์ (เหตุการณ์เกิดขึ้นช่วงหัวค่ำของคืนฝนตก)',
-            bibleAlignment: 'สอดคล้องกับบุคลิกของรินลดาที่มักพกมีดสั้นป้องกันตัว'
-          }
-        } else if (actionType === 'plotBranch') {
-          parsedResult = {
-            branches: [
-              {
-                title: 'ทางเลือกที่ 1: การเผชิญหน้าและเจรจาอย่างตึงเครียด',
-                summary: 'รินลดาไม่ยอมลดอาวุธ แต่ยื่นข้อเสนอแลกเปลี่ยนด้วยข้อมูลลับของตระกูลจันทราเพื่อดูปฏิกิริยาของศรุต',
-                hook: 'ความลับที่ศรุตไม่เคยรู้ว่าผู้บงการตัวจริงไม่ใช่ตระกูลของเธอ',
-                previewText: 'รินลดาเลื่อนปลายนิ้วไปสัมผัสสัญลักษณ์บนด้ามมีด แสงเรืองรองสีเงินวาบขึ้น "ก่อนที่เจ้าจะพูดถึงสัญญา เจ้าควรรู้ก่อนว่าคืนที่ผนึกแตก มีคนอื่นอยู่ในห้องนั้นด้วย!"'
-              },
-              {
-                title: 'ทางเลือกที่ 2: เหตุการณ์ไม่คาดฝันจากศัตรูที่ซุ่มซ่อน',
-                summary: 'ก่อนที่ทั้งคู่จะได้ข้อสรุป ฝูงอีกาเวทมนตร์จากหอคอยรัตติกาลเข้าจู่โจม บีบให้ทั้งคู่ต้องร่วมมือกันชั่วคราว',
-                hook: 'การต่อสู้ร่วมกันเผยให้เห็นรอยสักคำสาปที่ลุกลามถึงหัวใจของศรุต',
-                previewText: 'เสียงกรีดร้องแหลมสูงของสัตว์เวทดังสะท้อนผ่านม่านฝน ทันใดนั้นเงาดำนับสิบร่างก็ดิ่งลงมาจากฟากฟ้า เป้าหมายไม่ใช่รินลดา แต่เป็นผนึกที่ร่างของศรุต!'
-              },
-              {
-                title: 'ทางเลือกที่ 3: ความจริงที่ซ่อนอยู่ใต้มนตราลวงตา',
-                summary: 'รินลดาค้นพบว่าคนที่ยืนอยู่ตรงหน้าไม่ใช่ตัวจริงของศรุต แต่เป็นหุ่นเชิดวิญญาณที่ถูกส่งมาเพื่อทดสอบเธอ',
-                hook: 'ตัวจริงของศรุตกำลังเฝ้ามองดูเธออยู่จากอีกมุมหนึ่งของเมือง',
-                previewText: '"ภาพลวงตาอันแยบยล..." รินลดาพึมพำเมื่อสังเกตเห็นว่าเงาของเขาบนพื้นดินทอดยาวไปในทิศทางที่ไม่ตรงกับแสงตะเกียง "เจ้าไม่ใช่เขา ตัวจริงของเจ้าอยู่ที่ไหน!"'
-              }
-            ]
-          }
-        } else if (actionType === 'translate') {
-          parsedResult = {
-            translatedText: `Raindrops drummed ceaselessly against the weathered wooden shingles. She stepped across that familiar threshold once more, enveloped by the damp chill of moisture hanging thick in the narrow corridor. Ahead, the solitary lantern flickered, as though on the verge of surrendering to the dark.\n\nRinlada halted her stride, her keen eyes piercing through the curtain of rain toward the enigmatic silhouette standing motionless beneath the ivy trellis. The young man carried no umbrella, yet the mist seemed incapable of gracing his pale skin.\n\n"At long last, you have honored your oath," his low cadence cut through the biting wind.`,
-            notes: 'แปลเป็นวรรณกรรมภาษาอังกฤษ (Literary English) คงน้ำเสียงลึกลับและอารมณ์หนาวเหน็บตามต้นฉบับ'
-          }
-        } else if (actionType === 'fullBook') {
-          parsedResult = {
-            plotArcScore: 92,
-            majorPacingIssues: ['ช่วงต้นบทที่ 1 ถึงบทที่ 2 เดินเรื่องกระชับดีมาก อาจเพิ่มการปูเบื้องหลังของเมืองก่อนเริ่มบทที่ 3'],
-            characterArcAnalysis: 'รินลดาแสดงความเด็ดเดี่ยวชัดเจน ขณะที่ศรุตมีความน่าค้นหาและแรงจูงใจที่ซับซ้อน',
-            plotHoles: ['ระวังเรื่องระยะเวลาของคำสาป 1 ปี ควรกำหนดจุดนับเวลาถอยหลังให้ชัดเจนในบทต่อๆ ไป'],
-            recommendations: ['เพิ่มฉากแสดงความสัมพันธ์ในอดีต (Flashback สั้นๆ) เพื่อให้ผู้อ่านเข้าใจความผูกพันของทั้งสอง']
-          }
-        }
+      const data = await res.json()
+      if (!data || !data.result) {
+        throw new Error('AI Engine ไม่ได้ส่งผลลัพธ์ที่ถูกต้องกลับมา')
       }
 
       const elapsed = (performance.now() - startTime) / 1000
-      deductTrix(cost, `AI ${actionType}`)
+
+      // Deduct Trix in DB and local state
+      await deductTrix(cost, `AI ${actionType}`)
+
+      // Create snapshot before applying result
+      saveSnapshot(`ก่อนเรียก AI: ${actionType}`)
 
       setAiDrawer(prev => ({
         ...prev,
         loading: false,
-        result: parsedResult,
+        result: data.result,
         error: null,
         thoughtTime: elapsed
       }))
@@ -1081,7 +1440,7 @@ export function AppProvider({ children }) {
       setAiDrawer(prev => ({
         ...prev,
         loading: false,
-        error: err.message || 'เกิดข้อผิดพลาดในการประมวลผล'
+        error: err.message || 'เกิดข้อผิดพลาดในการประมวลผลคำขอ AI'
       }))
       addToast({
         title: 'เกิดข้อผิดพลาดในการเรียก AI',
@@ -1181,17 +1540,22 @@ export function AppProvider({ children }) {
 
         // Story Lore Data
         characters, setCharacters,
+        saveCharacter,
+        deleteCharacterFromDb,
         customDictionary, setCustomDictionary,
+        addCustomWord,
+        deleteCustomWord,
         personas, setPersonas,
         activePersonaId, setActivePersonaId,
         skills, setSkills,
         customSkillPrompt, setCustomSkillPrompt,
         snapshots,
+        saveSnapshot,
 
-        // Auto Save Status (2.5s debounced)
+        // Auto Save Status (1.8s debounced)
         saveStatus,
 
-        // Global AI Lock & Anti-Spam (Requirement 1)
+        // Global AI Lock & Anti-Spam
         isAIProcessing,
         activeAITool,
         startAITask,

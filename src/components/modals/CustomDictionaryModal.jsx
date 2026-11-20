@@ -7,6 +7,7 @@ export default function CustomDictionaryModal() {
   const {
     activeModal, setActiveModal,
     customDictionary, setCustomDictionary,
+    addCustomWord, deleteCustomWord,
     addToast
   } = useApp()
 
@@ -22,13 +23,21 @@ export default function CustomDictionaryModal() {
       return
     }
 
-    setCustomDictionary(prev => [...prev, word])
+    if (addCustomWord) {
+      addCustomWord(word)
+    } else {
+      setCustomDictionary(prev => [...prev, word])
+    }
     setNewWord('')
     addToast({ title: `เพิ่ม "${word}" ลงในพจนานุกรมแล้ว`, fuseColor: '#74d9b4' })
   }
 
   const handleDelete = (word) => {
-    setCustomDictionary(prev => prev.filter(w => w !== word))
+    if (deleteCustomWord) {
+      deleteCustomWord(word)
+    } else {
+      setCustomDictionary(prev => prev.filter(w => w !== word))
+    }
     addToast({ title: `ลบ "${word}" เรียบร้อย`, fuseColor: '#ef4444' })
   }
 
@@ -99,23 +108,29 @@ export default function CustomDictionaryModal() {
 
             {/* Word Chips */}
             <div className="p-5 overflow-y-auto flex-1">
-              <div className="flex flex-wrap gap-2">
-                {customDictionary.map((word, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-plottrix-panel2/70 border border-plottrix-line/50 text-xs text-plottrix-text group hover:border-plottrix-purple2/40 transition"
-                  >
-                    <span>{word}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(word)}
-                      className="text-plottrix-muted hover:text-red-400 p-0.5 rounded transition text-xs cursor-pointer"
+              {customDictionary.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400">
+                  ยังไม่มีคำเฉพาะในพจนานุกรม (สามารถพิมพ์เพิ่มคำศัพท์ได้จากช่องด้านบน)
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {customDictionary.map((word, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-plottrix-panel2/70 border border-plottrix-line/50 text-xs text-plottrix-text group hover:border-plottrix-purple2/40 transition"
                     >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
+                      <span>{word}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(word)}
+                        className="text-plottrix-muted hover:text-red-400 p-0.5 rounded transition text-xs cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

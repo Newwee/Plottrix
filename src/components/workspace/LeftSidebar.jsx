@@ -82,7 +82,19 @@ function LeftSidebar() {
             </div>
 
             <div className="space-y-1">
-              {chapters.map((ch, idx) => {
+              {chapters.length === 0 ? (
+                <div className="p-3.5 rounded-xl border border-dashed border-violet-500/30 text-center text-xs text-slate-400 space-y-2">
+                  <span>ยังไม่มีตอนในนิยาย</span>
+                  <button
+                    type="button"
+                    onClick={addChapter}
+                    className="w-full py-1.5 rounded-lg bg-violet-600/30 hover:bg-violet-600 text-violet-200 hover:text-white text-[11px] font-bold transition cursor-pointer"
+                  >
+                    + สร้างตอนแรก
+                  </button>
+                </div>
+              ) : (
+                chapters.map((ch, idx) => {
                 const isActive = ch.id === activeChapterId
                 const pageCount = ch.pages?.length || 1
                 const isDragging = draggedIdx === idx
@@ -178,7 +190,7 @@ function LeftSidebar() {
                     </button>
                   </div>
                 )
-              })}
+              }))}
             </div>
 
             {/* Add Chapter Button */}

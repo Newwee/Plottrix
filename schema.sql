@@ -133,6 +133,18 @@ create index if not exists idx_version_history_user_id on public.version_history
 create index if not exists idx_trix_transactions_user_id on public.trix_transactions(user_id);
 
 -- ==============================================================================
+-- GRANTS & PERMISSIONS (ENABLE SUPABASE REST & DATA API ACCESS)
+-- ==============================================================================
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+grant all on all routines in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on routines to anon, authenticated, service_role;
+
+-- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
 alter table public.profiles enable row level security;

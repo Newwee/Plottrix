@@ -181,100 +181,16 @@ const server = http.createServer((req, res) => {
   }
 
   // 3. Proxy Gemini generateContent with Smart Model Routing & Context Caching Fallback
-  if (pathname === "/api/gemini" && req.method === "POST") {
+  if ((pathname === "/api/ai/execute" || pathname === "/api/ai" || pathname === "/api/gemini") && req.method === "POST") {
     let body = "";
     req.on("data", chunk => { body += chunk; });
     req.on("end", async () => {
       try {
-        const parsed = JSON.parse(body);
-        const key = parsed.apiKey || DEFAULT_API_KEY;
-        const payload = parsed.payload;
-        const taskType = parsed.taskType || "core"; // 'light' | 'core' | 'deep'
-        const clientPlan = parsed.plan || req.headers["x-client-plan"] || "Free Plan";
-
-        if (!payload) {
-          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-          res.end(JSON.stringify({ error: { message: "Missing payload parameter" } }));
-          return;
-        }
-
-        // GUARDRAIL 1: Free Plan Cooldown (5 Seconds)
-        if (clientPlan === "Free Plan") {
-          const now = Date.now();
-          const lastCall = lastClientCallMap.get(clientIp) || 0;
-          const elapsed = (now - lastCall) / 1000;
-          if (elapsed < 5) {
-            const waitSeconds = Math.ceil(5 - elapsed);
-            res.writeHead(429, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({
-              error: {
-                code: 429,
-                message: `กรุณารออีก ${waitSeconds} วินาที (Free Plan Cooldown 5 วินาที เพื่อป้องกัน Error 429)`
-              }
-            }));
-            return;
-          }
-          lastClientCallMap.set(clientIp, now);
-        }
-
-        // SMART MODEL ROUTING: Pick primary model according to taskType
-        let primaryModel = MODEL_ROUTING.core;
-        if (taskType === "light") {
-          primaryModel = MODEL_ROUTING.light; // gemini-3.5-flash-lite
-        } else if (taskType === "deep" && (clientPlan === "Ultra Plan" || clientPlan.includes("Ultra"))) {
-          primaryModel = MODEL_ROUTING.deep; // gemini-4-hydrogen
-        } else if (parsed.model) {
-          primaryModel = parsed.model;
-        }
-
-        // TECHNICAL CONDITION 2: Context Caching Fallback
-        // Inspect content character length
-        const rawContentString = JSON.stringify(payload);
-        const totalCharCount = rawContentString.length;
-        let shouldUseCache = Boolean(parsed.useCaching);
-
-        if (shouldUseCache && totalCharCount < CONTEXT_CACHE_MIN_CHARS) {
-          console.log(`[Context Caching Fallback] Content length (${totalCharCount} chars) is below minimum threshold (${CONTEXT_CACHE_MIN_CHARS}). Switching automatically to Standard Prompt.`);
-          shouldUseCache = false;
-        }
-
-        const cacheIdentifier = shouldUseCache ? parsed.cachedContentName : null;
-
-        // Model chain with fallback
-        const models = [primaryModel, MODEL_ROUTING.core, MODEL_ROUTING.light];
-        const uniqueModels = [...new Set(models)];
-        let lastResp = null;
-
-        for (const m of uniqueModels) {
-          try {
-            // Attempt 1: Call API (with cacheIdentifier if applicable)
-            let apiResp = await callGoogleApi(m, key, payload, cacheIdentifier);
-
-            // If error 400 occurred and cache was attempted, immediately retry standard prompt
-            if (apiResp.statusCode === 400 && cacheIdentifier) {
-              console.warn(`[Context Caching Fallback] API returned 400 on cache. Retrying standard prompt on ${m}...`);
-              apiResp = await callGoogleApi(m, key, payload, null);
-            }
-
-            if (apiResp.statusCode === 200) {
-              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-              res.end(JSON.stringify(apiResp.data));
-              return;
-            }
-
-            lastResp = apiResp;
-            // If error is not temporary 503 or 404, don't try other models
-            if (apiResp.statusCode !== 503 && apiResp.statusCode !== 404) {
-              break;
-            }
-          } catch (mErr) {
-            console.warn(`[Smart Routing] Model ${m} network error:`, mErr.message);
-          }
-        }
-
-        res.writeHead(lastResp?.statusCode || 500, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(lastResp?.data || { error: { message: "Gemini API request failed" } }));
-
+        const parsed = body ? JSON.parse(body) : {};
+        const { processAiRequest } = await import("./api/aiEngine.js");
+        const resp = await processAiRequest(parsed, DEFAULT_API_KEY);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(resp));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ error: { message: err.message } }));
