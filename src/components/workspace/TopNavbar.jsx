@@ -278,24 +278,10 @@ function TopNavbar({ onOpenCommandPalette }) {
         </WarmTooltip>
 
         {/* Import file button */}
-        <WarmTooltip content="นำเข้าไฟล์ต้นฉบับ (.txt / .docx)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+        <WarmTooltip content="นำเข้าไฟล์ต้นฉบับอัจฉริยะ (.md / .docx / .txt)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
-            onClick={() => {
-              const input = document.createElement('input')
-              input.type = 'file'
-              input.accept = '.txt'
-              input.onchange = (e) => {
-                const file = e.target.files[0]
-                if (!file) return
-                const reader = new FileReader()
-                reader.onload = (re) => {
-                  window.dispatchEvent(new CustomEvent('plottrix-import-text', { detail: re.target.result }))
-                }
-                reader.readAsText(file)
-              }
-              input.click()
-            }}
+            onClick={() => setActiveModal('import')}
             className="elevated-surface border hover:border-violet-500/60 px-2.5 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white transition hidden md:flex items-center gap-1 cursor-pointer"
           >
             <span>📥</span>

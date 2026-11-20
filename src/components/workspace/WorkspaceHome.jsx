@@ -479,6 +479,15 @@ export default function WorkspaceHome() {
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => setActiveModal('import')}
+              className="px-3.5 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-400/50 text-purple-200 font-bold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>📥</span>
+              <span>นำเข้าไฟล์ (.md, .docx)</span>
+            </button>
+
+            <button
               id="tour-target-create-novel"
               type="button"
               onClick={() => {
@@ -541,13 +550,23 @@ export default function WorkspaceHome() {
                 <p className="text-xs text-slate-400 max-w-sm mb-5 leading-relaxed">
                   คุณได้ลบนิยายทั้งหมดแล้ว เริ่มต้นสร้างผลงานชิ้นใหม่เพื่อร่วมเขียนกับ AI ผู้ช่วยบรรณาธิการ
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setIsCreating(true)}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition cursor-pointer"
-                >
-                  + สร้างนิยายเรื่องแรก
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreating(true)}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition cursor-pointer"
+                  >
+                    + สร้างนิยายเรื่องแรก
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('import')}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-purple-500/30 text-purple-200 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>📥</span>
+                    <span>นำเข้าไฟล์ (.md, .docx, .txt)</span>
+                  </button>
+                </div>
               </div>
             )}
 

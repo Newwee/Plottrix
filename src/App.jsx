@@ -15,6 +15,7 @@ const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'))
 const AuthModal = lazy(() => import('./components/modals/AuthModal'))
 const PublishModal = lazy(() => import('./components/modals/PublishModal'))
+const SmartImportModal = lazy(() => import('./components/modals/SmartImportModal'))
 const OnboardingTour = lazy(() => import('./components/workspace/OnboardingTour'))
 
 function ViewRouter() {
@@ -60,6 +61,7 @@ function ViewRouter() {
       <SettingsModal />
       <AuthModal />
       <PublishModal />
+      <SmartImportModal />
       <SwipeToastContainer />
     </Suspense>
   )
