@@ -394,37 +394,80 @@ export function AppProvider({ children }) {
     }
   }, [currentView])
 
-  // Persist important data to localStorage as offline fallback
+  // Persist important data to localStorage as offline fallback (with quota protection & sanitization)
   useEffect(() => {
-    localStorage.setItem('plottrix_novels', JSON.stringify(novels))
+    try {
+      // Create lightweight copy to protect localStorage 5MB origin quota
+      const sanitized = novels.map(n => {
+        let cover = n.cover || n.cover_url || ''
+        let coverImages = Array.isArray(n.cover_images) ? [...n.cover_images] : []
+
+        // If an image string exceeds 80KB in offline cache, truncate or fallback
+        if (cover && cover.length > 80000) {
+          cover = cover.startsWith('data:') ? 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80' : cover
+        }
+        coverImages = coverImages.map(img => {
+          if (img && img.length > 80000) {
+            return img.startsWith('data:') ? 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80' : img
+          }
+          return img
+        })
+
+        return {
+          ...n,
+          cover,
+          cover_url: cover,
+          cover_images: coverImages
+        }
+      })
+
+      localStorage.setItem('plottrix_novels', JSON.stringify(sanitized))
+    } catch (err) {
+      console.warn('[AppContext] Safe storage fallback for novels:', err?.message)
+      try {
+        const miniNovels = novels.map(n => ({
+          id: n.id,
+          title: n.title,
+          genre: n.genre,
+          pov: n.pov,
+          synopsis: n.synopsis,
+          is_published: n.is_published,
+          chapterCount: n.chapters ? n.chapters.length : (n.chapterCount || 0),
+          updatedAt: n.updatedAt
+        }))
+        localStorage.setItem('plottrix_novels', JSON.stringify(miniNovels))
+      } catch (innerErr) {
+        console.error('[AppContext] Critical storage limit reached:', innerErr?.message)
+      }
+    }
   }, [novels])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_characters', JSON.stringify(characters))
+    try { localStorage.setItem('plottrix_characters', JSON.stringify(characters)) } catch {}
   }, [characters])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_dictionary', JSON.stringify(customDictionary))
+    try { localStorage.setItem('plottrix_dictionary', JSON.stringify(customDictionary)) } catch {}
   }, [customDictionary])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_snapshots', JSON.stringify(snapshots))
+    try { localStorage.setItem('plottrix_snapshots', JSON.stringify(snapshots)) } catch {}
   }, [snapshots])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_trix', trixBalance.toString())
+    try { localStorage.setItem('plottrix_trix', trixBalance.toString()) } catch {}
   }, [trixBalance])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_plan', plan)
+    try { localStorage.setItem('plottrix_plan', plan) } catch {}
   }, [plan])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_plan_tier', planTier)
+    try { localStorage.setItem('plottrix_plan_tier', planTier) } catch {}
   }, [planTier])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_trial_used', String(trialUsed))
+    try { localStorage.setItem('plottrix_trial_used', String(trialUsed)) } catch {}
   }, [trialUsed])
 
   useEffect(() => {
@@ -497,13 +540,17 @@ export function AppProvider({ children }) {
         // 1. Fetch Novels
         const { data: dbNovels, error: novelsErr } = await supabase
           .from('novels')
-          .select('*')
+          .select('id, title, genre, pov, synopsis, author_display_name, is_published, published_at, published_arc, published_snapshot, publish_history, cover_url, cover_images, tags, view_count, follower_count, created_at, updated_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
         if (!isMounted) return
 
-        if (!novelsErr && dbNovels) {
+        if (novelsErr) {
+          console.warn('[AppContext] Notice loading user novels:', novelsErr.message)
+        }
+
+        if (dbNovels && dbNovels.length > 0) {
           // Fetch chapter stats (count & word count) for all user's novels
           const novelIds = dbNovels.map(n => n.id)
           const chapterStatsMap = {}

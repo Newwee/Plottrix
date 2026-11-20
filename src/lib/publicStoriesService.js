@@ -120,12 +120,18 @@ export async function toggleStoryFollow(storyId, userId = null, deviceId = null)
  */
 export async function fetchPublishedStories() {
   try {
-    // 1. Fetch stories where is_published is true
-    const { data: stories, error } = await supabase
+    // 1. Fetch stories where is_published is true (select specific fields with 8s timeout guard)
+    const fetchPromise = supabase
       .from('novels')
-      .select('*')
+      .select('id, title, genre, pov, synopsis, author_display_name, cover_url, cover_images, tags, view_count, follower_count, is_published, published_at, published_arc, published_snapshot, created_at, updated_at')
       .eq('is_published', true)
       .order('published_at', { ascending: false })
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase fetch query timed out')), 8000)
+    )
+
+    const { data: stories, error } = await Promise.race([fetchPromise, timeoutPromise])
 
     if (error) {
       console.warn('[StoriesService] Fetch error:', error.message)
