@@ -1,0 +1,106 @@
+/**
+ * HoloCard CSS
+ * 3D Holographic Foil Card Engine
+ */
+
+.holo-card {
+  --hc-w: 320px;
+  --hc-ratio: calc(63 / 88);
+  --hc-radius: 14px;
+  position: relative;
+  width: var(--hc-w);
+  aspect-ratio: var(--hc-ratio);
+  border-radius: var(--hc-radius);
+  perspective: 1100px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+  cursor: grab;
+  transform-style: preserve-3d;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.holo-card:active {
+  cursor: grabbing;
+}
+
+.holo-card[data-flippable] {
+  cursor: pointer;
+}
+
+.holo-card__shadow {
+  position: absolute;
+  inset: 5%;
+  border-radius: var(--hc-radius);
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.45), rgba(0, 0, 0, 0.7) 60%, transparent 80%);
+  filter: blur(20px);
+  transform: translateZ(-30px);
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.holo-card__rotor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--hc-radius);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.holo-card__face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--hc-radius);
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.12) inset;
+  background-color: #0d091a;
+  transform: translateZ(0);
+}
+
+.holo-card__face--front img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  border-radius: var(--hc-radius);
+  display: block;
+}
+
+.holo-card__face--front canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  border-radius: var(--hc-radius);
+}
+
+.holo-card__face--back {
+  transform: rotateY(180deg);
+  background: #15102a;
+}
+
+.holo-card__face--back img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  border-radius: var(--hc-radius);
+}
+
+/* Fallback for devices without WebGL2 */
+@media (prefers-reduced-motion: reduce) {
+  .holo-card__rotor {
+    transform: none !important;
+  }
+}

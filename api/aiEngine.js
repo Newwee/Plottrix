@@ -54,6 +54,63 @@ function callGemini(model, apiKey, payload) {
   })
 }
 
+function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, temperature = 0.3) {
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify({
+      model: model || 'gemini-3.8-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature
+    })
+
+    try {
+      const cleanBase = (baseURL || 'https://astracode.panderx.xyz/v1').replace(/\/+$/, '')
+      const fullUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`
+      const parsedUrl = new URL(fullUrl)
+      
+      const options = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+        path: `${parsedUrl.pathname}${parsedUrl.search}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: 25000
+      }
+
+      const req = https.request(options, (res) => {
+        let rawData = ''
+        res.setEncoding('utf8')
+        res.on('data', chunk => { rawData += chunk })
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(rawData)
+            resolve({ statusCode: res.statusCode, data: parsed, raw: rawData })
+          } catch (err) {
+            resolve({ statusCode: res.statusCode, data: null, raw: rawData, error: 'JSON parse error' })
+          }
+        })
+      })
+
+      req.on('error', err => reject(err))
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('OpenAI API request timed out (25s)'))
+      })
+
+      req.write(postData)
+      req.end()
+    } catch (err) {
+      reject(err)
+    }
+  })
+}
+
 function extractJson(rawText) {
   if (!rawText) return null
   const trimmed = rawText.trim()
@@ -332,7 +389,46 @@ ${text}
     }
   }
 
-  // Model cascade execution
+  // 1. OpenAI-Compatible Gateway (Astracode / Gemini 3.8 Flash)
+  const astraKey = (clientApiKey && clientApiKey.startsWith('sk-'))
+    ? clientApiKey
+    : (process.env.ASTRACODE_API_KEY || process.env.VITE_ASTRACODE_API_KEY || (apiKey.startsWith('sk-') ? apiKey : null))
+  const astraBase = process.env.ASTRACODE_BASE_URL || process.env.VITE_ASTRACODE_BASE_URL || 'https://astracode.panderx.xyz/v1'
+  const targetModel = process.env.ASTRACODE_MODEL || process.env.VITE_ASTRACODE_MODEL || 'gemini-3.8-flash'
+
+  if (astraKey && astraKey.startsWith('sk-')) {
+    try {
+      const resp = await callOpenAiCompatible(
+        astraBase,
+        astraKey,
+        targetModel,
+        systemInstructionText,
+        userPromptText,
+        actionType === 'translate' || actionType === 'proofread' ? 0.2 : 0.7
+      )
+
+      if (resp.statusCode === 200 && resp.data?.choices?.[0]?.message?.content) {
+        const rawContent = resp.data.choices[0].message.content
+        const parsed = extractJson(rawContent)
+        if (parsed) {
+          return {
+            success: true,
+            model: targetModel,
+            result: parsed
+          }
+        }
+      }
+
+      const errMsg = resp.data?.error?.message || `HTTP ${resp.statusCode}`
+      throw new Error(`[Astracode / ${targetModel}] ${errMsg}`)
+    } catch (err) {
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.startsWith('sk-')) {
+        throw err
+      }
+    }
+  }
+
+  // 2. Google Gemini API Model Cascade Execution
   let lastError = null
 
   for (const model of MODEL_CHAIN) {

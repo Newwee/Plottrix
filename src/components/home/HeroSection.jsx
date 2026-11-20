@@ -198,82 +198,52 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right Hero Visual / Interactive Editor Preview */}
-          <div className="hero-visual">
-            <div className="floating-tag"><em>✦</em> ผู้ช่วยบรรณาธิการ AI พร้อมทำงาน</div>
-            <div className="editor-window">
-              <div className="editor-top">
-                <div className="editor-title">
-                  <span className="file-dot"></span> Plottrix Studio{' '}
-                  <span style={{ color: '#766b88', fontWeight: 400 }}>/ บทที่ 04 — เงาในสายฝน</span>
-                </div>
-                <div className="window-controls">
-                  <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">Studio</span>
-                </div>
+          {/* Right Hero Visual / Large Glowing Plottrix Brand Crest */}
+          <div className="hero-visual flex items-center justify-center relative min-h-[380px] sm:min-h-[440px]">
+            {/* Background Multi-layer Radial Glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/30 via-fuchsia-600/20 to-indigo-600/30 rounded-full blur-[90px] pointer-events-none transform -translate-y-4" />
+            <div className="absolute w-72 h-72 rounded-full bg-purple-500/20 blur-[60px] animate-pulse pointer-events-none" />
+
+            {/* Main Holographic Logo Card */}
+            <div className="relative z-10 w-full max-w-md p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-[#1c1236]/85 via-[#120a26]/92 to-[#0c071a]/98 border border-purple-500/35 shadow-[0_25px_70px_rgba(112,48,220,0.35)] backdrop-blur-2xl flex flex-col items-center text-center group hover:border-purple-400/60 transition-all duration-500">
+              
+              {/* Top Status Pill */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-bold mb-6 backdrop-blur-md shadow-inner">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>PLOTTRIX PLATFORM</span>
               </div>
 
-              <div className="editor-body">
-                {/* Editor Left Rail */}
-                <aside className="editor-side">
-                  <div className="side-label">PROJECT</div>
-                  <div className="chapter active"><b>▤</b> บทที่ 04</div>
-                  <div className="chapter">▤ บทที่ 05</div>
-                  <div className="chapter">▤ บทที่ 06</div>
-                  <div className="chapter">＋ เพิ่มตอนใหม่</div>
-                  <div className="side-label" style={{ marginTop: '21px' }}>STORY BIBLE</div>
-                  <div className="chapter">♙ ตัวละคร &amp; Lore</div>
-                  <div className="chapter">✧ Style Persona</div>
-                </aside>
-
-                {/* Editor Center Document */}
-                <div className="editor-main">
-                  <div className="doc-meta">
-                    <span>ต้นฉบับ · บันทึกอัตโนมัติ</span>
-                    <span>1,248 คำ</span>
-                  </div>
-                  <h3 className="doc-heading">เงาในสายฝน</h3>
-                  <p className="doc-text">
-                    เสียงฝนตกกระทบหลังคาไม้เก่าอย่างต่อเนื่อง <span className="spell">หญิงสาวยืนมอง</span> เงาสะท้อนของตัวเองในบานหน้าต่าง ก่อนจะนึกถึงคำสัญญาที่เขาเคยให้ไว้...
-                  </p>
-                  <p className="doc-text">
-                    เธอสูดหายใจลึก ความทรงจำในคืนนั้นยังคงชัดเจนราวกับเพิ่งเกิดขึ้นเมื่อวาน
-                  </p>
-                  <div className="suggestion">
-                    <small>✦ STYLE PERSONA · ดราม่าลึกลับ</small>
-                    <strong>คำแนะนำการเกลาสำนวนตามโปรไฟล์</strong>
-                    <span>ลองพิจารณา “หญิงสาวทอดสายตา...”</span>
-                    <b className="fix-pill cursor-pointer" onClick={() => navigateTo('workspace')}>ใช้คำนี้ ↗</b>
-                  </div>
-                </div>
-
-                {/* Editor Right Editorial Check */}
-                <aside className="editor-right">
-                  <div className="ai-head">EDITORIAL CHECK</div>
-                  <div className="scan-card">
-                    <small>ความต่อเนื่องข้ามตอน</small>
-                    <strong>98%</strong>
-                    <div className="scan-bars">
-                      <i style={{ height: '45%' }}></i>
-                      <i style={{ height: '70%' }}></i>
-                      <i style={{ height: '56%' }}></i>
-                      <i style={{ height: '90%' }}></i>
-                      <i style={{ height: '75%' }}></i>
-                      <i style={{ height: '100%' }}></i>
-                    </div>
-                  </div>
-                  <div className="scan-check"><b>✓</b> ตรวจคำผิด &amp; คำพ้องเสียง</div>
-                  <div className="scan-check"><b>✓</b> คงเสียงตาม Style Persona</div>
-                  <div className="scan-check"><b>✓</b> ตรงกับ Lore Bible</div>
-                </aside>
+              {/* Large Glowing Brand Logo */}
+              <div className="relative w-full max-w-[320px] aspect-[16/9] flex items-center justify-center my-2 transform group-hover:scale-105 transition-transform duration-500">
+                <img
+                  src="/Logo/PlottrixFullLogo.png"
+                  alt="Plottrix Brand Logo"
+                  className="w-full h-full object-contain filter drop-shadow-[0_10px_25px_rgba(168,85,247,0.65)]"
+                />
               </div>
 
-              {/* Editor Bottom Bar */}
-              <div className="editor-bottom">
-                <span className="live-status"><i></i> บันทึกแล้ว</span>
-                <span>ภาษาไทย · บทที่ 04</span>
-                <span className="text-plottrix-purple2 font-semibold">คงเหลือ 30 Trix ✦</span>
+              {/* Tagline / Subtitle */}
+              <h2 className="text-lg sm:text-xl font-black text-white mt-4 tracking-tight">
+                AUTHOR-FIRST AI WRITING WORKSPACE
+              </h2>
+              <p className="text-xs text-plottrix-muted mt-2 max-w-xs leading-relaxed">
+                สร้างสรรค์ วางพล็อต และขัดเกลานิยายของคุณด้วยพลังปัญญาประดิษฐ์ระดับวรรณกรรม
+              </p>
+
+              {/* Floating Feature Pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-5 border-t border-white/10 w-full">
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-medium text-slate-300">
+                  ✦ Narrative Continuity
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-medium text-slate-300">
+                  ✦ Style Persona
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-medium text-slate-300">
+                  ✦ 100% Thai Literary
+                </span>
               </div>
             </div>
+
             <div className="hero-glow"></div>
           </div>
         </div>

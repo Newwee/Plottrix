@@ -8,6 +8,7 @@ import { fetchStoryById, fetchStoryChapters } from '../../lib/publicStoriesServi
 import { fetchComments, addComment } from '../../lib/commentsService'
 import { updatePageMeta } from '../../lib/seoHelper'
 import ShareStoryModal from '../modals/ShareStoryModal'
+import HoloCard from '../react-bits/HoloCard'
 import confetti from 'canvas-confetti'
 
 export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
@@ -319,6 +320,28 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
     if (currentChapterIdx > 0) {
       setCurrentChapterIdx(prev => prev - 1)
     }
+  }
+
+  // Handle Direct Mobile Native Share Sheet (LINE, IG, Discord, etc.)
+  const handleShare = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://plottrix.vercel.app'
+    const shareUrl = `${origin}/story/${storyId}`
+    const authorName = story?.authorName || story?.author_display_name || 'AI'
+    const shareText = `อ่านนิยายเรื่อง "${story?.title || ''}" โดย ${authorName} บน Plottrix ฟรี!`
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${story?.title || 'Plottrix'} — นิยาย`,
+          text: shareText,
+          url: shareUrl
+        })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
+    }
+    setShareModalOpen(true)
   }
 
   const handleManualBookmark = () => {
@@ -705,7 +728,7 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
           {/* Share Button */}
           <button
             type="button"
-            onClick={() => setShareModalOpen(true)}
+            onClick={handleShare}
             className="px-2.5 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/15 text-xs font-bold flex items-center gap-1.5 hover:bg-purple-500/25 text-purple-200 transition cursor-pointer"
             title="แชร์นิยายเรื่องนี้ส่งให้เพื่อน"
           >
@@ -814,12 +837,25 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
           {/* Story Intro & Synopsis Section (Shown on Chapter 1) */}
           {currentChapterIdx === 0 && (
             <div className="mb-10 pb-10 border-b border-white/10 text-center animate-fadeIn">
-              {/* Novel Cover */}
-              <div className="w-40 sm:w-48 aspect-[3/4] mx-auto rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl shadow-purple-950/60 mb-5 relative group">
-                <img
-                  src={story.cover_url || story.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'}
+              {/* Novel Cover with Holographic 3D Foil Effect */}
+              <div className="flex justify-center mb-6">
+                <HoloCard
+                  image={(Array.isArray(story.cover_images) && story.cover_images[0]) || story.cover_url || story.cover}
                   alt={story.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  preset="bursts"
+                  card={story.id || 'reader-cover'}
+                  foilColor="#e2e6ec"
+                  intensity={0.85}
+                  scale={1}
+                  edgeSparkle={0.8}
+                  frame={0}
+                  glare={0.5}
+                  tiltMax={14}
+                  hoverScale={1.04}
+                  radius={16}
+                  width={280}
+                  idle
+                  shadow
                 />
               </div>
 

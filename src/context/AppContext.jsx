@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthContext'
 import { getTierInfo, checkPlanTransition, getTrialCountdown, PLAN_TIERS } from '../lib/subscription'
+import { safeLocalStorageSet, safeLocalStorageGet, safeLocalStorageGetJSON } from '../lib/safeStorage'
 
 const AppContext = createContext(null)
 
@@ -176,7 +177,7 @@ export function AppProvider({ children }) {
   // Novels List & Active Novel (supports deleting down to 0)
   const [novels, setNovels] = useState(() => {
     try {
-      const saved = localStorage.getItem('plottrix_novels')
+      const saved = safeLocalStorageGetJSON('plottrix_novels', null)
       if (saved !== null) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed)) return parsed
@@ -212,7 +213,7 @@ export function AppProvider({ children }) {
   // Editor Appearance & Behavior
   const [paperTheme, setPaperTheme] = useState(() => localStorage.getItem('plottrix_paper_theme') || 'midnight')
   useEffect(() => {
-    localStorage.setItem('plottrix_paper_theme', paperTheme)
+    safeLocalStorageSet('plottrix_paper_theme', paperTheme)
   }, [paperTheme])
 
   // Global App Theme: 'dark' | 'light' | 'system'
@@ -240,7 +241,7 @@ export function AppProvider({ children }) {
     }
 
     apply(appTheme)
-    localStorage.setItem('plottrix_app_theme', appTheme)
+    safeLocalStorageSet('plottrix_app_theme', appTheme)
 
     if (appTheme === 'system' && window.matchMedia) {
       const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -369,7 +370,7 @@ export function AppProvider({ children }) {
   const completeTour = useCallback(() => {
     setIsTourOpen(false)
     if (typeof document !== 'undefined') document.body.style.overflow = ''
-    localStorage.setItem('plottrix_tour_completed', 'true')
+    safeLocalStorageSet('plottrix_tour_completed', 'true')
     addToast({
       title: 'ยินดีด้วย! คุณพร้อมเริ่มเขียนนิยายแล้ว',
       description: 'สามารถเปิดคู่มือแนะนำการใช้งานซ้ำได้จากเมนูการตั้งค่า',
@@ -380,7 +381,7 @@ export function AppProvider({ children }) {
   const skipTour = useCallback(() => {
     setIsTourOpen(false)
     if (typeof document !== 'undefined') document.body.style.overflow = ''
-    localStorage.setItem('plottrix_tour_completed', 'true')
+    safeLocalStorageSet('plottrix_tour_completed', 'true')
   }, [])
 
   // First time tour trigger
@@ -421,71 +422,67 @@ export function AppProvider({ children }) {
         }
       })
 
-      localStorage.setItem('plottrix_novels', JSON.stringify(sanitized))
+      safeLocalStorageSet('plottrix_novels', sanitized)
     } catch (err) {
       console.warn('[AppContext] Safe storage fallback for novels:', err?.message)
-      try {
-        const miniNovels = novels.map(n => ({
-          id: n.id,
-          title: n.title,
-          genre: n.genre,
-          pov: n.pov,
-          synopsis: n.synopsis,
-          is_published: n.is_published,
-          chapterCount: n.chapters ? n.chapters.length : (n.chapterCount || 0),
-          updatedAt: n.updatedAt
-        }))
-        localStorage.setItem('plottrix_novels', JSON.stringify(miniNovels))
-      } catch (innerErr) {
-        console.error('[AppContext] Critical storage limit reached:', innerErr?.message)
-      }
+      const miniNovels = novels.map(n => ({
+        id: n.id,
+        title: n.title,
+        genre: n.genre,
+        pov: n.pov,
+        synopsis: n.synopsis,
+        is_published: n.is_published,
+        chapterCount: n.chapters ? n.chapters.length : (n.chapterCount || 0),
+        updatedAt: n.updatedAt
+      }))
+      safeLocalStorageSet('plottrix_novels', miniNovels)
     }
   }, [novels])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_characters', JSON.stringify(characters)) } catch {}
+    safeLocalStorageSet('plottrix_characters', characters)
   }, [characters])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_dictionary', JSON.stringify(customDictionary)) } catch {}
+    safeLocalStorageSet('plottrix_dictionary', customDictionary)
   }, [customDictionary])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_snapshots', JSON.stringify(snapshots)) } catch {}
+    safeLocalStorageSet('plottrix_snapshots', snapshots)
   }, [snapshots])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_trix', trixBalance.toString()) } catch {}
+    safeLocalStorageSet('plottrix_trix', trixBalance.toString())
   }, [trixBalance])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_plan', plan) } catch {}
+    safeLocalStorageSet('plottrix_plan', plan)
   }, [plan])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_plan_tier', planTier) } catch {}
+    safeLocalStorageSet('plottrix_plan_tier', planTier)
   }, [planTier])
 
   useEffect(() => {
-    try { localStorage.setItem('plottrix_trial_used', String(trialUsed)) } catch {}
+    safeLocalStorageSet('plottrix_trial_used', String(trialUsed))
   }, [trialUsed])
 
   useEffect(() => {
-    if (trialStartedAt) localStorage.setItem('plottrix_trial_started_at', trialStartedAt)
-    else localStorage.removeItem('plottrix_trial_started_at')
+    if (trialStartedAt) safeLocalStorageSet('plottrix_trial_started_at', trialStartedAt)
+    else { try { localStorage.removeItem('plottrix_trial_started_at') } catch {} }
   }, [trialStartedAt])
 
   useEffect(() => {
-    if (trialEndsAt) localStorage.setItem('plottrix_trial_ends_at', trialEndsAt)
-    else localStorage.removeItem('plottrix_trial_ends_at')
+    if (trialEndsAt) safeLocalStorageSet('plottrix_trial_ends_at', trialEndsAt)
+    else { try { localStorage.removeItem('plottrix_trial_ends_at') } catch {} }
   }, [trialEndsAt])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_settings', JSON.stringify(settings))
+    safeLocalStorageSet('plottrix_settings', settings)
   }, [settings])
 
   useEffect(() => {
-    localStorage.setItem('plottrix_custom_skill_prompt', customSkillPrompt)
+    safeLocalStorageSet('plottrix_custom_skill_prompt', customSkillPrompt)
   }, [customSkillPrompt])
 
   // =========================================================================
@@ -1224,7 +1221,7 @@ export function AppProvider({ children }) {
     const newBal = trixBalance + 3
     setTrixBalance(newBal)
     setLastDailyClaim(today)
-    localStorage.setItem('plottrix_last_claim', today)
+    safeLocalStorageSet('plottrix_last_claim', today)
 
     if (user?.id) {
       supabase

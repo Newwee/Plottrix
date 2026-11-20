@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import AeroShardsCanvas from '../workspace/AeroShardsCanvas'
 import NovelCoverCarousel from '../common/NovelCoverCarousel'
+import HoloCard from '../react-bits/HoloCard'
 import {
   fetchStoryById,
   fetchStoryChapters,
@@ -32,6 +33,7 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
   const [savedBookmark, setSavedBookmark] = useState(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [copiedHero, setCopiedHero] = useState(false)
+  const [selectedCoverIdx, setSelectedCoverIdx] = useState(0)
 
   // Comments input form
   const [newCommentName, setNewCommentName] = useState(() => {
@@ -143,8 +145,25 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
     }
   }
 
-  // Handle Share Story Link: Opens Interactive Share Modal
-  const handleShare = () => {
+  // Handle Share Story Link: Direct Mobile Native Share Sheet (LINE, IG, Discord), modal fallback on desktop
+  const handleShare = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://plottrix.vercel.app'
+    const shareUrl = `${origin}/story/${storyId}`
+    const authorName = story?.authorName || story?.author_display_name || 'AI'
+    const shareText = `อ่านนิยายเรื่อง "${story?.title || ''}" โดย ${authorName} บน Plottrix ฟรี!`
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${story?.title || 'Plottrix'} — นิยาย`,
+          text: shareText,
+          url: shareUrl
+        })
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
+    }
     setShareModalOpen(true)
   }
 
@@ -321,21 +340,45 @@ export default function StoryDetailsView({ storyId: propStoryId }) {
         {/* Hero Card */}
         <div className="rounded-3xl border border-purple-500/30 bg-gradient-to-br from-[#1c1338]/90 via-[#130d28]/95 to-[#0c0818]/98 p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-            {/* Left: Book Cover Carousel */}
-            <div className="w-56 sm:w-64 md:w-72 shrink-0 flex flex-col items-center">
-              <div className="w-full aspect-[3/4] rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl shadow-purple-950/60 relative group">
-                <NovelCoverCarousel
-                  images={coverImages}
-                  alt={story.title}
-                  className="w-full h-full"
-                  imageClassName="w-full h-full object-cover"
-                />
-              </div>
+            {/* Left: Holographic 3D Book Cover Card */}
+            <div className="shrink-0 flex flex-col items-center">
+              <HoloCard
+                image={coverImages[selectedCoverIdx] || coverImages[0]}
+                alt={story.title}
+                preset="bursts"
+                card={story.id || 'story-details-cover'}
+                foilColor="#e2e6ec"
+                intensity={0.85}
+                scale={1}
+                edgeSparkle={0.8}
+                frame={0}
+                glare={0.5}
+                tiltMax={14}
+                hoverScale={1.04}
+                radius={16}
+                width={280}
+                idle
+                shadow
+              />
 
               {coverImages.length > 1 && (
-                <p className="text-[10px] text-plottrix-muted text-center mt-2.5">
-                  ✦ รวม {coverImages.length} ภาพปก · ชี้เมาส์เพื่อค้างรูปแรก
-                </p>
+                <div className="flex items-center gap-2 mt-3.5">
+                  {coverImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedCoverIdx(idx)}
+                      className={`w-9 h-12 rounded-lg overflow-hidden border transition cursor-pointer ${
+                        selectedCoverIdx === idx
+                          ? 'border-purple-400 ring-2 ring-purple-500/50 scale-105'
+                          : 'border-white/20 opacity-60 hover:opacity-100'
+                      }`}
+                      title={`ภาพปก ${idx + 1}`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
