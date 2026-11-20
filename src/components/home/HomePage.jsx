@@ -15,7 +15,7 @@ import AnimatedContent from '../react-bits/AnimatedContent'
 
 export default function HomePage() {
   return (
-    <div className="home-page-root min-h-screen relative text-plottrix-text bg-plottrix-bg font-thai">
+    <div className="home-page-root min-h-[100dvh] relative text-plottrix-text bg-plottrix-bg font-thai">
       {/* 3D Ambient Background Shards */}
       <AeroShardsCanvas />
 

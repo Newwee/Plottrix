@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { useDevicePerformance } from '../../hooks/useDevicePerformance'
 
 export default function PixelCard({
   children,
@@ -10,15 +11,20 @@ export default function PixelCard({
   isActive = false,
   ...props
 }) {
+  const { isLowEnd, enablePixelCanvas } = useDevicePerformance()
   const cardRef = useRef(null)
   const canvasRef = useRef(null)
 
   useEffect(() => {
+    // If low-end mode, completely skip canvas creation and animation loop
+    if (isLowEnd || !enablePixelCanvas) return
+
     const card = cardRef.current
     const canvas = canvasRef.current
     if (!card || !canvas) return
 
     const ctx = canvas.getContext('2d')
+    if (!ctx) return
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
     // Parse glowHex to RGB
@@ -33,6 +39,7 @@ export default function PixelCard({
     let active = isActive, hovering = false
     let ox = 0, oy = 0, sx = 0, sy = 0, px = 0, py = 0
     let raf = 0, last = 0, time = 0
+    let isVisible = true
     const pulses = []
 
     function build() {
@@ -40,7 +47,7 @@ export default function PixelCard({
       const r = card.getBoundingClientRect()
       w = Math.max(1, Math.round(r.width))
       h = Math.max(1, Math.round(r.height))
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      dpr = Math.min(window.devicePixelRatio || 1, 1.25)
       canvas.width = w * dpr
       canvas.height = h * dpr
       cols = Math.floor((w - 1) / gap) + 1
@@ -76,6 +83,11 @@ export default function PixelCard({
 
     function draw(now) {
       raf = 0
+      if (!isVisible) {
+        last = 0
+        return
+      }
+
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60
       last = now
       time += dt
@@ -137,12 +149,19 @@ export default function PixelCard({
       }
       ctx.globalAlpha = 1
 
-      if (active || avg > 0.005 || pulses.length > 0) raf = requestAnimationFrame(draw)
-      else last = 0
+      // Idle stop: Only continue RAF if hovering, active, or fading out
+      if (isVisible && (active || avg > 0.005 || pulses.length > 0)) {
+        raf = requestAnimationFrame(draw)
+      } else {
+        last = 0
+      }
     }
 
     function wake() {
-      if (!raf) raf = requestAnimationFrame(draw)
+      if (!raf && isVisible) {
+        last = performance.now()
+        raf = requestAnimationFrame(draw)
+      }
     }
 
     const onEnter = (e) => {
@@ -185,15 +204,57 @@ export default function PixelCard({
     build()
     window.addEventListener('resize', build)
 
+    // Visibility and Viewport Culling
+    const handleVisibility = () => {
+      if (document.hidden) {
+        isVisible = false
+        if (raf) {
+          cancelAnimationFrame(raf)
+          raf = 0
+        }
+      } else {
+        isVisible = true
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    let io = null
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver((entries) => {
+        const [entry] = entries
+        isVisible = entry.isIntersecting
+        if (!isVisible && raf) {
+          cancelAnimationFrame(raf)
+          raf = 0
+        }
+      }, { threshold: 0.05 })
+      io.observe(card)
+    }
+
     return () => {
       card.removeEventListener('pointerenter', onEnter)
       card.removeEventListener('pointermove', onMove)
       card.removeEventListener('pointerleave', onLeave)
       card.removeEventListener('pointerdown', onDown)
       window.removeEventListener('resize', build)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (io) io.disconnect()
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [colors, glowHex, gap, speed, isActive])
+  }, [colors, glowHex, gap, speed, isActive, isLowEnd, enablePixelCanvas])
+
+  // Low-End Potato PC Mode Fallback: Static Card without Canvas or RAF
+  if (isLowEnd || !enablePixelCanvas) {
+    return (
+      <div
+        ref={cardRef}
+        className={`pixel-card relative rounded-2xl border border-purple-500/20 bg-[#151025]/90 transition-all duration-200 hover:border-purple-400/40 ${className}`}
+        {...props}
+      >
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div ref={cardRef} className={`pixel-card ${className}`} {...props}>

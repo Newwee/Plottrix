@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { memo, useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../../context/AppContext'
 import GlassSurface from '../react-bits/GlassSurface'
 import AnimatedContent from '../react-bits/AnimatedContent'
 import WarmTooltip from '../react-bits/WarmTooltip'
 
-export default function FloatingAiToolbar() {
+function FloatingAiToolbar() {
   const {
     triggerAiTask,
     applyAiResult,
@@ -24,7 +24,7 @@ export default function FloatingAiToolbar() {
 
   const toolbarRef = useRef(null)
 
-  // Listen to selection changes within editor
+  // Listen to selection changes within editor (mouse & touch)
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()
     if (!sel || sel.isCollapsed || !sel.rangeCount) {
@@ -61,15 +61,17 @@ export default function FloatingAiToolbar() {
 
     // Calculate bounding rect and clamp to viewport
     const rect = range.getBoundingClientRect()
-    const toolbarWidth = 380
+    const isTouch = (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
+    const toolbarWidth = Math.min(380, window.innerWidth - 32)
     const toolbarHeight = 52
+    const extraOffset = isTouch ? 28 : 12 // Leave breathing room on touch so mobile copy/share menu isn't obscured
 
-    let top = rect.top - toolbarHeight - 12
+    let top = rect.top - toolbarHeight - extraOffset
     let left = rect.left + rect.width / 2 - toolbarWidth / 2
 
     // Viewport clamping
     if (top < 70) {
-      top = rect.bottom + 12
+      top = rect.bottom + extraOffset
     }
     if (left < 16) {
       left = 16
@@ -83,8 +85,22 @@ export default function FloatingAiToolbar() {
   }, [previewResult, setSelection])
 
   useEffect(() => {
-    document.addEventListener('selectionchange', handleSelection)
-    return () => document.removeEventListener('selectionchange', handleSelection)
+    let timeoutId = null
+    const debouncedSelection = () => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleSelection, 70)
+    }
+
+    document.addEventListener('selectionchange', debouncedSelection)
+    document.addEventListener('mouseup', debouncedSelection)
+    document.addEventListener('touchend', debouncedSelection, { passive: true })
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('selectionchange', debouncedSelection)
+      document.removeEventListener('mouseup', debouncedSelection)
+      document.removeEventListener('touchend', debouncedSelection)
+    }
   }, [handleSelection])
 
   // Sync AI result when completed
@@ -134,7 +150,7 @@ export default function FloatingAiToolbar() {
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 pointer-events-auto transition-all duration-150 select-none"
+      className="fixed z-50 pointer-events-auto transition-all duration-150 select-none max-w-[calc(100vw-32px)]"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`
@@ -144,15 +160,15 @@ export default function FloatingAiToolbar() {
         <GlassSurface
           className="rounded-2xl p-1.5 shadow-[0_12px_40px_rgba(147,51,234,0.35)] border border-purple-300/30 bg-gradient-to-r from-white/15 via-purple-100/10 to-indigo-100/15 backdrop-blur-2xl ring-1 ring-white/20"
         >
-          {/* Main Toolbar 5 Commands */}
-          <div className="flex items-center gap-1">
+          {/* Main Toolbar 5 Commands (Responsive scroll on narrow mobile) */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
             {/* Command 1: แก้คำผิด */}
             <WarmTooltip content="ตรวจและแก้ไขคำสะกดผิดเฉพาะท่อนที่เลือก (1 Trix)" side="top">
               <button
                 type="button"
                 disabled={isAIProcessing}
                 onClick={() => handleCommand('proofread')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeAITool === 'proofread'
                     ? 'bg-purple-600 text-white animate-pulse'
                     : isAIProcessing
@@ -171,7 +187,7 @@ export default function FloatingAiToolbar() {
                 type="button"
                 disabled={isAIProcessing}
                 onClick={() => handleCommand('polish')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeAITool === 'polish'
                     ? 'bg-purple-600 text-white animate-pulse'
                     : isAIProcessing
@@ -190,7 +206,7 @@ export default function FloatingAiToolbar() {
                 type="button"
                 disabled={isAIProcessing}
                 onClick={() => handleCommand('translate')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeAITool === 'translate'
                     ? 'bg-purple-600 text-white animate-pulse'
                     : isAIProcessing
@@ -209,7 +225,7 @@ export default function FloatingAiToolbar() {
                 type="button"
                 disabled={isAIProcessing}
                 onClick={() => handleCommand('plotBranch')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeAITool === 'plotBranch'
                     ? 'bg-purple-600 text-white animate-pulse'
                     : isAIProcessing
@@ -228,7 +244,7 @@ export default function FloatingAiToolbar() {
                 type="button"
                 disabled={isAIProcessing}
                 onClick={() => setActiveMenu(activeMenu === 'customAssistant' ? null : 'customAssistant')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                   activeMenu === 'customAssistant'
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
                     : isAIProcessing
@@ -252,7 +268,7 @@ export default function FloatingAiToolbar() {
                 setActiveMenu(null)
                 setPreviewResult(null)
               }}
-              className="w-6 h-6 rounded-lg text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center text-xs ml-1 transition"
+              className="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center text-xs ml-1 transition cursor-pointer shrink-0"
             >
               ✕
             </button>
@@ -267,12 +283,12 @@ export default function FloatingAiToolbar() {
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 placeholder="สั่งการ AI เช่น: ปรับให้ดูเป็นภาษาโบราณ, เพิ่มอารมณ์บีบคั้น..."
-                className="flex-1 px-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white text-xs outline-none focus:border-purple-400 placeholder:text-slate-400"
+                className="flex-1 px-3 py-2 min-h-[38px] rounded-xl bg-black/40 border border-white/20 text-white text-xs outline-none focus:border-purple-400 placeholder:text-slate-400"
               />
               <button
                 type="submit"
                 disabled={!customPrompt.trim() || isAIProcessing}
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold transition shrink-0"
+                className="px-3.5 py-2 min-h-[38px] rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold transition shrink-0 cursor-pointer"
               >
                 ส่งคำสั่ง
               </button>
@@ -292,14 +308,14 @@ export default function FloatingAiToolbar() {
                 <button
                   type="button"
                   onClick={handleRejectDiff}
-                  className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-slate-300 transition"
+                  className="px-3.5 py-2 min-h-[36px] rounded-lg bg-white/10 hover:bg-white/15 text-xs text-slate-300 transition cursor-pointer"
                 >
                   คงข้อความเดิม
                 </button>
                 <button
                   type="button"
                   onClick={handleAcceptDiff}
-                  className="px-3.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm"
+                  className="px-4 py-2 min-h-[36px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
                 >
                   ✓ ยอมรับ (แทนที่)
                 </button>
@@ -311,3 +327,5 @@ export default function FloatingAiToolbar() {
     </div>
   )
 }
+
+export default memo(FloatingAiToolbar)

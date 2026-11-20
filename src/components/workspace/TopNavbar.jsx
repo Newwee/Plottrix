@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
@@ -16,7 +16,7 @@ const GENRES = [
   'ทั่วไป / ยังไม่ระบุ'
 ]
 
-export default function TopNavbar() {
+function TopNavbar() {
   const { user, profile } = useAuth()
   const {
     novelTitle, setNovelTitle,
@@ -264,3 +264,5 @@ export default function TopNavbar() {
     </header>
   )
 }
+
+export default memo(TopNavbar)

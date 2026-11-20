@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../../context/AppContext'
-import { VOCABULARY_BANK } from '../../lib/vocabularyBank'
 import WarmTooltip from '../react-bits/WarmTooltip'
 
 export default function VocabularySidebar() {
@@ -11,14 +10,34 @@ export default function VocabularySidebar() {
     addToast
   } = useApp()
 
+  const [vocabData, setVocabData] = useState(null)
+  const [isLoadingVocab, setIsLoadingVocab] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategoryIdx, setSelectedCategoryIdx] = useState('all')
 
+  // Dynamic import VOCABULARY_BANK only when sidebar is opened
+  useEffect(() => {
+    if (rightSidebarOpen && !vocabData && !isLoadingVocab) {
+      setIsLoadingVocab(true)
+      import('../../lib/vocabularyBank')
+        .then((mod) => {
+          setVocabData(mod.VOCABULARY_BANK || [])
+        })
+        .catch((err) => {
+          console.error('Failed to load vocabulary bank:', err)
+        })
+        .finally(() => {
+          setIsLoadingVocab(false)
+        })
+    }
+  }, [rightSidebarOpen, vocabData, isLoadingVocab])
+
   // Filter vocabulary entries
   const filteredEntries = useMemo(() => {
+    if (!vocabData) return []
     let result = []
 
-    VOCABULARY_BANK.forEach((category, cIdx) => {
+    vocabData.forEach((category, cIdx) => {
       if (selectedCategoryIdx !== 'all' && selectedCategoryIdx !== cIdx) return
 
       category.entries.forEach(entry => {
@@ -36,7 +55,7 @@ export default function VocabularySidebar() {
     })
 
     return result.slice(0, 80) // Limit for smooth rendering
-  }, [searchQuery, selectedCategoryIdx])
+  }, [vocabData, searchQuery, selectedCategoryIdx])
 
   if (!rightSidebarOpen) return null
 
@@ -52,114 +71,134 @@ export default function VocabularySidebar() {
   }
 
   return (
-    <aside className="w-72 sm:w-80 border-l border-plottrix-line/40 glass-panel flex flex-col h-full shrink-0 select-none transition-all duration-300">
-      {/* Header */}
-      <div className="p-3.5 border-b border-plottrix-line/40 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-base">📚</span>
-          <div>
-            <h3 className="text-xs font-bold text-plottrix-text tracking-wide uppercase">
-              คลังคำศัพท์นักเขียน
-            </h3>
-            <span className="text-[10px] text-plottrix-purple2">1,041 คำ • ปรับตามแนว {genre.split(' ')[0]}</span>
+    <>
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-xs"
+        onClick={() => setRightSidebarOpen(false)}
+      />
+
+      <aside className="fixed lg:relative right-0 top-0 bottom-0 z-40 w-72 sm:w-80 border-l border-plottrix-line/40 glass-panel flex flex-col h-full shrink-0 select-none transition-all duration-300 bg-[#16102a]/95 backdrop-blur-xl shadow-2xl">
+        {/* Header */}
+        <div className="p-3.5 border-b border-plottrix-line/40 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📚</span>
+            <div>
+              <h3 className="text-xs font-bold text-plottrix-text tracking-wide uppercase">
+                คลังคำศัพท์นักเขียน
+              </h3>
+              <span className="text-[10px] text-plottrix-purple2">1,041 คำ • ปรับตามแนว {genre?.split(' ')[0] || 'ทั่วไป'}</span>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setRightSidebarOpen(false)}
+            className="text-plottrix-muted hover:text-white p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-sm transition cursor-pointer"
+            title="ปิดแถบด้านข้าง"
+          >
+            ✕
+          </button>
         </div>
 
-        <button
-          onClick={() => setRightSidebarOpen(false)}
-          className="text-plottrix-muted hover:text-white p-1 rounded-lg text-sm transition"
-          title="ปิดแถบด้านข้าง"
-        >
-          ✕
-        </button>
-      </div>
+        {/* Search Bar */}
+        <div className="p-3 border-b border-plottrix-line/40">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาคำศัพท์ คำไวพจน์..."
+              className="w-full bg-plottrix-panel2/80 border border-plottrix-line/50 focus:border-plottrix-purple2 rounded-xl px-3 py-2 text-xs text-plottrix-text placeholder:text-plottrix-muted outline-none transition"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-plottrix-muted hover:text-white text-xs p-1"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
-      {/* Search Bar */}
-      <div className="p-3 border-b border-plottrix-line/40">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาคำศัพท์ คำไวพจน์..."
-            className="w-full bg-plottrix-panel2/80 border border-plottrix-line/50 focus:border-plottrix-purple2 rounded-xl px-3 py-2 text-xs text-plottrix-text placeholder:text-plottrix-muted outline-none transition"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-plottrix-muted hover:text-white text-xs"
-            >
-              ✕
-            </button>
+          {/* Categories Horizontal Tabs */}
+          {vocabData && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 text-[11px] no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryIdx('all')}
+                className={`px-2 py-1 rounded-lg whitespace-nowrap transition font-medium ${
+                  selectedCategoryIdx === 'all'
+                    ? 'bg-plottrix-purple text-white shadow-xs font-bold'
+                    : 'bg-white/5 text-plottrix-muted hover:text-white'
+                }`}
+              >
+                ทั้งหมด
+              </button>
+              {vocabData.slice(0, 8).map((cat, idx) => (
+                <button
+                  type="button"
+                  key={cat.number}
+                  onClick={() => setSelectedCategoryIdx(idx)}
+                  className={`px-2 py-1 rounded-lg whitespace-nowrap transition font-medium ${
+                    selectedCategoryIdx === idx
+                      ? 'bg-plottrix-purple text-white shadow-xs font-bold'
+                      : 'bg-white/5 text-plottrix-muted hover:text-white'
+                  }`}
+                >
+                  {cat.name.split('และ')[0]}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Categories Horizontal Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-1 text-[11px] no-scrollbar">
-          <button
-            onClick={() => setSelectedCategoryIdx('all')}
-            className={`px-2 py-1 rounded-lg whitespace-nowrap transition font-medium ${
-              selectedCategoryIdx === 'all'
-                ? 'bg-plottrix-purple text-white shadow-xs font-bold'
-                : 'bg-white/5 text-plottrix-muted hover:text-white'
-            }`}
-          >
-            ทั้งหมด
-          </button>
-          {VOCABULARY_BANK.slice(0, 8).map((cat, idx) => (
-            <button
-              key={cat.number}
-              onClick={() => setSelectedCategoryIdx(idx)}
-              className={`px-2 py-1 rounded-lg whitespace-nowrap transition font-medium ${
-                selectedCategoryIdx === idx
-                  ? 'bg-plottrix-purple text-white shadow-xs font-bold'
-                  : 'bg-white/5 text-plottrix-muted hover:text-white'
-              }`}
-            >
-              {cat.name.split('และ')[0]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Vocabulary Results List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-        {filteredEntries.length === 0 ? (
-          <div className="py-12 text-center text-xs text-plottrix-muted">
-            ไม่พบคำศัพท์ที่ตรงกับการค้นหา
-          </div>
-        ) : (
-          filteredEntries.map((item, idx) => (
-            <div
-              key={idx}
-              className="p-3 rounded-xl bg-plottrix-panel2/60 border border-plottrix-line/30 hover:border-plottrix-purple2/30 transition group"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-xs text-plottrix-text group-hover:text-plottrix-purple2 transition">
-                  {item.original}
-                </span>
-                <span className="text-[10px] text-plottrix-muted/80 truncate max-w-[120px]">
-                  {item.categoryName}
-                </span>
-              </div>
-
-              {/* Individual Synonym Word Chips */}
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {item.words?.slice(0, 8).map((w, wIdx) => (
-                  <WarmTooltip key={wIdx} content={`คลิกเพื่อแทรกคำว่า "${w}"`} side="top">
-                    <button
-                      onClick={() => handleInsertWord(w)}
-                      className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-plottrix-purple/30 text-plottrix-text hover:text-white border border-white/5 hover:border-plottrix-purple2/40 text-[11px] transition"
-                    >
-                      {w}
-                    </button>
-                  </WarmTooltip>
-                ))}
-              </div>
+        {/* Vocabulary Results List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {isLoadingVocab ? (
+            <div className="py-16 text-center text-xs text-purple-300 flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+              <span>กำลังดึงข้อมูลคลังคำศัพท์ 20 หมวด...</span>
             </div>
-          ))
-        )}
-      </div>
-    </aside>
+          ) : filteredEntries.length === 0 ? (
+            <div className="py-12 text-center text-xs text-plottrix-muted">
+              ไม่พบคำศัพท์ที่ตรงกับการค้นหา
+            </div>
+          ) : (
+            filteredEntries.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-xl bg-plottrix-panel2/60 border border-plottrix-line/30 hover:border-plottrix-purple2/30 transition group"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-plottrix-text group-hover:text-plottrix-purple2 transition">
+                    {item.original}
+                  </span>
+                  <span className="text-[10px] text-plottrix-muted/80 truncate max-w-[120px]">
+                    {item.categoryName}
+                  </span>
+                </div>
+
+                {/* Individual Synonym Word Chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {item.words?.slice(0, 8).map((w, wIdx) => (
+                    <WarmTooltip key={wIdx} content={`คลิกเพื่อแทรกคำว่า "${w}"`} side="top">
+                      <button
+                        type="button"
+                        onClick={() => handleInsertWord(w)}
+                        className="px-2 py-1 min-h-[28px] rounded-md bg-white/5 hover:bg-plottrix-purple/30 text-plottrix-text hover:text-white border border-white/5 hover:border-plottrix-purple2/40 text-[11px] transition"
+                      >
+                        {w}
+                      </button>
+                    </WarmTooltip>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+    </>
   )
 }

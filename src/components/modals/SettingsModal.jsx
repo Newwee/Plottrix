@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
+import { useDevicePerformance } from '../../hooks/useDevicePerformance'
 import { compressImageToWebP } from '../../lib/imageCompressor'
 import { modalBackdropVariants, modalContentVariants, tabContentVariants } from '../../lib/animations'
 
@@ -32,6 +33,8 @@ export default function SettingsModal() {
     signOut,
     resetPassword
   } = useAuth()
+
+  const { mode: perfMode, setMode: setPerfMode, tier: perfTier } = useDevicePerformance()
 
   const [activeTab, setActiveTab] = useState('account') // 'account' | 'editor'
   const [displayName, setDisplayName] = useState(() => profile?.display_name || user?.user_metadata?.full_name || '')
@@ -372,6 +375,79 @@ export default function SettingsModal() {
                         className="w-full accent-purple-500"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Performance & Graphics Setting */}
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                        กราฟิกและประสิทธิภาพ (Graphics & Performance)
+                      </h4>
+                      <p className="text-[11px] text-zinc-400">
+                        ปรับความละเอียดและเอฟเฟกต์ตามสเปกเครื่องเพื่อความลื่นไหล 60 FPS
+                      </p>
+                    </div>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 font-semibold">
+                      โหมดปัจจุบัน: {perfTier === 'low' ? 'ประหยัดพลังงาน' : perfTier === 'high' ? 'จัดเต็ม' : 'สมดุล'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPerfMode('low')}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                        perfMode === 'low' || (perfMode === 'auto' && perfTier === 'low')
+                          ? 'bg-purple-600/30 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40'
+                          : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                        <span>🥔</span>
+                        <span>ประหยัดพลังงาน</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 leading-snug">
+                        ปิด Canvas 3D & Blur สเปกต่ำ/เน็ตช้า ลื่น 100%
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPerfMode('balanced')}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                        perfMode === 'balanced' || (perfMode === 'auto' && perfTier === 'balanced')
+                          ? 'bg-purple-600/30 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40'
+                          : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                        <span>⚖️</span>
+                        <span>สมดุล (แนะนำ)</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 leading-snug">
+                        ลดจำนวนชิ้นส่วน ปรับ DPR พอเหมาะ ไม่กินแบต
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPerfMode('high')}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                        perfMode === 'high' || (perfMode === 'auto' && perfTier === 'high')
+                          ? 'bg-purple-600/30 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40'
+                          : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                        <span>🚀</span>
+                        <span>จัดเต็ม</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 leading-snug">
+                        เอฟเฟกต์และ Bloom เต็มรูปแบบ สำหรับคอมสเปกแรง
+                      </div>
+                    </button>
                   </div>
                 </div>
 

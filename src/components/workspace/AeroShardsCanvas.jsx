@@ -1,16 +1,24 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useDevicePerformance } from '../../hooks/useDevicePerformance'
 
 /**
  * AeroShardsCanvas
- * 3D Ribbon Shards & Markers Ambient Engine
- * Full-screen 100vw x 100vh canvas positioned behind UI content
- * Driven by window-level mouse parallax & shockwaves (pointer-events: none)
+ * Adaptive 3D Ribbon Shards & Markers Ambient Engine
+ * - Low-end: Fully disabled, replaced with lightweight CSS gradient & static SVG
+ * - Balanced: 250-350 shards, DPR <= 1.15, lightweight 2D canvas
+ * - High-end: Full particle richness, bloom, DPR <= 1.5
+ * - Viewport Culling & Visibility Pause: 100% pauses RAF when offscreen or tab hidden
  */
 export default function AeroShardsCanvas() {
+  const { isLowEnd, isBalanced, shardCount, maxDpr, enableAeroCanvas } = useDevicePerformance()
+  const containerRef = useRef(null)
   const canvasRef = useRef(null)
 
   useEffect(() => {
+    if (!enableAeroCanvas) return
+
     const canvas = canvasRef.current
+    const container = containerRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
@@ -33,9 +41,10 @@ export default function AeroShardsCanvas() {
     const shards = []
     const markers = []
 
-    // Populate shards and markers across 5 depth levels
+    // Adjust shards based on adaptive performance tier
+    const baseCount = isBalanced ? 18 : 36
     for (let lvl = 0; lvl < 5; lvl++) {
-      const count = lvl === 0 ? 28 : lvl === 1 ? 26 : 22
+      const count = Math.round(lvl === 0 ? baseCount : lvl === 1 ? baseCount * 0.9 : baseCount * 0.75)
       for (let i = 0; i < count; i++) {
         shards.push({
           lvl,
@@ -53,7 +62,8 @@ export default function AeroShardsCanvas() {
           flash: 0
         })
       }
-      for (let m = 0; m < 9; m++) {
+      const markerCount = isBalanced ? 4 : 8
+      for (let m = 0; m < markerCount; m++) {
         markers.push({
           lvl,
           x: Math.random(),
@@ -67,7 +77,7 @@ export default function AeroShardsCanvas() {
     function resize() {
       w = Math.max(1, window.innerWidth)
       h = Math.max(1, window.innerHeight)
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      dpr = Math.min(window.devicePixelRatio || 1, maxDpr || 1.2)
       canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
     }
@@ -82,7 +92,7 @@ export default function AeroShardsCanvas() {
     }
 
     const handlePointerDown = (e) => {
-      if (e.button !== 0) return
+      if (e.button !== 0 || isBalanced) return
       pointer.tx = e.clientX / w
       pointer.ty = e.clientY / h
       pointer.holding = true
@@ -92,7 +102,7 @@ export default function AeroShardsCanvas() {
         r: 0,
         alpha: 0.9
       })
-      if (rings.length > 5) rings.shift()
+      if (rings.length > 3) rings.shift()
     }
 
     const handlePointerUp = () => {
@@ -103,11 +113,17 @@ export default function AeroShardsCanvas() {
     window.addEventListener('pointerdown', handlePointerDown, { passive: true })
     window.addEventListener('pointerup', handlePointerUp, { passive: true })
 
-    let animId
+    let animId = null
     let last = performance.now()
     let clock = 0
+    let isVisible = true
 
     function tick(now) {
+      if (!isVisible) {
+        animId = null
+        return
+      }
+
       animId = requestAnimationFrame(tick)
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
@@ -126,12 +142,14 @@ export default function AeroShardsCanvas() {
       const camX = (pointer.x - 0.5) * 36
       const camY = (pointer.y - 0.5) * 22
 
-      // Shockwave rings
-      for (let i = rings.length - 1; i >= 0; i--) {
-        rings[i].r += dt * 520
-        rings[i].alpha *= Math.exp(-dt * 1.9)
-        if (rings[i].alpha < 0.02) {
-          rings.splice(i, 1)
+      // Shockwave rings (only in High-end mode)
+      if (!isBalanced && rings.length > 0) {
+        for (let i = rings.length - 1; i >= 0; i--) {
+          rings[i].r += dt * 520
+          rings[i].alpha *= Math.exp(-dt * 1.9)
+          if (rings[i].alpha < 0.02) {
+            rings.splice(i, 1)
+          }
         }
       }
 
@@ -142,7 +160,7 @@ export default function AeroShardsCanvas() {
         const parallaxX = -camX / depth
         const parallaxY = -camY / depth
 
-        // Survey plus markers
+        // Survey markers
         for (const mk of markers) {
           if (mk.lvl !== lvl) continue
           const mx = (((mk.x * w + clock * 8 / depth + parallaxX) % w) + w) % w
@@ -160,12 +178,6 @@ export default function AeroShardsCanvas() {
           ctx.moveTo(mx, my - s)
           ctx.lineTo(mx, my + s)
           ctx.stroke()
-
-          if (targetBracket > 0.05) {
-            const b = s * 2.6
-            ctx.strokeStyle = `rgba(216, 180, 254, ${(targetBracket * 0.85).toFixed(3)})`
-            ctx.strokeRect(mx - b, my - b, b * 2, b * 2)
-          }
         }
 
         // Flowing 3D ribbon glass shards
@@ -182,7 +194,7 @@ export default function AeroShardsCanvas() {
           const cx = bx + sh.ox
           const cy = by + sh.oy
 
-          if (pointer.inside && !reduce) {
+          if (pointer.inside && !reduce && !isBalanced) {
             const dx = cx - px
             const dy = cy - py
             const dist = Math.hypot(dx, dy)
@@ -191,26 +203,6 @@ export default function AeroShardsCanvas() {
               const push = (1 - dist / reach) * 18 / depth
               fx += (dx / dist) * push
               fy += (dy / dist) * push
-            }
-          }
-
-          if (pointer.holdPower > 0.01 && lvl <= 2) {
-            const orbit = sh.phase * 24 + clock * 3.2
-            const rad = 45 + sh.phase * 65
-            const gx = px + Math.cos(orbit) * rad
-            const gy = py + Math.sin(orbit) * rad * 0.72
-            fx += (gx - cx) * pointer.holdPower * 0.18
-            fy += (gy - cy) * pointer.holdPower * 0.18
-          }
-
-          for (const rg of rings) {
-            const d = Math.hypot(cx - rg.x, cy - rg.y)
-            const band = Math.exp(-((d - rg.r) * (d - rg.r)) / 1800) * rg.alpha
-            if (band > 0.02) {
-              sh.flash = Math.max(sh.flash, band)
-              const ang = Math.atan2(cy - rg.y, cx - rg.x)
-              fx += Math.cos(ang) * band * 28 / depth
-              fy += Math.sin(ang) * band * 28 / depth
             }
           }
 
@@ -250,26 +242,110 @@ export default function AeroShardsCanvas() {
       }
     }
 
-    animId = requestAnimationFrame(tick)
+    // Viewport Culling & Visibility Pause
+    const startAnimation = () => {
+      if (!animId && isVisible) {
+        last = performance.now()
+        animId = requestAnimationFrame(tick)
+      }
+    }
+
+    const stopAnimation = () => {
+      if (animId) {
+        cancelAnimationFrame(animId)
+        animId = null
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isVisible = false
+        stopAnimation()
+      } else {
+        isVisible = true
+        startAnimation()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // IntersectionObserver to stop rendering when scrolled out of view
+    let io = null
+    if (container && 'IntersectionObserver' in window) {
+      io = new IntersectionObserver((entries) => {
+        const [entry] = entries
+        if (entry.isIntersecting) {
+          isVisible = true
+          startAnimation()
+        } else {
+          isVisible = false
+          stopAnimation()
+        }
+      }, { threshold: 0.05 })
+      io.observe(container)
+    } else {
+      startAnimation()
+    }
 
     return () => {
       window.removeEventListener('resize', resize)
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerdown', handlePointerDown)
       window.removeEventListener('pointerup', handlePointerUp)
-      cancelAnimationFrame(animId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (io) io.disconnect()
+      stopAnimation()
     }
-  }, [])
+  }, [enableAeroCanvas, isBalanced, maxDpr])
+
+  // Low-End Potato PC Mode Fallback: 100% Canvas & RAF Disabled
+  if (!enableAeroCanvas || isLowEnd) {
+    return (
+      <div
+        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100dvh',
+          pointerEvents: 'none',
+          zIndex: -1,
+          overflow: 'hidden',
+          background: 'radial-gradient(ellipse at 50% 40%, #15102a 0%, #0c0817 65%, #07050e 100%)'
+        }}
+      >
+        {/* Subtle static ambient stars SVG for depth without GPU cost */}
+        <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="15%" cy="20%" r="1" fill="#c29aff" opacity="0.6" />
+          <circle cx="85%" cy="15%" r="1.5" fill="#a855f7" opacity="0.5" />
+          <circle cx="45%" cy="65%" r="1" fill="#e9d5ff" opacity="0.7" />
+          <circle cx="75%" cy="80%" r="1.2" fill="#9333ea" opacity="0.4" />
+          <circle cx="25%" cy="85%" r="1" fill="#c084fc" opacity="0.5" />
+        </svg>
+        <div
+          className="aero-shards-vignette absolute inset-0 pointer-events-none"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            background: 'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.92) 100%)'
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
+      ref={containerRef}
       className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
       aria-hidden="true"
       style={{
         position: 'fixed',
         inset: 0,
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
         pointerEvents: 'none',
         zIndex: -1,
         overflow: 'hidden'

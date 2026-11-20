@@ -12,6 +12,7 @@ export default function CountUp({
   const [val, setVal] = useState(from)
   const ref = useRef(null)
   const animatedRef = useRef(false)
+  const rafRef = useRef(null)
 
   const format = (v) => {
     const num = Math.round(v).toString()
@@ -25,15 +26,28 @@ export default function CountUp({
       setVal(to)
       return
     }
+
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+    }
+
     const start = performance.now()
     function step(now) {
+      if (document.hidden) {
+        setVal(to)
+        return
+      }
       const t = Math.min(1, (now - start) / duration)
       const ease = 1 - Math.pow(1 - t, 3)
       setVal(from + (to - from) * ease)
-      if (t < 1) requestAnimationFrame(step)
-      else setVal(to)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step)
+      } else {
+        setVal(to)
+        rafRef.current = null
+      }
     }
-    requestAnimationFrame(step)
+    rafRef.current = requestAnimationFrame(step)
   }
 
   useEffect(() => {
@@ -47,10 +61,16 @@ export default function CountUp({
           io.unobserve(entry.target)
         }
       })
-    }, { threshold: 0.25 })
+    }, { threshold: 0.15 })
 
     io.observe(el)
-    return () => io.disconnect()
+
+    return () => {
+      io.disconnect()
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
   }, [to, from, duration])
 
   return (

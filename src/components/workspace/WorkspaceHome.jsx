@@ -54,7 +54,7 @@ export default function WorkspaceHome() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d091a] text-slate-100 flex flex-col font-sans select-none relative overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-[#0d091a] text-slate-100 flex flex-col font-sans select-none relative overflow-x-hidden">
       {/* Background ambient lighting */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />

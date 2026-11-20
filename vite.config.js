@@ -107,6 +107,29 @@ export default defineConfig(({ mode }) => {
           })
         }
       }
-    ]
+    ],
+    build: {
+      target: 'es2020',
+      minify: 'esbuild',
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler') || id.includes('motion')) {
+                return 'vendor-framework'
+              }
+              if (id.includes('@supabase') || id.includes('supabase')) {
+                return 'vendor-supabase'
+              }
+              if (id.includes('canvas-confetti')) {
+                return 'vendor-confetti'
+              }
+            }
+          }
+        }
+      }
+    }
   }
 })

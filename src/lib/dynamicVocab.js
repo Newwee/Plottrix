@@ -4,8 +4,6 @@
  * Condition 3: Active Skill limit (Max 4 skills active simultaneously)
  */
 
-import { VOCABULARY_BANK } from './vocabularyBank'
-
 export const MAX_ACTIVE_SKILLS = 4
 
 export const GENRE_VOCAB_MAP = {
@@ -20,7 +18,10 @@ export const GENRE_VOCAB_MAP = {
   'ทั่วไป / ยังไม่ระบุ': [5, 6]
 }
 
-export function getDynamicVocabularyPrompt(genre) {
+export async function getDynamicVocabularyPrompt(genre) {
+  // Dynamically load VOCABULARY_BANK only when this function is actually called
+  const { VOCABULARY_BANK } = await import('./vocabularyBank')
+
   // Base categories (1: Movement, 2: Gaze & Facial, 3: Speech & Voice, 4: Emotion)
   const baseCategoryNumbers = [1, 2, 3, 4]
   const extraCategories = GENRE_VOCAB_MAP[genre] || [5, 6]

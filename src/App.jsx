@@ -20,7 +20,7 @@ function ViewRouter() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0d091a] flex flex-col items-center justify-center text-purple-300 font-sans">
+        <div className="min-h-[100dvh] bg-[#0d091a] flex flex-col items-center justify-center text-purple-300 font-sans">
           <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
           <span className="text-sm font-semibold tracking-wider">กำลังโหลด Plottrix Workspace...</span>
         </div>
@@ -33,7 +33,7 @@ function ViewRouter() {
           initial="initial"
           animate="animate"
           exit="exit"
-          className="w-full h-full min-h-screen"
+          className="w-full h-full min-h-[100dvh]"
         >
           {currentView === 'studio' || currentView === 'workspace' ? (
             <WorkspaceLayout />

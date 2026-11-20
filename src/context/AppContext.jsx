@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { VOCABULARY_BANK } from '../lib/vocabularyBank'
-import { getDynamicVocabularyPrompt, MAX_ACTIVE_SKILLS } from '../lib/dynamicVocab'
 import confetti from 'canvas-confetti'
 
 const AppContext = createContext(null)
