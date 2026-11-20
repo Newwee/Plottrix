@@ -213,24 +213,65 @@ const DEFAULT_SKILLS = [
 
 export function AppProvider({ children }) {
   // Navigation / Views: 'home' | 'workspace_home' | 'studio'
-  const [currentView, setCurrentView] = useState('home')
+  // Auto-detect route from URL path: /home, /home-workspace, /workspace
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase()
+      if (path === '/workspace' || path === '/studio') return 'studio'
+      if (path === '/home-workspace' || path === '/workspace-home') return 'workspace_home'
+      if (path === '/home' || path === '/') return 'home'
+    }
+    return 'home'
+  })
 
   const navigateTo = useCallback((view) => {
-    if (view === 'workspace') {
-      setCurrentView('workspace_home')
+    let targetView = view
+    let targetPath = '/home'
+
+    if (view === 'workspace' || view === 'studio') {
+      targetView = 'studio'
+      targetPath = '/workspace'
+    } else if (view === 'workspace_home') {
+      targetView = 'workspace_home'
+      targetPath = '/home-workspace'
     } else {
-      setCurrentView(view)
+      targetView = 'home'
+      targetPath = '/home'
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    setCurrentView(targetView)
+
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ view: targetView }, '', targetPath)
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }, [])
 
-  // Novels List & Active Novel
+  // Listen to browser Back / Forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase()
+      if (path === '/workspace' || path === '/studio') {
+        setCurrentView('studio')
+      } else if (path === '/home-workspace' || path === '/workspace-home') {
+        setCurrentView('workspace_home')
+      } else {
+        setCurrentView('home')
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // Novels List & Active Novel (supports deleting down to 0, persists to localStorage)
   const [novels, setNovels] = useState(() => {
     try {
       const saved = localStorage.getItem('plottrix_novels')
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length >= 3) {
+        if (Array.isArray(parsed)) {
           return parsed
         }
       }
@@ -240,7 +281,10 @@ export function AppProvider({ children }) {
     }
   })
   const [activeNovelId, setActiveNovelId] = useState(() => novels[0]?.id || 'novel-1')
-  const activeNovel = useMemo(() => novels.find(n => n.id === activeNovelId) || novels[0] || INITIAL_NOVELS[0], [novels, activeNovelId])
+  const activeNovel = useMemo(() => {
+    if (!novels || novels.length === 0) return null
+    return novels.find(n => n.id === activeNovelId) || novels[0] || null
+  }, [novels, activeNovelId])
 
   // Novel Metadata
   const [novelTitle, setNovelTitle] = useState(() => activeNovel?.title || 'เงาในสายฝน (บททดลอง)')
@@ -253,7 +297,10 @@ export function AppProvider({ children }) {
   const [activePageIdx, setActivePageIdx] = useState(0)
 
   // Current Chapter helper
-  const currentChapter = useMemo(() => chapters.find(c => c.id === activeChapterId) || chapters[0] || { pages: [''] }, [chapters, activeChapterId])
+  const currentChapter = useMemo(() => {
+    if (!chapters || chapters.length === 0) return { pages: [''] }
+    return chapters.find(c => c.id === activeChapterId) || chapters[0] || { pages: [''] }
+  }, [chapters, activeChapterId])
   const currentPageText = currentChapter?.pages?.[activePageIdx] || ''
 
   // Editor Appearance & Behavior
@@ -477,11 +524,13 @@ export function AppProvider({ children }) {
     navigateTo('studio')
   }, [novels, navigateTo])
 
-  // Create novel handler with plan quota check
+  // Create novel handler with plan quota check (Free Plan allows 3 novels)
+  const FREE_PLAN_LIMIT = 3
+
   const createNovel = useCallback(({ title, genre: g, pov: p, synopsis, cover }) => {
-    if (plan === 'Free Plan' && novels.length >= 1) {
+    if (plan === 'Free Plan' && novels.length >= FREE_PLAN_LIMIT) {
       addToast({
-        title: 'โควต้า Free Plan จำกัด 1 เรื่อง',
+        title: `โควต้า Free Plan จำกัด ${FREE_PLAN_LIMIT} เรื่อง`,
         description: 'กรุณาอัปเกรดเป็น Pro Plan++ เพื่อปลดล็อกการสร้างนิยายไม่จำกัด',
         actionLabel: 'อัปเกรดแผน',
         onAction: () => setActiveModal('pricing'),
@@ -498,7 +547,7 @@ export function AppProvider({ children }) {
       genre: g || 'แฟนตาซี / กำลังภายใน',
       pov: p || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)',
       synopsis: synopsis || '',
-      cover: cover || 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=400&auto=format&fit=crop&q=80',
+      cover: cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
       wordCount: 0,
       chapterCount: 1,
       updatedAt: 'วันนี้',
@@ -523,18 +572,21 @@ export function AppProvider({ children }) {
     return true
   }, [plan, novels.length, openNovel, addToast])
 
+  // Delete novel handler (supports deleting all novels down to 0)
   const deleteNovel = useCallback((id) => {
-    if (novels.length <= 1) {
-      addToast({
-        title: 'ไม่สามารถลบนิยายเรื่องนี้ได้',
-        description: 'ต้องมีนิยายในคลังอย่างน้อย 1 เรื่องสำหรับเขียนงาน',
-        fuseColor: '#ef4444'
-      })
-      return
-    }
-    setNovels(prev => prev.filter(n => n.id !== id))
+    setNovels(prev => {
+      const remaining = prev.filter(n => n.id !== id)
+      if (activeNovelId === id) {
+        if (remaining.length > 0) {
+          openNovel(remaining[0].id)
+        } else {
+          setActiveNovelId('')
+        }
+      }
+      return remaining
+    })
     addToast({ title: 'ลบนิยายออกจากคลังแล้ว', duration: 2500 })
-  }, [novels.length, addToast])
+  }, [activeNovelId, openNovel, addToast])
 
   // Upgrade Plan Handler with Confetti
   const upgradePlanPrototype = useCallback((newPlan) => {

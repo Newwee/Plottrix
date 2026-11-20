@@ -464,76 +464,86 @@ function StudioEditor() {
             </div>
 
             {/* Add Page (+ หน้า) */}
-            <button
-              type="button"
-              onClick={() => {
-                flushSave()
-                addPage()
-              }}
-              className="px-2.5 h-7 rounded-lg text-xs text-violet-300 hover:bg-violet-500/20 font-bold transition whitespace-nowrap cursor-pointer"
-              title="เพิ่มหน้ากระดาษใหม่"
-            >
-              + หน้า
-            </button>
+            <WarmTooltip content="เพิ่มหน้ากระดาษใหม่ต่อท้ายบท" side="bottom">
+              <button
+                type="button"
+                onClick={() => {
+                  flushSave()
+                  addPage()
+                }}
+                className="px-2.5 h-7 rounded-lg text-xs text-violet-300 hover:bg-violet-500/20 font-bold transition whitespace-nowrap cursor-pointer"
+              >
+                + หน้า
+              </button>
+            </WarmTooltip>
           </div>
         </div>
 
         {/* Middle Group: Quick Formatting Snippets */}
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleInsertIndent}
-            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer"
-            title="เพิ่มย่อหน้ามาตรฐาน 4 เคาะ"
-          >
-            ⇥ ย่อหน้า
-          </button>
-          <button
-            type="button"
-            onClick={handleInsertDialogue}
-            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs font-serif transition cursor-pointer"
-            title="แทรกเครื่องหมายคำพูด “...”"
-          >
-            “คำพูด”
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (textareaRef.current) {
-                textareaRef.current.focus()
-                const len = localText.length
-                textareaRef.current.selectionStart = Math.max(0, len - 80)
-                textareaRef.current.selectionEnd = len
-                handleSelect({ target: textareaRef.current })
-              }
-            }}
-            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs text-violet-300 transition cursor-pointer"
-            title="แสดงแถบเครื่องมือคลุมดำ AI"
-          >
-            ✦ แถบ AI
-          </button>
+          <WarmTooltip content="เพิ่มย่อหน้ามาตรฐาน 4 เคาะตามหลักวรรณกรรม" side="bottom">
+            <button
+              type="button"
+              onClick={handleInsertIndent}
+              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer"
+            >
+              ⇥ ย่อหน้า
+            </button>
+          </WarmTooltip>
+
+          <WarmTooltip content="แทรกเครื่องหมายคำพูด “...” พร้อมจัดเคอร์เซอร์ตรงกลาง" side="bottom">
+            <button
+              type="button"
+              onClick={handleInsertDialogue}
+              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs font-serif transition cursor-pointer"
+            >
+              “คำพูด”
+            </button>
+          </WarmTooltip>
+
+          <WarmTooltip content="เปิดแถบเครื่องมือด่วน AI ผู้ช่วยบรรณาธิการ" side="bottom">
+            <button
+              type="button"
+              onClick={() => {
+                if (textareaRef.current) {
+                  textareaRef.current.focus()
+                  const len = localText.length
+                  textareaRef.current.selectionStart = Math.max(0, len - 80)
+                  textareaRef.current.selectionEnd = len
+                  handleSelect({ target: textareaRef.current })
+                }
+              }}
+              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs text-violet-300 transition cursor-pointer"
+            >
+              ✦ แถบ AI
+            </button>
+          </WarmTooltip>
         </div>
 
         {/* Right Group: Font Size & 3 Themes (Obsidian, Midnight, Paper) */}
         <div className="flex items-center gap-2.5">
           {/* Font Size */}
-          <div className="flex items-center px-2 py-1 rounded-xl elevated-surface border text-xs">
-            <button
-              type="button"
-              onClick={() => setFontSize(s => Math.max(14, s - 1))}
-              className="hover:text-violet-400 px-1 font-bold cursor-pointer"
-            >
-              ก-
-            </button>
-            <span className="font-bold w-6 text-center text-slate-200">{fontSize}</span>
-            <button
-              type="button"
-              onClick={() => setFontSize(s => Math.min(24, s + 1))}
-              className="hover:text-violet-400 px-1 font-bold cursor-pointer"
-            >
-              ก+
-            </button>
-          </div>
+          <WarmTooltip content="ปรับขนาดตัวอักษรของกระดาษพิมพ์" side="bottom">
+            <div className="flex items-center px-2 py-1 rounded-xl elevated-surface border text-xs">
+              <button
+                type="button"
+                onClick={() => setFontSize(s => Math.max(14, s - 1))}
+                className="hover:text-violet-400 px-1 font-bold cursor-pointer"
+                title="ลดขนาดตัวอักษร"
+              >
+                ก-
+              </button>
+              <span className="font-bold w-6 text-center text-slate-200">{fontSize}</span>
+              <button
+                type="button"
+                onClick={() => setFontSize(s => Math.min(24, s + 1))}
+                className="hover:text-violet-400 px-1 font-bold cursor-pointer"
+                title="เพิ่มขนาดตัวอักษร"
+              >
+                ก+
+              </button>
+            </div>
+          </WarmTooltip>
 
           {/* Theme Switcher Dots */}
           <div className="flex items-center gap-1.5" title="เปลี่ยนโทนสีหน้ากระดาษ">

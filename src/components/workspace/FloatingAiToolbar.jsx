@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext'
 import GlassSurface from '../react-bits/GlassSurface'
 import AnimatedContent from '../react-bits/AnimatedContent'
 import WarmTooltip from '../react-bits/WarmTooltip'
+import StatusMark from '../react-bits/StatusMark'
 
 function FloatingAiToolbar() {
   const {
@@ -24,65 +25,98 @@ function FloatingAiToolbar() {
 
   const toolbarRef = useRef(null)
 
-  // Listen to selection changes within editor (mouse & touch)
+  // Listen to selection changes within editor (textarea & DOM selection)
   const handleSelection = useCallback(() => {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
-      if (!previewResult) {
+    let selectedText = ''
+    let rect = null
+
+    // 1. Check textarea first
+    const editorEl = document.getElementById('tour-target-editor-text')
+    if (editorEl && typeof editorEl.selectionStart === 'number' && typeof editorEl.selectionEnd === 'number') {
+      const start = editorEl.selectionStart
+      const end = editorEl.selectionEnd
+      if (end > start) {
+        const val = editorEl.value || ''
+        const candidate = val.substring(start, end).trim()
+        if (candidate.length >= 2) {
+          selectedText = candidate
+          setSelection({ text: candidate, start, end })
+
+          const editorRect = editorEl.getBoundingClientRect()
+          const lines = val.substring(0, start).split('\n').length
+          const approxLineHeight = 28
+          const relativeY = Math.min(editorRect.height - 40, lines * approxLineHeight)
+
+          rect = {
+            top: Math.max(editorRect.top + 20, Math.min(window.innerHeight - 120, editorRect.top + relativeY)),
+            bottom: Math.min(window.innerHeight - 60, editorRect.top + relativeY + 40),
+            left: editorRect.left + 40,
+            right: editorRect.right - 40,
+            width: Math.min(500, editorRect.width - 80)
+          }
+        }
+      }
+    }
+
+    // 2. Fallback to DOM selection
+    if (!selectedText) {
+      const sel = window.getSelection()
+      if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+        const text = sel.toString().trim()
+        if (text.length >= 2) {
+          const range = sel.getRangeAt(0)
+          const rangeRect = range.getBoundingClientRect()
+          if (rangeRect.width > 0 && rangeRect.height > 0) {
+            selectedText = text
+            setSelection({ text, start: 0, end: text.length })
+            rect = rangeRect
+          }
+        }
+      }
+    }
+
+    if (!selectedText || !rect) {
+      if (!previewResult && !isAIProcessing) {
         setVisible(false)
         setActiveMenu(null)
       }
       return
     }
 
-    const text = sel.toString().trim()
-    if (text.length < 2) {
-      if (!previewResult) {
-        setVisible(false)
-      }
-      return
-    }
-
-    // Check if selection is within the editor element
-    const range = sel.getRangeAt(0)
-    const container = range.commonAncestorContainer
-    const editorEl = document.getElementById('tour-target-editor-text') || document.getElementById('tour-target-editor')
-
-    if (!editorEl || (!editorEl.contains(container) && container !== editorEl)) {
-      return
-    }
-
-    // Save selection in AppContext
-    setSelection({
-      text,
-      start: 0,
-      end: text.length
-    })
-
-    // Calculate bounding rect and clamp to viewport
-    const rect = range.getBoundingClientRect()
     const isTouch = (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
-    const toolbarWidth = Math.min(380, window.innerWidth - 32)
+    const toolbarWidth = Math.min(420, window.innerWidth - 32)
     const toolbarHeight = 52
-    const extraOffset = isTouch ? 28 : 12 // Leave breathing room on touch so mobile copy/share menu isn't obscured
+    const extraOffset = isTouch ? 28 : 12
 
     let top = rect.top - toolbarHeight - extraOffset
     let left = rect.left + rect.width / 2 - toolbarWidth / 2
 
-    // Viewport clamping
     if (top < 70) {
       top = rect.bottom + extraOffset
     }
-    if (left < 16) {
-      left = 16
-    }
+    if (left < 16) left = 16
     if (left + toolbarWidth > window.innerWidth - 16) {
       left = window.innerWidth - toolbarWidth - 16
     }
 
     setPosition({ top, left })
     setVisible(true)
-  }, [previewResult, setSelection])
+  }, [previewResult, isAIProcessing, setSelection])
+
+  // Sync when selection text changes in AppContext
+  useEffect(() => {
+    if (selection?.text && selection.text.trim().length >= 2) {
+      const editorEl = document.getElementById('tour-target-editor-text')
+      if (editorEl) {
+        const editorRect = editorEl.getBoundingClientRect()
+        const toolbarWidth = Math.min(420, window.innerWidth - 32)
+        let top = Math.max(90, Math.min(window.innerHeight - 100, editorRect.top + 70))
+        let left = Math.max(16, Math.min(window.innerWidth - toolbarWidth - 16, editorRect.left + (editorRect.width - toolbarWidth) / 2))
+        setPosition({ top, left })
+        setVisible(true)
+      }
+    }
+  }, [selection?.text])
 
   useEffect(() => {
     let timeoutId = null
@@ -93,13 +127,27 @@ function FloatingAiToolbar() {
 
     document.addEventListener('selectionchange', debouncedSelection)
     document.addEventListener('mouseup', debouncedSelection)
+    document.addEventListener('keyup', debouncedSelection)
     document.addEventListener('touchend', debouncedSelection, { passive: true })
+
+    const editorEl = document.getElementById('tour-target-editor-text')
+    if (editorEl) {
+      editorEl.addEventListener('select', debouncedSelection)
+      editorEl.addEventListener('mouseup', debouncedSelection)
+      editorEl.addEventListener('keyup', debouncedSelection)
+    }
 
     return () => {
       clearTimeout(timeoutId)
       document.removeEventListener('selectionchange', debouncedSelection)
       document.removeEventListener('mouseup', debouncedSelection)
+      document.removeEventListener('keyup', debouncedSelection)
       document.removeEventListener('touchend', debouncedSelection)
+      if (editorEl) {
+        editorEl.removeEventListener('select', debouncedSelection)
+        editorEl.removeEventListener('mouseup', debouncedSelection)
+        editorEl.removeEventListener('keyup', debouncedSelection)
+      }
     }
   }, [handleSelection])
 
@@ -257,6 +305,19 @@ function FloatingAiToolbar() {
               </button>
             </WarmTooltip>
 
+            {/* StatusMark indicator when AI processing */}
+            {isAIProcessing && (
+              <div className="flex items-center px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-400/30 text-[11px] shrink-0">
+                <StatusMark
+                  status="running"
+                  size={12}
+                  fontSize={10}
+                  label="กำลังประมวลผล..."
+                  color="#c084fc"
+                />
+              </div>
+            )}
+
             {/* Cancel / Close button */}
             <button
               type="button"
@@ -269,6 +330,7 @@ function FloatingAiToolbar() {
                 setPreviewResult(null)
               }}
               className="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center text-xs ml-1 transition cursor-pointer shrink-0"
+              title="ปิดแถบเครื่องมือ"
             >
               ✕
             </button>

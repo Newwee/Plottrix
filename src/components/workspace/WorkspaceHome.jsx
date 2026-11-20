@@ -21,6 +21,7 @@ export default function WorkspaceHome() {
   const { user } = useAuth()
 
   const [isCreating, setIsCreating] = useState(false)
+  const [novelToDelete, setNovelToDelete] = useState(null)
   const [newTitle, setNewTitle] = useState('')
   const [newGenre, setNewGenre] = useState('แฟนตาซี / กำลังภายใน')
   const [newSynopsis, setNewSynopsis] = useState('')
@@ -32,7 +33,8 @@ export default function WorkspaceHome() {
   const [isDragging, setIsDragging] = useState(false)
 
   const isFreePlan = plan === 'Free Plan'
-  const isQuotaFull = isFreePlan && novels.length >= 1
+  const FREE_PLAN_LIMIT = 3
+  const isQuotaFull = isFreePlan && novels.length >= FREE_PLAN_LIMIT
   const today = new Date().toISOString().slice(0, 10)
   const canClaimDaily = lastDailyClaim !== today
 
@@ -221,7 +223,7 @@ export default function WorkspaceHome() {
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-plottrix-muted">โควต้านิยาย ({plan})</span>
               <span className="font-bold text-purple-300">
-                {novels.length} / {isFreePlan ? '1 เรื่อง' : 'ไม่จำกัด'}
+                {isFreePlan ? `${novels.length} / ${FREE_PLAN_LIMIT} เรื่อง` : `${novels.length} เรื่อง (ไม่จำกัด)`}
               </span>
             </div>
             <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -229,23 +231,27 @@ export default function WorkspaceHome() {
                 className={`h-full transition-all duration-500 rounded-full ${
                   isQuotaFull ? 'bg-amber-400' : 'bg-gradient-to-r from-purple-500 to-indigo-500'
                 }`}
-                style={{ width: isFreePlan ? `${(novels.length / 1) * 100}%` : '40%' }}
+                style={{ width: isFreePlan ? `${Math.min(100, (novels.length / FREE_PLAN_LIMIT) * 100)}%` : '100%' }}
               />
             </div>
             {isQuotaFull ? (
               <div className="mt-2.5 flex items-center justify-between text-[11px]">
-                <span className="text-amber-400">ครบโควต้า Free Plan แล้ว</span>
+                <span className="text-amber-400 font-semibold">ครบโควต้า Free Plan แล้ว ({novels.length}/{FREE_PLAN_LIMIT})</span>
                 <button
                   type="button"
                   onClick={() => setActiveModal('pricing')}
-                  className="font-bold text-purple-400 hover:text-purple-300 underline"
+                  className="font-bold text-purple-400 hover:text-purple-300 underline cursor-pointer"
                 >
                   อัปเกรด Pro++
                 </button>
               </div>
+            ) : isFreePlan ? (
+              <p className="text-[11px] text-emerald-400 mt-2 font-medium">
+                ✓ สามารถสร้างเพิ่มได้อีก {FREE_PLAN_LIMIT - novels.length} เรื่อง
+              </p>
             ) : (
-              <p className="text-[11px] text-emerald-400 mt-2">
-                ✓ พร้อมสร้างผลงานเรื่องใหม่ได้ทันที
+              <p className="text-[11px] text-emerald-400 mt-2 font-medium">
+                ✓ สมาชิก {plan} สิทธิ์สร้างผลงานไม่จำกัด
               </p>
             )}
           </div>
@@ -314,6 +320,28 @@ export default function WorkspaceHome() {
               scrollbarColor: '#9333ea rgba(255,255,255,0.08)'
             }}
           >
+            {/* Empty Bookshelf State if user deleted all novels */}
+            {novels.length === 0 && (
+              <div className="w-full max-w-lg mx-auto my-6 py-10 px-6 rounded-3xl border border-white/10 bg-[#16102a]/60 backdrop-blur-md text-center flex flex-col items-center shadow-xl">
+                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl mb-3 shadow-inner">
+                  📚
+                </div>
+                <h3 className="text-base font-bold text-white mb-1">
+                  ยังไม่มีนิยายในชั้นวางของคุณ
+                </h3>
+                <p className="text-xs text-slate-400 max-w-sm mb-5 leading-relaxed">
+                  คุณได้ลบนิยายทั้งหมดแล้ว เริ่มต้นสร้างผลงานชิ้นใหม่เพื่อร่วมเขียนกับ AI ผู้ช่วยบรรณาธิการ
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(true)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition cursor-pointer"
+                >
+                  + สร้างนิยายเรื่องแรก
+                </button>
+              </div>
+            )}
+
             {/* Cards: Novels on the Shelf */}
             {novels.map((novel, index) => (
               <article
@@ -324,7 +352,7 @@ export default function WorkspaceHome() {
                 <div>
                   {/* Book Cover 3:4 */}
                   <div
-                    className="w-full h-64 rounded-xl overflow-hidden relative mb-4 shadow-md bg-black/40 cursor-pointer"
+                    className="w-full h-64 rounded-xl overflow-hidden relative mb-4 shadow-md bg-gradient-to-br from-purple-950/60 via-[#16102a] to-indigo-950/60 border border-white/10 cursor-pointer"
                     onClick={() => openNovel(novel.id)}
                   >
                     <img
@@ -375,9 +403,7 @@ export default function WorkspaceHome() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนิยาย "${novel.title}"?`)) {
-                          deleteNovel(novel.id)
-                        }
+                        setNovelToDelete(novel)
                       }}
                       className="w-8 h-8 rounded-xl bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-white/10 flex items-center justify-center text-xs transition cursor-pointer"
                     >
@@ -407,18 +433,10 @@ export default function WorkspaceHome() {
               </h3>
               <p className="text-xs text-plottrix-muted mt-2 leading-relaxed">
                 {isQuotaFull
-                  ? 'โควต้า Free Plan จำกัด 1 เรื่อง กรุณาอัปเกรด'
+                  ? `โควต้า Free Plan จำกัด ${FREE_PLAN_LIMIT} เรื่อง กรุณาอัปเกรด`
                   : 'คลิกเพื่อตั้งชื่อเรื่องและเปิดห้องเขียนใหม่'}
               </p>
             </div>
-          </div>
-
-          {/* Bookshelf Wooden Plank Rail (เส้นฐานรองชั้นวางหนังสือตรงตามรูปวาดเป๊ะ) */}
-          <div className="relative w-full max-w-5xl mx-auto mt-2 mb-6">
-            <div className="h-3 w-full bg-gradient-to-r from-[#21163e] via-[#482c82] to-[#21163e] rounded-full shadow-[0_8px_30px_rgba(168,85,247,0.45)] border-t border-purple-400/50 flex items-center justify-center">
-              <div className="h-0.5 w-11/12 bg-purple-300/40 rounded-full" />
-            </div>
-            <div className="h-1.5 w-4/5 mx-auto bg-black/50 blur-xs rounded-full" />
           </div>
         </div>
       </main>
@@ -508,6 +526,42 @@ export default function WorkspaceHome() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Modal: Delete Novel Confirmation */}
+      {novelToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#16102a] border border-red-500/30 p-6 shadow-2xl animate-fade-in text-center">
+            <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-2xl text-red-400 shadow-inner">
+              ⚠️
+            </div>
+            <h3 className="font-bold text-base text-white mb-2">
+              ยืนยันการลบนิยายเรื่องนี้?
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-6">
+              คุณแน่ใจหรือไม่ว่าต้องการลบนิยายเรื่อง <span className="text-purple-300 font-bold">"{novelToDelete.title}"</span>? การดำเนินการนี้จะลบเนื้อหาและข้อมูลตัวละครทั้งหมดออกจากคลังของคุณอย่างถาวร
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setNovelToDelete(null)}
+                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white font-semibold text-xs transition cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteNovel(novelToDelete.id)
+                  setNovelToDelete(null)
+                }}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 transition cursor-pointer"
+              >
+                ลบนิยายถาวร
+              </button>
+            </div>
           </div>
         </div>
       )}

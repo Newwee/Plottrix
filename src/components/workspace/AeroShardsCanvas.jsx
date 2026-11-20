@@ -57,15 +57,16 @@ export default function AeroShardsCanvas() {
     const shards = []
     const markers = []
 
-    const baseCount = isBalanced ? 16 : 28
+    const baseCount = isBalanced ? 24 : 38
     for (let lvl = 0; lvl < 5; lvl++) {
       const count = Math.round(lvl === 0 ? baseCount : lvl === 1 ? baseCount * 0.9 : baseCount * 0.75)
       for (let i = 0; i < count; i++) {
         shards.push({
           lvl,
           phase: (i / count) + Math.random() * 0.04,
-          lane: (Math.random() * 2 - 1) * 0.16,
-          size: (10 + Math.random() * 12) / DEPTHS[lvl],
+          baseY: (i / count) * 0.9 + 0.05,
+          lane: (Math.random() * 2 - 1) * 0.25,
+          size: (11 + Math.random() * 14) / DEPTHS[lvl],
           angle: Math.random() * Math.PI * 2,
           spin: (Math.random() - 0.5) * 1.2,
           isAccent: Math.random() < 0.38,
@@ -77,7 +78,7 @@ export default function AeroShardsCanvas() {
           flash: 0
         })
       }
-      const markerCount = isBalanced ? 4 : 7
+      const markerCount = isBalanced ? 6 : 10
       for (let m = 0; m < markerCount; m++) {
         markers.push({
           lvl,
@@ -197,7 +198,7 @@ export default function AeroShardsCanvas() {
           const slope = (lvl % 2 === 0 ? -0.22 : 0.18) * (s0 - 0.5)
           const wave = Math.sin(s0 * Math.PI * 2.2 + clock * 0.9 + lvl * 1.4) * 0.09 / depth
           const bx = s0 * w + parallaxX
-          const by = (0.46 + slope + wave + sh.lane / depth) * h + parallaxY
+          const by = (sh.baseY + slope * 0.35 + wave + (sh.lane / depth) * 0.25) * h + parallaxY
 
           let fx = 0
           let fy = 0
@@ -331,15 +332,6 @@ export default function AeroShardsCanvas() {
           <circle cx="75%" cy="80%" r="1.2" fill="#9333ea" opacity="0.4" />
           <circle cx="25%" cy="85%" r="1" fill="#c084fc" opacity="0.5" />
         </svg>
-        <div
-          className="aero-shards-vignette absolute inset-0 pointer-events-none"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.92) 100%)'
-          }}
-        />
       </div>
     )
   }
@@ -366,35 +358,25 @@ export default function AeroShardsCanvas() {
           placement="full"
           material="glass"
           markers="plus"
-          count={isHighEnd ? 1300 : 500}
-          shardSize={1}
-          spread={1}
-          twist={1}
-          billow={1}
+          count={isHighEnd ? 1400 : 700}
+          shardSize={1.2}
+          spread={2.5}
+          twist={1.2}
+          billow={1.1}
           speed={0.8}
-          scale={1}
-          depthOfField={0.75}
-          vignette={0.3}
-          glow={isHighEnd ? 0.35 : 0.15}
-          grain={isHighEnd ? 0.06 : 0}
+          scale={1.35}
+          depthOfField={0.5}
+          vignette={0}
+          glow={isHighEnd ? 0.38 : 0.18}
+          grain={isHighEnd ? 0.05 : 0}
           mouseInteraction={true}
-          mouseStrength={0.6}
-          parallax={0.5}
+          mouseStrength={0.65}
+          parallax={0.55}
           pulseOnClick={true}
           holdToGather={true}
           dpr={isHighEnd ? 1.5 : 1.0}
           onError={() => setWebGpuFailed(true)}
           className="w-full h-full pointer-events-none"
-        />
-        <div
-          className="aero-shards-vignette absolute inset-0 pointer-events-none"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            background:
-              'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.65) 100%)'
-          }}
         />
       </div>
     )
@@ -425,16 +407,6 @@ export default function AeroShardsCanvas() {
           width: '100%',
           height: '100%',
           display: 'block'
-        }}
-      />
-      <div
-        className="aero-shards-vignette absolute inset-0 pointer-events-none"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.65) 100%)'
         }}
       />
     </div>
