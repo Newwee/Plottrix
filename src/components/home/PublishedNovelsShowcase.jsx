@@ -7,6 +7,10 @@ export default function PublishedNovelsShowcase() {
   const [stories, setStories] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Local reader state maps for instant reactive badges
+  const [readerProgressMap, setReaderProgressMap] = useState({})
+  const [completionMap, setCompletionMap] = useState({})
+
   useEffect(() => {
     let isMounted = true
 
@@ -16,6 +20,24 @@ export default function PublishedNovelsShowcase() {
       if (isMounted) {
         setStories(data)
         setLoading(false)
+
+        // Read local storage reading states for each story
+        const progMap = {}
+        const compMap = {}
+        if (typeof window !== 'undefined') {
+          data.forEach(s => {
+            const rawProg = localStorage.getItem(`plottrix_read_progress_${s.id}`)
+            if (rawProg) {
+              try { progMap[s.id] = JSON.parse(rawProg) } catch {}
+            }
+            const rawComp = localStorage.getItem(`plottrix_story_completion_${s.id}`)
+            if (rawComp) {
+              try { compMap[s.id] = JSON.parse(rawComp) } catch {}
+            }
+          })
+        }
+        setReaderProgressMap(progMap)
+        setCompletionMap(compMap)
       }
     }
 
@@ -75,58 +97,108 @@ export default function PublishedNovelsShowcase() {
         ) : (
           /* Responsive Book Cards Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {stories.map((story) => (
-              <div
-                key={story.id}
-                className="group relative rounded-3xl border border-purple-500/25 bg-[#15102a]/80 hover:bg-[#1a1336]/90 hover:border-purple-400/50 p-6 flex flex-col justify-between shadow-xl transition-all duration-300 backdrop-blur-md overflow-hidden"
-              >
-                <div>
-                  {/* Card Cover & Badge Top Row */}
-                  <div className="flex items-start gap-4 mb-4">
-                    <img
-                      src={story.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
-                      alt={story.title}
-                      className="w-16 h-22 object-cover rounded-xl border border-white/10 shadow-md group-hover:scale-105 transition-transform duration-300 shrink-0"
-                    />
+            {stories.map((story) => {
+              const progress = readerProgressMap[story.id]
+              const completion = completionMap[story.id]
+              const hasReadBefore = Boolean(progress && progress.chapterNumber)
 
-                    <div className="min-w-0 flex-1">
-                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 mb-2 truncate max-w-full">
-                        {story.genre || 'แฟนตาซี'}
-                      </span>
+              // Check if author added new chapters after reader completed
+              const hasNewChaptersAfterCompletion =
+                Boolean(completion && story.chapterCount > completion.completedChapterCount)
+              const newChapterCount = hasNewChaptersAfterCompletion
+                ? story.chapterCount - completion.completedChapterCount
+                : 0
 
-                      <h4 className="text-base sm:text-lg font-bold text-white group-hover:text-purple-200 transition line-clamp-2 leading-snug">
-                        {story.title}
-                      </h4>
+              return (
+                <div
+                  key={story.id}
+                  className="group relative rounded-3xl border border-purple-500/25 bg-[#15102a]/80 hover:bg-[#1a1336]/90 hover:border-purple-400/50 p-6 flex flex-col justify-between shadow-xl transition-all duration-300 backdrop-blur-md overflow-hidden"
+                >
+                  <div>
+                    {/* Card Cover & Badge Top Row */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <img
+                        src={story.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
+                        alt={story.title}
+                        className="w-16 h-22 object-cover rounded-xl border border-white/10 shadow-md group-hover:scale-105 transition-transform duration-300 shrink-0"
+                      />
 
-                      <p className="text-xs text-plottrix-muted mt-1 truncate">
-                        โดย <strong className="text-purple-300 font-semibold">{story.authorName}</strong>
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 truncate max-w-full">
+                            {story.genre || 'แฟนตาซี'}
+                          </span>
+
+                          {/* Dynamic Arc / New Chapter / Read Status Badges */}
+                          {hasNewChaptersAfterCompletion ? (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-gradient-to-r from-pink-500/30 to-purple-500/30 text-amber-300 border border-pink-400/50 animate-pulse shadow-sm flex items-center gap-1">
+                              <span>🔔</span>
+                              <span>มี ARC ใหม่! (+{newChapterCount} ตอน)</span>
+                            </span>
+                          ) : completion ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                              <span>✅</span>
+                              <span>อ่านครบแล้ว</span>
+                            </span>
+                          ) : hasReadBefore ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                              <span>🔖</span>
+                              <span>ถึงตอนที่ {progress.chapterNumber}</span>
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <h4 className="text-base sm:text-lg font-bold text-white group-hover:text-purple-200 transition line-clamp-2 leading-snug">
+                          {story.title}
+                        </h4>
+
+                        <p className="text-xs text-plottrix-muted mt-1 truncate">
+                          โดย <strong className="text-purple-300 font-semibold">{story.authorName}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Synopsis snippet */}
+                    <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-4">
+                      {story.synopsis || 'ร่วมติดตามเรื่องราวอันน่าติดตามที่เขียนและเรียบเรียงอย่างประณีต...'}
+                    </p>
+                  </div>
+
+                  {/* Footer Meta & Read Action */}
+                  <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                    <div className="text-[11px] text-plottrix-muted">
+                      <span className="text-purple-300 font-bold">{story.chapterCount || 0}</span> ตอน
+                      {story.published_arc && (
+                        <span className="hidden sm:inline text-slate-400"> · {story.published_arc}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigateTo('reader', story.id)}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ${
+                          hasNewChaptersAfterCompletion
+                            ? 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:brightness-110 shadow-pink-600/30 animate-pulse'
+                            : hasReadBefore
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-purple-600/30'
+                            : 'bg-purple-600 hover:bg-purple-500 text-white'
+                        }`}
+                      >
+                        <span>
+                          {hasNewChaptersAfterCompletion
+                            ? 'อ่าน ARC ใหม่'
+                            : hasReadBefore
+                            ? `อ่านต่อ (ตอนที่ ${progress.chapterNumber})`
+                            : 'เริ่มอ่าน'}
+                        </span>
+                        <span>→</span>
+                      </button>
                     </div>
                   </div>
-
-                  {/* Synopsis snippet */}
-                  <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-4">
-                    {story.synopsis || 'ร่วมติดตามเรื่องราวอันน่าติดตามที่เขียนและเรียบเรียงอย่างประณีต...'}
-                  </p>
                 </div>
-
-                {/* Footer Meta & Read Action */}
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-                  <div className="text-[11px] text-plottrix-muted">
-                    <span className="text-purple-300 font-bold">{story.chapterCount || 0}</span> ตอน · {story.publishedDate}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('reader', story.id)}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span>อ่านเลย</span>
-                    <span>→</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

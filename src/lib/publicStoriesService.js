@@ -15,7 +15,7 @@ export async function fetchPublishedStories() {
     // 1. Fetch stories where is_published is true
     const { data: stories, error } = await supabase
       .from('novels')
-      .select('id, user_id, title, synopsis, genre, pov, cover_url, is_published, published_at, author_display_name, updated_at, created_at')
+      .select('*')
       .eq('is_published', true)
       .order('published_at', { ascending: false })
 
@@ -42,14 +42,22 @@ export async function fetchPublishedStories() {
       })
     }
 
-    return stories.map(s => ({
-      ...s,
-      chapterCount: chapterCountMap[s.id] || 0,
-      authorName: s.author_display_name || 'นักเขียน Plottrix',
-      publishedDate: s.published_at
-        ? new Date(s.published_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-        : 'เมื่อสักครู่'
-    }))
+    return stories.map(s => {
+      // Prioritize published_snapshot count to isolate unreleased drafts
+      const snapshotChapters = s.published_snapshot?.chapters
+      const snapshotCount = Array.isArray(snapshotChapters) ? snapshotChapters.length : null
+      const totalCount = snapshotCount !== null ? snapshotCount : (chapterCountMap[s.id] || 0)
+
+      return {
+        ...s,
+        chapterCount: totalCount,
+        published_arc: s.published_arc || s.published_snapshot?.arc_name || '',
+        authorName: s.author_display_name || 'นักเขียน Plottrix',
+        publishedDate: s.published_at
+          ? new Date(s.published_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+          : 'เมื่อสักครู่'
+      }
+    })
   } catch (err) {
     console.warn('[StoriesService] Exception:', err)
     return []
@@ -89,8 +97,57 @@ export async function fetchStoryById(storyId) {
  * @param {string} storyId
  * @param {boolean} isAuthenticated
  */
-export async function fetchStoryChapters(storyId, isAuthenticated = false) {
+export async function fetchStoryChapters(storyId, isAuthenticated = false, preloadedStory = null) {
   try {
+    let storyData = preloadedStory
+    if (!storyData) {
+      storyData = await fetchStoryById(storyId)
+    }
+
+    // 1. If story has a frozen published_snapshot with chapters, serve that snapshot!
+    // This completely isolates the author's live Studio edits/drafts from what readers see.
+    const snapshotChapters = storyData?.published_snapshot?.chapters
+    if (Array.isArray(snapshotChapters) && snapshotChapters.length > 0) {
+      return snapshotChapters.map((ch, idx) => {
+        const chapterNumber = ch.number || ch.chapter_number || idx + 1
+        const isLocked = !isAuthenticated && chapterNumber > 5
+
+        let parsedPages = ['']
+        if (Array.isArray(ch.pages)) {
+          parsedPages = ch.pages
+        } else if (typeof ch.pages === 'string') {
+          try {
+            parsedPages = JSON.parse(ch.pages)
+          } catch {
+            parsedPages = [ch.pages]
+          }
+        }
+
+        if (isLocked) {
+          return {
+            id: ch.id || `snap-ch-${idx}`,
+            novel_id: storyId,
+            number: chapterNumber,
+            title: ch.title || `บทที่ ${chapterNumber}`,
+            pages: ['[เนื้อหาตอนนี้สงวนสิทธิ์สำหรับสมาชิก Plottrix เท่านั้น กรุณาสมัครสมาชิกหรือเข้าสู่ระบบเพื่ออ่านต่อฟรี]'],
+            isLocked: true,
+            wordCount: ch.word_count || ch.wordCount || 0
+          }
+        }
+
+        return {
+          id: ch.id || `snap-ch-${idx}`,
+          novel_id: storyId,
+          number: chapterNumber,
+          title: ch.title || `บทที่ ${chapterNumber}`,
+          pages: parsedPages,
+          isLocked: false,
+          wordCount: ch.word_count || ch.wordCount || 0
+        }
+      })
+    }
+
+    // 2. Fallback: Query live chapters table if no snapshot exists
     const { data: chapters, error } = await supabase
       .from('chapters')
       .select('id, novel_id, chapter_number, title, pages, word_count, created_at')
@@ -166,6 +223,8 @@ export async function togglePublishStory(storyId, isPublished, metadata = {}) {
     if (metadata.synopsis !== undefined) payload.synopsis = metadata.synopsis
     if (metadata.author_display_name) payload.author_display_name = metadata.author_display_name
     if (metadata.cover_url) payload.cover_url = metadata.cover_url
+    if (metadata.published_arc !== undefined) payload.published_arc = metadata.published_arc
+    if (metadata.published_snapshot !== undefined) payload.published_snapshot = metadata.published_snapshot
 
     let { data, error } = await supabase
       .from('novels')
@@ -174,9 +233,11 @@ export async function togglePublishStory(storyId, isPublished, metadata = {}) {
       .select()
       .single()
 
-    // If column author_display_name does not exist in schema cache yet, retry without it
-    if (error && error.message?.includes('author_display_name')) {
-      console.warn('[StoriesService] author_display_name column missing in DB, retrying without it...')
+    // Gracefully handle missing optional columns in schema cache
+    if (error && (error.message?.includes('published_snapshot') || error.message?.includes('published_arc') || error.message?.includes('author_display_name'))) {
+      console.warn('[StoriesService] Optional publishing column missing in schema cache, retrying without new columns...', error.message)
+      delete payload.published_snapshot
+      delete payload.published_arc
       delete payload.author_display_name
       const retry = await supabase
         .from('novels')

@@ -387,7 +387,9 @@ alter table public.novels
   add column if not exists published_at timestamptz,
   add column if not exists author_display_name text default '',
   add column if not exists synopsis text default '',
-  add column if not exists cover_url text default '';
+  add column if not exists cover_url text default '',
+  add column if not exists published_arc text default '',
+  add column if not exists published_snapshot jsonb;
 
 -- View: stories alias for novels
 create or replace view public.stories as 
