@@ -72,33 +72,6 @@ export default function FeaturesSection() {
             accentColor="#c29aff"
           />
         </div>
-
-        {/* 3 Pillar Cards */}
-        <div className="pillars-grid" style={{ marginTop: '56px' }}>
-          <article className="pillar-card pixel-card">
-            <div className="pillar-num">01</div>
-            <h3>คงความเป็นเจ้าของเรื่อง 100%</h3>
-            <p>
-              AI จะไม่เขียนแทรกหรือเปลี่ยนโครงเรื่องของคุณตามใจ ทุกข้อความที่แนะนำต้องผ่านการกดยืนยันจากคุณเสมอ
-            </p>
-          </article>
-
-          <article className="pillar-card pixel-card">
-            <div className="pillar-num">02</div>
-            <h3>คุมโทนนิยายด้วย Style Persona</h3>
-            <p>
-              กำหนดน้ำเสียง ความเป็นทางการ หรือแนวทางวรรณศิลป์เฉพาะของนิยายแต่ละเรื่อง เพื่อให้ AI ช่วยเกลาสำนวนได้ตรงใจ
-            </p>
-          </article>
-
-          <article className="pillar-card pixel-card">
-            <div className="pillar-num">03</div>
-            <h3>ไม่ลืมรายละเอียดในอดีต</h3>
-            <p>
-              ด้วย Story Bible และระบบจำบริบท AI จะช่วยเตือนเมื่อสีตาตัวละครเปลี่ยน หรือปมที่เคยทิ้งไว้เมื่อ 10 ตอนก่อนไม่ตรงกัน
-            </p>
-          </article>
-        </div>
       </div>
     </section>
   )

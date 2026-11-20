@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
@@ -26,17 +26,59 @@ export default function WorkspaceHome() {
   const [newSynopsis, setNewSynopsis] = useState('')
 
   const scrollRef = useRef(null)
+  const isDraggingRef = useRef(false)
+  const startXRef = useRef(0)
+  const scrollLeftRef = useRef(0)
+  const [isDragging, setIsDragging] = useState(false)
 
   const isFreePlan = plan === 'Free Plan'
   const isQuotaFull = isFreePlan && novels.length >= 1
   const today = new Date().toISOString().slice(0, 10)
   const canClaimDaily = lastDailyClaim !== today
 
+  // Mouse wheel horizontal scrolling over the bookshelf
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY * 0.95
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   const handleScroll = (direction) => {
     if (scrollRef.current) {
-      const offset = direction === 'left' ? -340 : 340
+      const offset = direction === 'left' ? -360 : 360
       scrollRef.current.scrollBy({ left: offset, behavior: 'smooth' })
     }
+  }
+
+  // Mouse drag-to-scroll handlers
+  const handleMouseDown = (e) => {
+    // Avoid triggering drag when clicking directly on buttons
+    if (e.target.closest('button, input, textarea, a, select')) return
+    if (!scrollRef.current) return
+    isDraggingRef.current = true
+    setIsDragging(true)
+    startXRef.current = e.pageX - scrollRef.current.offsetLeft
+    scrollLeftRef.current = scrollRef.current.scrollLeft
+  }
+
+  const handleMouseMove = (e) => {
+    if (!isDraggingRef.current || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - startXRef.current) * 1.4
+    scrollRef.current.scrollLeft = scrollLeftRef.current - walk
+  }
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false
+    setIsDragging(false)
   }
 
   const handleCreateSubmit = (e) => {
@@ -56,12 +98,12 @@ export default function WorkspaceHome() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-[#0d091a] text-slate-100 flex flex-col font-sans relative overflow-x-hidden overflow-y-auto">
-      {/* 3D Ambient Background Shards & Markers */}
+      {/* 3D Ambient Background Shards - Full-Screen Fixed Across Workspace */}
       <AeroShardsCanvas />
 
       {/* Background ambient lighting */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[140px] pointer-events-none z-0" />
+      <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none z-0" />
 
       {/* Top Navigation Bar */}
       <header className="h-16 px-6 border-b border-white/10 bg-[#120d22]/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-30">
@@ -159,7 +201,7 @@ export default function WorkspaceHome() {
       </header>
 
       {/* Main Workspace Home Body */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 flex flex-col justify-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 flex flex-col justify-center relative z-10">
         {/* Welcome Banner */}
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/10">
           <div>
@@ -260,8 +302,17 @@ export default function WorkspaceHome() {
         <div className="relative w-full">
           <div
             ref={scrollRef}
-            className="flex items-stretch justify-start sm:justify-center gap-6 sm:gap-8 overflow-x-auto pb-4 pt-2 scroll-smooth no-scrollbar"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            className={`flex items-stretch justify-start gap-6 sm:gap-8 overflow-x-auto pb-6 pt-2 scroll-smooth select-none ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#9333ea rgba(255,255,255,0.08)'
+            }}
           >
             {/* Cards: Novels on the Shelf */}
             {novels.map((novel, index) => (

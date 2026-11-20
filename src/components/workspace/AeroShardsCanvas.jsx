@@ -307,18 +307,19 @@ export default function AeroShardsCanvas() {
   }, [shouldUse2DCanvas, isBalanced, maxDpr])
 
   // 1. Low-End Potato PC Mode Fallback: 100% Canvas & RAF Disabled
+  // 1. Low-End / Potato PC Mode: Zero Canvas, zero WebGPU, pure CSS radial gradient
   if (!enableAeroCanvas || isLowEnd) {
     return (
       <div
-        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
+        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
         aria-hidden="true"
         style={{
           position: 'fixed',
           inset: 0,
           width: '100vw',
-          height: '100dvh',
+          height: '100vh',
           pointerEvents: 'none',
-          zIndex: -1,
+          zIndex: 0,
           overflow: 'hidden',
           background: 'radial-gradient(ellipse at 50% 40%, #15102a 0%, #0c0817 65%, #07050e 100%)'
         }}
@@ -347,15 +348,15 @@ export default function AeroShardsCanvas() {
   if (hasWebGpuSupport && !webGpuFailed) {
     return (
       <div
-        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
+        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
         aria-hidden="true"
         style={{
           position: 'fixed',
           inset: 0,
           width: '100vw',
-          height: '100dvh',
+          height: '100vh',
           pointerEvents: 'none',
-          zIndex: -1,
+          zIndex: 0,
           overflow: 'hidden'
         }}
       >
@@ -364,13 +365,24 @@ export default function AeroShardsCanvas() {
           accentColor="#A855F7"
           placement="full"
           material="glass"
-          count={isHighEnd ? 1100 : 360}
-          dpr={isHighEnd ? 1.5 : 1.0}
-          speed={0.7}
+          markers="plus"
+          count={isHighEnd ? 1300 : 500}
+          shardSize={1}
+          spread={1}
+          twist={1}
+          billow={1}
+          speed={0.8}
+          scale={1}
+          depthOfField={0.75}
+          vignette={0.3}
           glow={isHighEnd ? 0.35 : 0.15}
-          grain={isHighEnd ? 0.05 : 0}
+          grain={isHighEnd ? 0.06 : 0}
           mouseInteraction={true}
-          pulseOnClick={!isBalanced}
+          mouseStrength={0.6}
+          parallax={0.5}
+          pulseOnClick={true}
+          holdToGather={true}
+          dpr={isHighEnd ? 1.5 : 1.0}
           onError={() => setWebGpuFailed(true)}
           className="w-full h-full pointer-events-none"
         />
@@ -381,7 +393,7 @@ export default function AeroShardsCanvas() {
             inset: 0,
             pointerEvents: 'none',
             background:
-              'radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(9,7,19,0.88) 100%), linear-gradient(180deg, rgba(9,7,19,0.35) 0%, transparent 22%, transparent 78%, rgba(9,7,19,0.96) 100%)'
+              'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.65) 100%)'
           }}
         />
       </div>
@@ -392,15 +404,15 @@ export default function AeroShardsCanvas() {
   return (
     <div
       ref={containerRef}
-      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
+      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
       aria-hidden="true"
       style={{
         position: 'fixed',
         inset: 0,
         width: '100vw',
-        height: '100dvh',
+        height: '100vh',
         pointerEvents: 'none',
-        zIndex: -1,
+        zIndex: 0,
         overflow: 'hidden'
       }}
     >
@@ -422,7 +434,7 @@ export default function AeroShardsCanvas() {
           inset: 0,
           pointerEvents: 'none',
           background:
-            'radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(9,7,19,0.88) 100%), linear-gradient(180deg, rgba(9,7,19,0.35) 0%, transparent 22%, transparent 78%, rgba(9,7,19,0.96) 100%)'
+            'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(9,7,19,0.65) 100%)'
         }}
       />
     </div>

@@ -15,15 +15,15 @@ import AnimatedContent from '../react-bits/AnimatedContent'
 
 export default function HomePage() {
   return (
-    <div className="home-page-root min-h-[100dvh] relative text-plottrix-text bg-plottrix-bg font-thai">
-      {/* 3D Ambient Background Shards */}
+    <div className="home-page-root min-h-[100dvh] relative text-plottrix-text bg-transparent font-thai">
+      {/* 3D Ambient Background Shards - Full Page Fixed Background */}
       <AeroShardsCanvas />
 
       {/* Pill-Nav Header */}
       <HomeNavbar />
 
       {/* Main Page Content with Scroll Animations */}
-      <main>
+      <main className="relative z-10">
         <HeroSection />
 
         <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
