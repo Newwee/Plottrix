@@ -26,7 +26,7 @@ export default function PublishedNovelsShowcase() {
         const compMap = {}
         if (typeof window !== 'undefined') {
           data.forEach(s => {
-            const rawProg = localStorage.getItem(`plottrix_read_progress_${s.id}`)
+            const rawProg = localStorage.getItem(`plottrix_bookmark_${s.id}`) || localStorage.getItem(`plottrix_read_progress_${s.id}`)
             if (rawProg) {
               try { progMap[s.id] = JSON.parse(rawProg) } catch {}
             }
@@ -176,7 +176,7 @@ export default function PublishedNovelsShowcase() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => navigateTo('reader', story.id)}
+                        onClick={() => navigateTo('reader', { storyId: story.id, chapterIdx: hasReadBefore ? progress.chapterIdx : 0 })}
                         className={`px-4 py-2 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5 ${
                           hasNewChaptersAfterCompletion
                             ? 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white hover:brightness-110 shadow-pink-600/30 animate-pulse'

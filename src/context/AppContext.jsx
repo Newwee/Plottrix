@@ -52,7 +52,7 @@ export function AppProvider({ children }) {
     return 'home'
   })
 
-  // Public Reader Active Story ID
+  // Public Reader Active Story ID & Target Chapter
   const [activeReadStoryId, setActiveReadStoryId] = useState(() => {
     if (typeof window !== 'undefined') {
       const match = window.location.pathname.match(/\/read\/([^\/]+)/i)
@@ -60,6 +60,7 @@ export function AppProvider({ children }) {
     }
     return ''
   })
+  const [activeReadChapterIdx, setActiveReadChapterIdx] = useState(null)
 
   // Modals & Drawers
   const [activeModal, setActiveModal] = useState(null)
@@ -100,8 +101,14 @@ export function AppProvider({ children }) {
       targetPath = '/home-workspace'
     } else if (view === 'reader' || (view === 'read' && payload)) {
       targetView = 'reader'
-      const sid = payload || activeReadStoryId
+      let sid = typeof payload === 'object' ? payload?.storyId : payload
+      sid = sid || activeReadStoryId
       if (sid) setActiveReadStoryId(sid)
+      if (typeof payload === 'object' && typeof payload?.chapterIdx === 'number') {
+        setActiveReadChapterIdx(payload.chapterIdx)
+      } else {
+        setActiveReadChapterIdx(null)
+      }
       targetPath = sid ? `/read/${sid}` : '/read'
     } else if (view === 'read') {
       targetView = 'read'
@@ -188,6 +195,44 @@ export function AppProvider({ children }) {
 
   // Editor Appearance & Behavior
   const [paperTheme, setPaperTheme] = useState(() => localStorage.getItem('plottrix_paper_theme') || 'midnight')
+  useEffect(() => {
+    localStorage.setItem('plottrix_paper_theme', paperTheme)
+  }, [paperTheme])
+
+  // Global App Theme: 'dark' | 'light' | 'system'
+  const [appTheme, setAppTheme] = useState(() => localStorage.getItem('plottrix_app_theme') || 'dark')
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+
+    const apply = (th) => {
+      let isDark = true
+      if (th === 'light') {
+        isDark = false
+      } else if (th === 'system') {
+        isDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      } else {
+        isDark = true
+      }
+      if (isDark) {
+        root.classList.add('dark')
+        root.classList.remove('light')
+      } else {
+        root.classList.remove('dark')
+        root.classList.add('light')
+      }
+    }
+
+    apply(appTheme)
+    localStorage.setItem('plottrix_app_theme', appTheme)
+
+    if (appTheme === 'system' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      const h = () => apply('system')
+      mq.addEventListener('change', h)
+      return () => mq.removeEventListener('change', h)
+    }
+  }, [appTheme])
   const [fontSize, setFontSize] = useState(16)
   const [fontFamily, setFontFamily] = useState('thai')
   const [isFocusMode, setIsFocusMode] = useState(false)
@@ -1766,6 +1811,8 @@ export function AppProvider({ children }) {
         navigateTo,
         activeReadStoryId,
         setActiveReadStoryId,
+        activeReadChapterIdx,
+        setActiveReadChapterIdx,
 
         // Novels Collection
         novels,
@@ -1798,6 +1845,7 @@ export function AppProvider({ children }) {
         deletePage,
 
         // Editor Settings & States
+        appTheme, setAppTheme,
         paperTheme, setPaperTheme,
         fontSize, setFontSize,
         fontFamily, setFontFamily,

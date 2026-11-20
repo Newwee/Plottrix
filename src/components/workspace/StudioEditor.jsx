@@ -684,44 +684,68 @@ function StudioEditor() {
       {/* ========================================================================= */}
       {/* SCROLLABLE WRITING CANVAS (DISTRACTION-FREE THAI MANUSCRIPT) */}
       {/* ========================================================================= */}
-      <div
-        id="editorScrollArea"
-        className="flex-1 overflow-y-auto px-4 sm:px-10 lg:px-16 py-8 relative"
-      >
-        <div className="max-w-3xl mx-auto">
-          {/* Chapter & Page Header */}
-          <div className="mb-4 flex items-end justify-between gap-2 border-b border-white/5 pb-2">
-            <div className="flex-1">
-              <div className="text-[11px] font-bold tracking-widest uppercase text-violet-400/80 mb-1">
-                CHAPTER {String(currentChapter?.number || 1).padStart(2, '0')} • PAGE {currentPageNumber} OF {totalPages}
+      {(() => {
+        const isWarmPaper = paperTheme === 'paper'
+        const isMidnight = paperTheme === 'midnight'
+        const isVelvet = paperTheme === 'velvet'
+
+        const bgClass = isWarmPaper
+          ? 'bg-[#f7f4ed]'
+          : isMidnight
+          ? 'bg-[#0b1120]'
+          : isVelvet
+          ? 'bg-[#150d24]'
+          : 'bg-[#080511]'
+
+        const textClass = isWarmPaper
+          ? 'text-stone-900 placeholder-stone-400'
+          : isMidnight
+          ? 'text-slate-100 placeholder-slate-500'
+          : isVelvet
+          ? 'text-purple-100 placeholder-purple-400/50'
+          : 'text-white placeholder-slate-500'
+
+        return (
+          <div
+            id="editorScrollArea"
+            className={`flex-1 overflow-y-auto px-4 sm:px-10 lg:px-16 py-8 relative transition-colors duration-300 ${bgClass}`}
+          >
+            <div className="max-w-3xl mx-auto">
+              {/* Chapter & Page Header */}
+              <div className={`mb-4 flex items-end justify-between gap-2 border-b pb-2 ${isWarmPaper ? 'border-stone-300' : 'border-white/5'}`}>
+                <div className="flex-1">
+                  <div className={`text-[11px] font-bold tracking-widest uppercase mb-1 ${isWarmPaper ? 'text-amber-800' : 'text-violet-400/80'}`}>
+                    CHAPTER {String(currentChapter?.number || 1).padStart(2, '0')} • PAGE {currentPageNumber} OF {totalPages}
+                  </div>
+                  <input
+                    type="text"
+                    value={currentChapter?.title || ''}
+                    onChange={(e) => {
+                      const newTitle = e.target.value
+                      setChapters(prev => prev.map(c => c.id === activeChapterId ? { ...c, title: newTitle } : c))
+                    }}
+                    placeholder="ชื่อตอน..."
+                    className={`w-full bg-transparent text-xl sm:text-2xl font-bold focus:outline-none border-b border-transparent focus:border-violet-500/40 pb-1 ${isWarmPaper ? 'text-stone-900 placeholder-stone-400' : 'text-white'}`}
+                  />
+                </div>
               </div>
-              <input
-                type="text"
-                value={currentChapter?.title || ''}
-                onChange={(e) => {
-                  const newTitle = e.target.value
-                  setChapters(prev => prev.map(c => c.id === activeChapterId ? { ...c, title: newTitle } : c))
-                }}
-                placeholder="ชื่อตอน..."
-                className="w-full bg-transparent text-xl sm:text-2xl font-bold focus:outline-none border-b border-transparent focus:border-violet-500/40 pb-1 text-white"
+
+              {/* Actual Manuscript Textarea Editor */}
+              <textarea
+                ref={textareaRef}
+                id="tour-target-editor-text"
+                value={localText}
+                onChange={handleTextChange}
+                onSelect={handleSelect}
+                onBlur={flushSave}
+                style={{ fontSize: `${fontSize}px` }}
+                placeholder="เริ่มต้นจรดปลายปากกาเขียนนิยายของคุณที่นี่..."
+                className={`w-full bg-transparent resize-none outline-none novel-font min-h-[520px] focus:ring-0 border-none leading-relaxed tracking-wide select-text ${textClass}`}
               />
             </div>
           </div>
-
-          {/* Actual Manuscript Textarea Editor */}
-          <textarea
-            ref={textareaRef}
-            id="tour-target-editor-text"
-            value={localText}
-            onChange={handleTextChange}
-            onSelect={handleSelect}
-            onBlur={flushSave}
-            style={{ fontSize: `${fontSize}px` }}
-            placeholder="เริ่มต้นจรดปลายปากกาเขียนนิยายของคุณที่นี่..."
-            className="w-full bg-transparent resize-none outline-none novel-font text-white placeholder-slate-500 min-h-[520px] focus:ring-0 border-none leading-relaxed tracking-wide select-text"
-          />
-        </div>
-      </div>
+        )
+      })()}
 
       {/* ========================================================================= */}
       {/* BOTTOM STATUS BAR */}

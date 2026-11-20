@@ -13,6 +13,8 @@ const CHARACTER_ROLES = [
   'ตัวแปรปริศนา (Mystery)'
 ]
 
+const DEFAULT_CHARACTER_AVATAR = '/Logo/ProfileD/plottrix_profile_512.png'
+
 export default function CharacterBibleModal() {
   const {
     activeModal, setActiveModal,
@@ -44,7 +46,7 @@ export default function CharacterBibleModal() {
       id: `char-${Date.now()}`,
       name: 'ตัวละครใหม่',
       role: 'ตัวละครสมทบสำคัญ (Supporting)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_CHARACTER_AVATAR,
       description: 'กรอกรายละเอียดความเป็นมา...',
       traits: 'บุคลิกภาพ...',
       secrets: 'ความลับหรือปมในอดีต...',
@@ -231,7 +233,8 @@ export default function CharacterBibleModal() {
                     }`}
                   >
                     <img
-                      src={char.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                      src={char.avatar || DEFAULT_CHARACTER_AVATAR}
+                      onError={(e) => { e.currentTarget.src = DEFAULT_CHARACTER_AVATAR }}
                       alt={char.name}
                       className="w-9 h-9 rounded-full object-cover border border-white/20 shrink-0"
                     />
@@ -252,7 +255,8 @@ export default function CharacterBibleModal() {
                 <div className="flex items-center gap-4 pb-4 border-b border-white/10">
                   <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                     <img
-                      src={formData.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                      src={formData.avatar || DEFAULT_CHARACTER_AVATAR}
+                      onError={(e) => { e.currentTarget.src = DEFAULT_CHARACTER_AVATAR }}
                       alt="Avatar"
                       className="w-16 h-16 rounded-full object-cover border-2 border-purple-400 shadow-md group-hover:opacity-75 transition"
                     />
@@ -374,7 +378,8 @@ export default function CharacterBibleModal() {
                 <div className="flex items-center justify-between pb-4 border-b border-white/10">
                   <div className="flex items-center gap-4">
                     <img
-                      src={currentChar.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                      src={currentChar.avatar || DEFAULT_CHARACTER_AVATAR}
+                      onError={(e) => { e.currentTarget.src = DEFAULT_CHARACTER_AVATAR }}
                       alt={currentChar.name}
                       className="w-16 h-16 rounded-full object-cover border-2 border-purple-400 shadow-lg"
                     />

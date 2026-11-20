@@ -71,12 +71,12 @@ export default function HeroSection() {
         <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-amber-500/25 hover:border-amber-400/60 hover:bg-amber-500/15 transition backdrop-blur-md shadow-sm">
           <span className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-sm shadow-inner text-amber-300 shrink-0">⚡</span>
           <div className="text-left">
-            <div className="text-xs font-bold text-white whitespace-nowrap">Gemini 2.5 AI Engine</div>
+            <div className="text-xs font-bold text-white whitespace-nowrap">AI Assistant Engine</div>
             <div className="text-[11px] text-amber-200/70 whitespace-nowrap">ประมวลผลคำไทยลึกซึ้งระดับวรรณกรรม</div>
           </div>
         </div>
       ),
-      title: "Gemini 2.5 AI Engine"
+      title: "AI Engine"
     },
     {
       node: (

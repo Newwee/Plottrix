@@ -9,7 +9,7 @@ import { fetchComments, addComment } from '../../lib/commentsService'
 import confetti from 'canvas-confetti'
 
 export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
-  const { navigateTo, setActiveModal, addToast, activeReadStoryId } = useApp()
+  const { navigateTo, setActiveModal, addToast, activeReadStoryId, activeReadChapterIdx } = useApp()
   const { user, profile } = useAuth()
 
   const storyId = propStoryId || activeReadStoryId || (typeof window !== 'undefined' ? window.location.pathname.split('/read/')[1]?.split('/')[0] : '')
@@ -22,6 +22,7 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const [showResumeBanner, setShowResumeBanner] = useState(false)
   const [savedBookmark, setSavedBookmark] = useState(null)
   const [isArcCompleted, setIsArcCompleted] = useState(false)
+  const isInitialRestoredRef = useRef(false)
 
   // Reader Typography & Comfort Settings (persisted)
   const [fontSize, setFontSize] = useState(() => {
@@ -125,27 +126,67 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         setChapters(chaptersData)
         setLoading(false)
 
-        // Check saved bookmark/progress
-        const rawProgress = localStorage.getItem(`plottrix_read_progress_${storyId}`)
-        if (rawProgress) {
-          try {
-            const prog = JSON.parse(rawProgress)
-            if (prog && typeof prog.chapterIdx === 'number' && prog.chapterIdx < chaptersData.length) {
-              setSavedBookmark(prog)
-              if (prog.chapterIdx > 0) {
-                setShowResumeBanner(true)
+        // Determine target chapter to resume or jump to
+        let targetIdx = 0
+        let foundSaved = null
+
+        // Priority 1: Explicit target chapter from navigation (e.g. from Showcase "อ่านต่อ (ตอนที่ 13)")
+        if (typeof activeReadChapterIdx === 'number' && activeReadChapterIdx >= 0 && activeReadChapterIdx < chaptersData.length) {
+          targetIdx = activeReadChapterIdx
+        } else {
+          // Priority 2: Manual bookmark set by user
+          const rawBookmark = localStorage.getItem(`plottrix_bookmark_${storyId}`)
+          if (rawBookmark) {
+            try {
+              const b = JSON.parse(rawBookmark)
+              if (b && typeof b.chapterIdx === 'number' && b.chapterIdx >= 0 && b.chapterIdx < chaptersData.length) {
+                targetIdx = b.chapterIdx
+                foundSaved = b
+              }
+            } catch (err) {
+              console.warn('[Reader] Parse bookmark failed:', err)
+            }
+          }
+
+          // Priority 3: Automatic reading progress
+          if (foundSaved === null) {
+            const rawProgress = localStorage.getItem(`plottrix_read_progress_${storyId}`)
+            if (rawProgress) {
+              try {
+                const prog = JSON.parse(rawProgress)
+                if (prog && typeof prog.chapterIdx === 'number' && prog.chapterIdx >= 0 && prog.chapterIdx < chaptersData.length) {
+                  targetIdx = prog.chapterIdx
+                  foundSaved = prog
+                }
+              } catch (err) {
+                console.warn('[Reader] Parse progress failed:', err)
               }
             }
-          } catch (e) {
-            console.warn('[Reader] Parse progress failed:', e)
           }
+        }
+
+        // Apply target chapter immediately without requiring clicking banner
+        setCurrentChapterIdx(targetIdx)
+        if (foundSaved) {
+          setSavedBookmark(foundSaved)
+        }
+        isInitialRestoredRef.current = true
+
+        if (targetIdx > 0) {
+          const chNum = chaptersData[targetIdx]?.number || (targetIdx + 1)
+          const chTitle = chaptersData[targetIdx]?.title || ''
+          addToast({
+            title: 'กลับมาอ่านต่อจากจุดเดิม 🔖',
+            description: `กำลังเปิด ตอนที่ ${chNum}${chTitle ? `: ${chTitle}` : ''} ตามจุดคั่นของคุณ`,
+            fuseColor: '#a855f7'
+          })
         }
       }
     }
 
     loadData()
     return () => { isMounted = false }
-  }, [storyId, Boolean(user)])
+  }, [storyId, Boolean(user), activeReadChapterIdx])
 
   // Current Chapter helper
   const currentChapter = chapters[currentChapterIdx] || chapters[0] || null
@@ -153,8 +194,9 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
   const isLocked = !user && currentChapterNumber > 5
   const isLastChapter = chapters.length > 0 && currentChapterIdx === chapters.length - 1
 
-  // Auto-save reading progress on chapter change
+  // Auto-save reading progress on chapter change (ONLY after initial restoration has completed!)
   useEffect(() => {
+    if (!isInitialRestoredRef.current) return
     if (!storyId || !currentChapter) return
     const progressData = {
       chapterIdx: currentChapterIdx,
@@ -164,7 +206,6 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
       updatedAt: Date.now()
     }
     localStorage.setItem(`plottrix_read_progress_${storyId}`, JSON.stringify(progressData))
-    setSavedBookmark(progressData)
   }, [storyId, currentChapterIdx, currentChapterNumber, currentChapter?.title, story?.title])
 
   // Auto-scroll active chapter into view inside drawer
@@ -217,12 +258,13 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
       storyTitle: story?.title || '',
       updatedAt: Date.now()
     }
+    localStorage.setItem(`plottrix_bookmark_${storyId}`, JSON.stringify(progressData))
     localStorage.setItem(`plottrix_read_progress_${storyId}`, JSON.stringify(progressData))
     setSavedBookmark(progressData)
 
     addToast({
       title: 'คั่นหน้านี้ไว้แล้ว 🔖',
-      description: `บันทึกจุดที่อ่านค้างไว้: ตอนที่ ${currentChapterNumber} (${currentChapter?.title || ''}) — คุณสามารถกลับมาอ่านต่อได้ทุกเมื่อ`,
+      description: `บันทึกจุดที่อ่านค้างไว้: ตอนที่ ${currentChapterNumber} (${currentChapter?.title || ''}) — เมื่อกลับเข้ามาจะเด้งมาหน้านี้ทันที`,
       fuseColor: '#a855f7'
     })
   }
@@ -569,11 +611,17 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
           <button
             type="button"
             onClick={handleManualBookmark}
-            className="px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+              savedBookmark?.chapterIdx === currentChapterIdx
+                ? 'border-amber-400 bg-amber-500/25 text-amber-200 ring-2 ring-amber-400/30 shadow-md'
+                : 'border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+            }`}
             title="บันทึกจุดที่อ่านค้างไว้"
           >
             <span>🔖</span>
-            <span className="hidden md:inline">คั่นหน้า</span>
+            <span className="hidden md:inline">
+              {savedBookmark?.chapterIdx === currentChapterIdx ? 'คั่นหน้านี้แล้ว' : 'คั่นหน้า'}
+            </span>
           </button>
 
           {/* Chapter Drawer Toggle */}
@@ -769,11 +817,17 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
             <button
               type="button"
               onClick={handleManualBookmark}
-              className="px-3 sm:px-4 py-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-300 transition cursor-pointer flex items-center gap-1.5"
+              className={`px-3 sm:px-4 py-3 rounded-2xl border text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                savedBookmark?.chapterIdx === currentChapterIdx
+                  ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-2 ring-amber-400/30'
+                  : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
+              }`}
               title="คั่นหน้านี้ไว้"
             >
               <span>🔖</span>
-              <span className="hidden sm:inline">คั่นหน้านี้</span>
+              <span className="hidden sm:inline">
+                {savedBookmark?.chapterIdx === currentChapterIdx ? 'คั่นหน้านี้แล้ว ✓' : 'คั่นหน้านี้'}
+              </span>
             </button>
 
             <button

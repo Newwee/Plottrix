@@ -67,7 +67,7 @@ export const PRICING_PLANS = [
       'วิเคราะห์พล็อตทั้งเล่ม (ฟรี 10 ครั้ง/เดือน)',
       'แปลภาษาทั้งตอนโดยคงบริบทตัวละคร',
       'จัดหน้าและส่งออกไฟล์ E-Book (EPUB / PDF)',
-      'เข้าถึงโมเดล Gemini Flash ความเร็วสูงพิเศษ'
+      'เข้าถึงโมเดล AI สปีดสูงสุด (High-Priority AI)'
     ],
     Overwrite: true,
     buttonText: 'เลือก Ultra Plan',
