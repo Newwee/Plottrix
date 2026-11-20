@@ -1,7 +1,7 @@
 import React, { memo, useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../../context/AppContext'
 import AnimatedContent from '../react-bits/AnimatedContent'
-import WarmTooltip from '../react-bits/WarmTooltip'
+import WarmTooltip, { WarmTooltipGroup } from '../WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
 
 function FloatingAiToolbar() {
@@ -17,12 +17,60 @@ function FloatingAiToolbar() {
   } = useApp()
 
   const [visible, setVisible] = useState(false)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [position, setPosition] = useState({ top: 120, left: 100 })
   const [activeMenu, setActiveMenu] = useState(null) // null | 'customAssistant' | 'diffPreview'
   const [customPrompt, setCustomPrompt] = useState('')
   const [previewResult, setPreviewResult] = useState(null)
 
+  // Dragging State & Pointer Capture
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef({ startX: 0, startY: 0, startTop: 0, startLeft: 0 })
+  const userHasDraggedRef = useRef(false)
+
   const toolbarRef = useRef(null)
+
+  // Pointer Event Drag Handlers
+  const handlePointerDown = (e) => {
+    // Avoid dragging when clicking interactive elements
+    if (e.target.closest('button, input, textarea, a, select')) return
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch (_) {}
+    setIsDragging(true)
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startTop: position.top,
+      startLeft: position.left
+    }
+  }
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return
+    e.preventDefault()
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    const el = toolbarRef.current
+    const w = el?.offsetWidth || 380
+    const h = el?.offsetHeight || 60
+
+    const clampedTop = Math.max(16, Math.min(window.innerHeight - h - 16, dragRef.current.startTop + dy))
+    const clampedLeft = Math.max(16, Math.min(window.innerWidth - w - 16, dragRef.current.startLeft + dx))
+
+    setPosition({ top: clampedTop, left: clampedLeft })
+    userHasDraggedRef.current = true
+  }
+
+  const handlePointerUp = (e) => {
+    if (isDragging) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch (_) {}
+      setIsDragging(false)
+    }
+  }
 
   // Listen to selection changes within editor (textarea & DOM selection)
   const handleSelection = useCallback(() => {
@@ -78,42 +126,49 @@ function FloatingAiToolbar() {
       if (!previewResult && !isAIProcessing) {
         setVisible(false)
         setActiveMenu(null)
+        userHasDraggedRef.current = false
       }
       return
     }
 
-    const isTouch = (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
-    const toolbarWidth = Math.min(420, window.innerWidth - 32)
-    const toolbarHeight = 52
-    const extraOffset = isTouch ? 28 : 12
+    // Only compute default position if user has NOT manually dragged the toolbar
+    if (!userHasDraggedRef.current) {
+      const isTouch = (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0))
+      const toolbarWidth = Math.min(420, window.innerWidth - 32)
+      const toolbarHeight = 52
+      const extraOffset = isTouch ? 28 : 12
 
-    let top = rect.top - toolbarHeight - extraOffset
-    let left = rect.left + rect.width / 2 - toolbarWidth / 2
+      let top = rect.top - toolbarHeight - extraOffset
+      let left = rect.left + rect.width / 2 - toolbarWidth / 2
 
-    if (top < 70) {
-      top = rect.bottom + extraOffset
+      if (top < 70) {
+        top = rect.bottom + extraOffset
+      }
+      if (left < 16) left = 16
+      if (left + toolbarWidth > window.innerWidth - 16) {
+        left = window.innerWidth - toolbarWidth - 16
+      }
+
+      setPosition({ top, left })
     }
-    if (left < 16) left = 16
-    if (left + toolbarWidth > window.innerWidth - 16) {
-      left = window.innerWidth - toolbarWidth - 16
-    }
 
-    setPosition({ top, left })
     setVisible(true)
   }, [previewResult, isAIProcessing, setSelection])
 
   // Sync when selection text changes in AppContext
   useEffect(() => {
     if (selection?.text && selection.text.trim().length >= 2) {
-      const editorEl = document.getElementById('tour-target-editor-text')
-      if (editorEl) {
-        const editorRect = editorEl.getBoundingClientRect()
-        const toolbarWidth = Math.min(420, window.innerWidth - 32)
-        let top = Math.max(90, Math.min(window.innerHeight - 100, editorRect.top + 70))
-        let left = Math.max(16, Math.min(window.innerWidth - toolbarWidth - 16, editorRect.left + (editorRect.width - toolbarWidth) / 2))
-        setPosition({ top, left })
-        setVisible(true)
+      if (!userHasDraggedRef.current) {
+        const editorEl = document.getElementById('tour-target-editor-text')
+        if (editorEl) {
+          const editorRect = editorEl.getBoundingClientRect()
+          const toolbarWidth = Math.min(420, window.innerWidth - 32)
+          let top = Math.max(90, Math.min(window.innerHeight - 100, editorRect.top + 70))
+          let left = Math.max(16, Math.min(window.innerWidth - toolbarWidth - 16, editorRect.left + (editorRect.width - toolbarWidth) / 2))
+          setPosition({ top, left })
+        }
       }
+      setVisible(true)
     }
   }, [selection?.text])
 
@@ -186,6 +241,7 @@ function FloatingAiToolbar() {
       setPreviewResult(null)
       setVisible(false)
       setActiveMenu(null)
+      userHasDraggedRef.current = false
     }
   }
 
@@ -194,146 +250,171 @@ function FloatingAiToolbar() {
     setActiveMenu(null)
   }
 
+  const handleClose = () => {
+    if (isAIProcessing) {
+      cancelAITask()
+    }
+    setVisible(false)
+    setActiveMenu(null)
+    setPreviewResult(null)
+    userHasDraggedRef.current = false
+  }
+
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 pointer-events-auto transition-all duration-150 select-none max-w-[calc(100vw-32px)]"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className={`fixed z-50 pointer-events-auto select-none max-w-[calc(100vw-32px)] ${
+        isDragging ? 'cursor-grabbing' : ''
+      }`}
       style={{
         top: `${position.top}px`,
-        left: `${position.left}px`
+        left: `${position.left}px`,
+        touchAction: 'none'
       }}
     >
       <AnimatedContent distance={8} direction="vertical" duration={0.2}>
-        <div
-          className="rounded-2xl p-2 shadow-[0_16px_50px_rgba(147,51,234,0.45)] border border-purple-400/40 bg-[#16102a]/95 backdrop-blur-2xl ring-1 ring-white/15 min-w-[340px]"
-        >
-          {/* Main Toolbar 5 Commands (Responsive scroll on narrow mobile) */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-            {/* Command 1: แก้คำผิด */}
-            <WarmTooltip content="ตรวจและแก้ไขคำสะกดผิดเฉพาะท่อนที่เลือก (1 Trix)" side="top">
-              <button
-                type="button"
-                disabled={isAIProcessing}
-                onClick={() => handleCommand('proofread')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  activeAITool === 'proofread'
-                    ? 'bg-purple-600 text-white animate-pulse'
-                    : isAIProcessing
-                    ? 'opacity-40 cursor-not-allowed text-slate-300'
-                    : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
+        <div className="rounded-2xl p-2 shadow-[0_16px_50px_rgba(147,51,234,0.45)] border border-purple-400/40 bg-[#16102a]/95 backdrop-blur-2xl ring-1 ring-white/15 min-w-[340px]">
+          {/* Main Toolbar 5 Commands Wrapped with WarmTooltipGroup */}
+          <WarmTooltipGroup delay={250} warmWindow={300} travel={280} lean={2}>
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+              {/* 6-dot drag grip handle */}
+              <div
+                className="flex items-center justify-center pl-1.5 pr-1 py-1.5 cursor-grab active:cursor-grabbing text-purple-400/60 hover:text-purple-300 transition shrink-0 select-none"
+                title="คลิกค้างเพื่อลากย้ายแถบ AI ไปที่ใดก็ได้"
               >
-                <span>✍️</span>
-                <span>แก้คำผิด</span>
-              </button>
-            </WarmTooltip>
-
-            {/* Command 2: เช็คคำ / เกลาสำนวน */}
-            <WarmTooltip content="เกลาสำนวนและแทรกคลังคำศัพท์เฉพาะแนว (3 Trix)" side="top">
-              <button
-                type="button"
-                disabled={isAIProcessing}
-                onClick={() => handleCommand('polish')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  activeAITool === 'polish'
-                    ? 'bg-purple-600 text-white animate-pulse'
-                    : isAIProcessing
-                    ? 'opacity-40 cursor-not-allowed text-slate-300'
-                    : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                <span>🔍</span>
-                <span>เกลาสำนวน</span>
-              </button>
-            </WarmTooltip>
-
-            {/* Command 3: แปลภาษา */}
-            <WarmTooltip content="แปลวรรณกรรมไทย-อังกฤษคงน้ำเสียง (2 Trix)" side="top">
-              <button
-                type="button"
-                disabled={isAIProcessing}
-                onClick={() => handleCommand('translate')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  activeAITool === 'translate'
-                    ? 'bg-purple-600 text-white animate-pulse'
-                    : isAIProcessing
-                    ? 'opacity-40 cursor-not-allowed text-slate-300'
-                    : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                <span>🌐</span>
-                <span>แปลภาษา</span>
-              </button>
-            </WarmTooltip>
-
-            {/* Command 4: คิดทางเลือกพล็อต */}
-            <WarmTooltip content="เสนอ 3 ทางแยกเนื้อเรื่องต่อจากฉากนี้ (4 Trix)" side="top">
-              <button
-                type="button"
-                disabled={isAIProcessing}
-                onClick={() => handleCommand('plotBranch')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  activeAITool === 'plotBranch'
-                    ? 'bg-purple-600 text-white animate-pulse'
-                    : isAIProcessing
-                    ? 'opacity-40 cursor-not-allowed text-slate-300'
-                    : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
-                }`}
-              >
-                <span>💡</span>
-                <span>คิดพล็อต</span>
-              </button>
-            </WarmTooltip>
-
-            {/* Command 5: AI Assistant */}
-            <WarmTooltip content="สั่งการ AI ด้วยคำสั่งพิเศษเฉพาะท่อนนี้" side="top">
-              <button
-                type="button"
-                disabled={isAIProcessing}
-                onClick={() => setActiveMenu(activeMenu === 'customAssistant' ? null : 'customAssistant')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  activeMenu === 'customAssistant'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                    : isAIProcessing
-                    ? 'opacity-40 cursor-not-allowed text-purple-300'
-                    : 'text-purple-300 hover:text-white hover:bg-purple-600/20 active:scale-95'
-                }`}
-              >
-                <span>✨</span>
-                <span>AI สั่งการ</span>
-              </button>
-            </WarmTooltip>
-
-            {/* StatusMark indicator when AI processing */}
-            {isAIProcessing && (
-              <div className="flex items-center px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-400/30 text-[11px] shrink-0">
-                <StatusMark
-                  status="running"
-                  size={12}
-                  fontSize={10}
-                  label="กำลังประมวลผล..."
-                  color="#c084fc"
-                />
+                <svg width="10" height="18" viewBox="0 0 10 18" fill="currentColor">
+                  <circle cx="2.5" cy="2.5" r="1.5" />
+                  <circle cx="7.5" cy="2.5" r="1.5" />
+                  <circle cx="2.5" cy="9" r="1.5" />
+                  <circle cx="7.5" cy="9" r="1.5" />
+                  <circle cx="2.5" cy="15.5" r="1.5" />
+                  <circle cx="7.5" cy="15.5" r="1.5" />
+                </svg>
               </div>
-            )}
 
-            {/* Cancel / Close button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isAIProcessing) {
-                  cancelAITask()
-                }
-                setVisible(false)
-                setActiveMenu(null)
-                setPreviewResult(null)
-              }}
-              className="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center text-xs ml-1 transition cursor-pointer shrink-0"
-              title="ปิดแถบเครื่องมือ"
-            >
-              ✕
-            </button>
-          </div>
+              {/* Command 1: แก้คำผิด */}
+              <WarmTooltip content="ตรวจและแก้ไขคำสะกดผิดเฉพาะท่อนที่เลือก (1 Trix) · ⌘1" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  disabled={isAIProcessing}
+                  onClick={() => handleCommand('proofread')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    activeAITool === 'proofread'
+                      ? 'bg-purple-600 text-white animate-pulse'
+                      : isAIProcessing
+                      ? 'opacity-40 cursor-not-allowed text-slate-300'
+                      : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
+                  }`}
+                >
+                  <span>✍️</span>
+                  <span>แก้คำผิด</span>
+                </button>
+              </WarmTooltip>
+
+              {/* Command 2: เช็คคำ / เกลาสำนวน */}
+              <WarmTooltip content="เกลาสำนวนและแทรกคลังคำศัพท์เฉพาะแนว (3 Trix) · ⌘2" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  disabled={isAIProcessing}
+                  onClick={() => handleCommand('polish')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    activeAITool === 'polish'
+                      ? 'bg-purple-600 text-white animate-pulse'
+                      : isAIProcessing
+                      ? 'opacity-40 cursor-not-allowed text-slate-300'
+                      : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
+                  }`}
+                >
+                  <span>🔍</span>
+                  <span>เกลาสำนวน</span>
+                </button>
+              </WarmTooltip>
+
+              {/* Command 3: แปลภาษา */}
+              <WarmTooltip content="แปลวรรณกรรมไทย-อังกฤษคงน้ำเสียง (2 Trix) · ⌘3" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  disabled={isAIProcessing}
+                  onClick={() => handleCommand('translate')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    activeAITool === 'translate'
+                      ? 'bg-purple-600 text-white animate-pulse'
+                      : isAIProcessing
+                      ? 'opacity-40 cursor-not-allowed text-slate-300'
+                      : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
+                  }`}
+                >
+                  <span>🌐</span>
+                  <span>แปลภาษา</span>
+                </button>
+              </WarmTooltip>
+
+              {/* Command 4: คิดทางเลือกพล็อต */}
+              <WarmTooltip content="เสนอ 3 ทางแยกเนื้อเรื่องต่อจากฉากนี้ (4 Trix) · ⌘4" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  disabled={isAIProcessing}
+                  onClick={() => handleCommand('plotBranch')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    activeAITool === 'plotBranch'
+                      ? 'bg-purple-600 text-white animate-pulse'
+                      : isAIProcessing
+                      ? 'opacity-40 cursor-not-allowed text-slate-300'
+                      : 'text-slate-100 hover:text-white hover:bg-white/15 active:scale-95'
+                  }`}
+                >
+                  <span>💡</span>
+                  <span>คิดพล็อต</span>
+                </button>
+              </WarmTooltip>
+
+              {/* Command 5: AI Assistant */}
+              <WarmTooltip content="พิมพ์คำสั่งปรับแต่งเฉพาะจุดได้อย่างอิสระ · ⌘5" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  disabled={isAIProcessing}
+                  onClick={() => setActiveMenu(activeMenu === 'customAssistant' ? null : 'customAssistant')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    activeMenu === 'customAssistant'
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                      : isAIProcessing
+                      ? 'opacity-40 cursor-not-allowed text-purple-300'
+                      : 'text-purple-300 hover:text-white hover:bg-purple-600/20 active:scale-95'
+                  }`}
+                >
+                  <span>✨</span>
+                  <span>AI สั่งการ</span>
+                </button>
+              </WarmTooltip>
+
+              {/* StatusMark indicator when AI processing */}
+              {isAIProcessing && (
+                <div className="flex items-center px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-400/30 text-[11px] shrink-0">
+                  <StatusMark
+                    status="running"
+                    size={12}
+                    fontSize={10}
+                    label="กำลังประมวลผล..."
+                    color="#c084fc"
+                  />
+                </div>
+              )}
+
+              {/* Cancel / Close button */}
+              <WarmTooltip content="ปิดแถบ AI ลอยชั่วคราว · Esc" side="top" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center text-xs ml-1 transition cursor-pointer shrink-0"
+                >
+                  ✕
+                </button>
+              </WarmTooltip>
+            </div>
+          </WarmTooltipGroup>
 
           {/* Submenu: Custom AI Prompt Input */}
           {activeMenu === 'customAssistant' && (

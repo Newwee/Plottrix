@@ -161,6 +161,24 @@ function StudioEditor() {
   }
 
   // Quick Format Helpers
+  const handleWrapFormat = (prefix, suffix, placeholder = 'ข้อความ') => {
+    if (!textareaRef.current) return
+    const el = textareaRef.current
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const selected = localText.substring(start, end)
+    const content = selected || placeholder
+    const replacement = `${prefix}${content}${suffix}`
+    const newText = localText.substring(0, start) + replacement + localText.substring(end)
+    setLocalText(newText)
+    updateCurrentPageText(newText)
+    setTimeout(() => {
+      el.selectionStart = start + prefix.length
+      el.selectionEnd = start + prefix.length + content.length
+      el.focus()
+    }, 10)
+  }
+
   const handleInsertIndent = () => {
     if (!textareaRef.current) return
     const el = textareaRef.current
@@ -479,46 +497,87 @@ function StudioEditor() {
           </div>
         </div>
 
-        {/* Middle Group: Quick Formatting Snippets */}
-        <div className="flex items-center gap-1.5">
-          <WarmTooltip content="เพิ่มย่อหน้ามาตรฐาน 4 เคาะตามหลักวรรณกรรม" side="bottom">
-            <button
-              type="button"
-              onClick={handleInsertIndent}
-              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer"
-            >
-              ⇥ ย่อหน้า
-            </button>
-          </WarmTooltip>
+        {/* Middle Group: Quick Formatting Snippets Wrapped with WarmTooltipGroup */}
+        <WarmTooltipGroup delay={250} warmWindow={300} travel={280} lean={2}>
+          <div className="flex items-center gap-1.5">
+            {/* Bold */}
+            <WarmTooltip content="ตัวหนา · ⌘B" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={() => handleWrapFormat('**', '**', 'ข้อความตัวหนา')}
+                className="elevated-surface border hover:border-violet-500/50 px-2 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                title="ตัวหนา"
+              >
+                B
+              </button>
+            </WarmTooltip>
 
-          <WarmTooltip content="แทรกเครื่องหมายคำพูด “...” พร้อมจัดเคอร์เซอร์ตรงกลาง" side="bottom">
-            <button
-              type="button"
-              onClick={handleInsertDialogue}
-              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs font-serif transition cursor-pointer"
-            >
-              “คำพูด”
-            </button>
-          </WarmTooltip>
+            {/* Italic */}
+            <WarmTooltip content="ตัวเอียง · ⌘I" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={() => handleWrapFormat('*', '*', 'ข้อความตัวเอียง')}
+                className="elevated-surface border hover:border-violet-500/50 px-2 py-1.5 rounded-xl text-xs italic transition cursor-pointer font-serif"
+                title="ตัวเอียง"
+              >
+                I
+              </button>
+            </WarmTooltip>
 
-          <WarmTooltip content="เปิดแถบเครื่องมือด่วน AI ผู้ช่วยบรรณาธิการ" side="bottom">
-            <button
-              type="button"
-              onClick={() => {
-                if (textareaRef.current) {
-                  textareaRef.current.focus()
-                  const len = localText.length
-                  textareaRef.current.selectionStart = Math.max(0, len - 80)
-                  textareaRef.current.selectionEnd = len
-                  handleSelect({ target: textareaRef.current })
-                }
-              }}
-              className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs text-violet-300 transition cursor-pointer"
-            >
-              ✦ แถบ AI
-            </button>
-          </WarmTooltip>
-        </div>
+            {/* Underline */}
+            <WarmTooltip content="ขีดเส้นใต้ · ⌘U" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={() => handleWrapFormat('<u>', '</u>', 'ข้อความขีดเส้นใต้')}
+                className="elevated-surface border hover:border-violet-500/50 px-2 py-1.5 rounded-xl text-xs underline underline-offset-2 transition cursor-pointer"
+                title="ขีดเส้นใต้"
+              >
+                U
+              </button>
+            </WarmTooltip>
+
+            {/* Indent */}
+            <WarmTooltip content="เพิ่มย่อหน้ามาตรฐาน 4 เคาะตามหลักวรรณกรรม · Tab" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={handleInsertIndent}
+                className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer"
+              >
+                ⇥ ย่อหน้า
+              </button>
+            </WarmTooltip>
+
+            {/* Dialogue */}
+            <WarmTooltip content="แทรกเครื่องหมายคำพูด “...” พร้อมจัดเคอร์เซอร์ตรงกลาง · ⌘&quot;" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={handleInsertDialogue}
+                className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs font-serif transition cursor-pointer"
+              >
+                “คำพูด”
+              </button>
+            </WarmTooltip>
+
+            {/* Floating AI Toolbar Trigger */}
+            <WarmTooltip content="เปิดแถบเครื่องมือด่วน AI ผู้ช่วยบรรณาธิการ · ⌘J" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.focus()
+                    const len = localText.length
+                    textareaRef.current.selectionStart = Math.max(0, len - 80)
+                    textareaRef.current.selectionEnd = len
+                    handleSelect({ target: textareaRef.current })
+                  }
+                }}
+                className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs text-violet-300 transition cursor-pointer"
+              >
+                ✦ แถบ AI
+              </button>
+            </WarmTooltip>
+          </div>
+        </WarmTooltipGroup>
 
         {/* Right Group: Font Size & 3 Themes (Obsidian, Midnight, Paper) */}
         <div className="flex items-center gap-2.5">

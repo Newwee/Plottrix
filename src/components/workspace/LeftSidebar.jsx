@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
-import WarmTooltip from '../react-bits/WarmTooltip'
+import WarmTooltip, { WarmTooltipGroup } from '../react-bits/WarmTooltip'
 
 function LeftSidebar() {
   const {
@@ -200,83 +200,85 @@ function LeftSidebar() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-1.5">
-              {/* Characters & Lore */}
-              <WarmTooltip content="คลังข้อมูลตัวละครและโลกนิยายเพื่อเชื่อมต่อบริบท AI" side="right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveModal('characterBible')
-                    if (window.innerWidth < 1024) setLeftSidebarOpen(false)
-                  }}
-                  className="elevated-surface border hover:border-violet-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-violet-400 text-sm">👤</span>
-                    <span className="font-medium text-slate-200">ตัวละคร & Lore</span>
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-[11px] font-bold border border-violet-500/30">
-                    {characters.length}
-                  </span>
-                </button>
-              </WarmTooltip>
+            <WarmTooltipGroup delay={250} warmWindow={300} travel={280} lean={2}>
+              <div className="grid grid-cols-1 gap-1.5">
+                {/* Characters & Lore */}
+                <WarmTooltip content="คลังข้อมูลตัวละครและโลกนิยายเพื่อเชื่อมต่อบริบท AI" side="right" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModal('characterBible')
+                      if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                    }}
+                    className="elevated-surface border hover:border-violet-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-violet-400 text-sm">👤</span>
+                      <span className="font-medium text-slate-200">ตัวละคร & Lore</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-[11px] font-bold border border-violet-500/30">
+                      {characters.length}
+                    </span>
+                  </button>
+                </WarmTooltip>
 
-              {/* Chapter Plot Summaries */}
-              <WarmTooltip content="พล็อตย่อรายตอนสำหรับส่งเป็นบริบทอ้างอิงให้ AI" side="right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveModal('characterBible')
-                    if (window.innerWidth < 1024) setLeftSidebarOpen(false)
-                  }}
-                  className="elevated-surface border hover:border-violet-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-amber-400 text-sm">🗺️</span>
-                    <span className="font-medium text-slate-200">พล็อตย่อรายตอน</span>
-                  </span>
-                  <span className="text-[10px] text-amber-300/80 font-medium">บริบท AI</span>
-                </button>
-              </WarmTooltip>
+                {/* Chapter Plot Summaries */}
+                <WarmTooltip content="พล็อตย่อรายตอนสำหรับส่งเป็นบริบทอ้างอิงให้ AI" side="right" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModal('characterBible')
+                      if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                    }}
+                    className="elevated-surface border hover:border-violet-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-amber-400 text-sm">🗺️</span>
+                      <span className="font-medium text-slate-200">พล็อตย่อรายตอน</span>
+                    </span>
+                    <span className="text-[10px] text-amber-300/80 font-medium">บริบท AI</span>
+                  </button>
+                </WarmTooltip>
 
-              {/* Vocabulary Bank */}
-              <WarmTooltip content="คลังคำศัพท์นิยายกว่า 1,000+ คำ (ฟรีทุกแพลน)" side="right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRightSidebarOpen(!rightSidebarOpen)
-                    if (window.innerWidth < 1024) setLeftSidebarOpen(false)
-                  }}
-                  className="elevated-surface border hover:border-emerald-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-emerald-400 text-sm">📚</span>
-                    <span className="font-medium text-slate-200">คลังคำศัพท์นิยาย</span>
-                  </span>
-                  <span className="text-[11px] text-emerald-400 font-bold">1k+ ฟรี</span>
-                </button>
-              </WarmTooltip>
+                {/* Vocabulary Bank */}
+                <WarmTooltip content="คลังคำศัพท์นิยายกว่า 1,000+ คำ (ฟรีทุกแพลน)" side="right" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRightSidebarOpen(!rightSidebarOpen)
+                      if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                    }}
+                    className="elevated-surface border hover:border-emerald-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-emerald-400 text-sm">📚</span>
+                      <span className="font-medium text-slate-200">คลังคำศัพท์นิยาย</span>
+                    </span>
+                    <span className="text-[11px] text-emerald-400 font-bold">1k+ ฟรี</span>
+                  </button>
+                </WarmTooltip>
 
-              {/* Version History */}
-              <WarmTooltip content="ประวัติการแก้ไขและกู้คืนฉบับร่างย้อนหลัง" side="right">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveModal('history')
-                    if (window.innerWidth < 1024) setLeftSidebarOpen(false)
-                  }}
-                  className="elevated-surface border hover:border-sky-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-sky-400 text-sm">🕒</span>
-                    <span className="font-medium text-slate-200">ประวัติแก้ไข</span>
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                    Pro
-                  </span>
-                </button>
-              </WarmTooltip>
-            </div>
+                {/* Version History */}
+                <WarmTooltip content="ประวัติการแก้ไขและกู้คืนฉบับร่างย้อนหลัง" side="right" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModal('history')
+                      if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                    }}
+                    className="elevated-surface border hover:border-sky-500/60 p-2.5 rounded-xl flex items-center justify-between text-xs transition cursor-pointer w-full text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-sky-400 text-sm">🕒</span>
+                      <span className="font-medium text-slate-200">ประวัติแก้ไข</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                      Pro
+                    </span>
+                  </button>
+                </WarmTooltip>
+              </div>
+            </WarmTooltipGroup>
           </div>
         </div>
 

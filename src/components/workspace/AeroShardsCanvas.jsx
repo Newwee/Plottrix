@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useDevicePerformance } from '../../hooks/useDevicePerformance'
 import AeroShards from '../react-bits/AeroShards'
 
@@ -8,18 +9,20 @@ import AeroShards from '../react-bits/AeroShards'
  * 1. High-End / Modern WebGPU: Authentic React Bits WebGPU <AeroShards /> shader engine
  * 2. Balanced / No-WebGPU Fallback: Optimized Canvas 2D floating glass ribbon shards
  * 3. Low-End / Potato PC Mode: 100% disabled GPU execution, pure CSS radial gradient + static SVG
- * 4. Zero Click-Blocking: Fixed pointer-events-none -z-10 layer throughout
+ * 4. Zero Click-Blocking: Fixed pointer-events-none z-1 layer throughout document.body via Portal
  */
 export default function AeroShardsCanvas() {
   const { isLowEnd, isBalanced, isHighEnd, maxDpr, enableAeroCanvas } = useDevicePerformance()
   const [webGpuFailed, setWebGpuFailed] = useState(false)
   const [hasWebGpuSupport, setHasWebGpuSupport] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   // Canvas 2D fallback refs
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
 
   useEffect(() => {
+    setMounted(true)
     if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
       setHasWebGpuSupport(true)
     } else {
@@ -303,20 +306,25 @@ export default function AeroShardsCanvas() {
     }
   }, [shouldUse2DCanvas, isBalanced, maxDpr])
 
+  if (!mounted || typeof document === 'undefined') return null
+
   // 1. Low-End / Potato PC Mode: Zero Canvas, zero WebGPU
   if (!enableAeroCanvas || isLowEnd) {
-    return (
+    return createPortal(
       <div
+        id="plottrix-aero-shards-portal"
         className="aero-shards aero-shards-global"
         aria-hidden="true"
         style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
           width: '100vw',
           height: '100vh',
           pointerEvents: 'none',
-          zIndex: 0,
-          overflow: 'hidden'
+          zIndex: 1,
+          overflow: 'hidden',
+          background: 'transparent'
         }}
       >
         <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
@@ -326,24 +334,28 @@ export default function AeroShardsCanvas() {
           <circle cx="75%" cy="80%" r="1.2" fill="#9333ea" opacity="0.4" />
           <circle cx="25%" cy="85%" r="1" fill="#c084fc" opacity="0.5" />
         </svg>
-      </div>
+      </div>,
+      document.body
     )
   }
 
   // 2. High-End / Modern WebGPU: React Bits authentic WebGPU <AeroShards /> component
   if (hasWebGpuSupport && !webGpuFailed) {
-    return (
+    return createPortal(
       <div
+        id="plottrix-aero-shards-portal"
         className="aero-shards aero-shards-global"
         aria-hidden="true"
         style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
           width: '100vw',
           height: '100vh',
           pointerEvents: 'none',
-          zIndex: 0,
-          overflow: 'hidden'
+          zIndex: 1,
+          overflow: 'hidden',
+          background: 'transparent'
         }}
       >
         <AeroShards
@@ -370,30 +382,35 @@ export default function AeroShardsCanvas() {
           className="w-full h-full pointer-events-none"
           style={{
             position: 'absolute',
-            inset: 0,
+            top: 0,
+            left: 0,
             width: '100vw',
             height: '100vh',
             pointerEvents: 'none'
           }}
         />
-      </div>
+      </div>,
+      document.body
     )
   }
 
   // 3. Fallback Canvas 2D mode (when WebGPU is not supported or failed to initialize)
-  return (
+  return createPortal(
     <div
+      id="plottrix-aero-shards-portal"
       ref={containerRef}
       className="aero-shards aero-shards-global"
       aria-hidden="true"
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
         width: '100vw',
         height: '100vh',
         pointerEvents: 'none',
-        zIndex: 0,
-        overflow: 'hidden'
+        zIndex: 1,
+        overflow: 'hidden',
+        background: 'transparent'
       }}
     >
       <canvas
@@ -401,13 +418,15 @@ export default function AeroShardsCanvas() {
         className="aero-shards-canvas"
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
           width: '100vw',
           height: '100vh',
           display: 'block',
           pointerEvents: 'none'
         }}
       />
-    </div>
+    </div>,
+    document.body
   )
 }

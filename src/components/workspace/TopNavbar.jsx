@@ -1,9 +1,8 @@
-import React, { memo } from 'react'
+import React, { memo, useState, useRef, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
-import WarmTooltip from '../react-bits/WarmTooltip'
+import WarmTooltip, { WarmTooltipGroup } from '../WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
-import PillNav from '../react-bits/PillNav'
 
 const GENRES = [
   'แฟนตาซี / กำลังภายใน',
@@ -35,6 +34,20 @@ function TopNavbar({ onOpenCommandPalette }) {
     setIsFocusMode
   } = useApp()
 
+  const [genreOpen, setGenreOpen] = useState(false)
+  const genreDropdownRef = useRef(null)
+
+  // Click-outside handler for custom genre dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (genreDropdownRef.current && !genreDropdownRef.current.contains(e.target)) {
+        setGenreOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const navItems = [
     { id: 'studio', label: 'ห้องเขียน Studio', icon: '✍️' },
     { id: 'bible', label: 'Story Bible', icon: '📖' },
@@ -59,7 +72,7 @@ function TopNavbar({ onOpenCommandPalette }) {
 
   return (
     <header className="sticky top-0 z-40 px-3 sm:px-5 py-2 panel-surface border-b flex flex-wrap items-center justify-between gap-3 select-none backdrop-blur-xl">
-      {/* 1. Left Group: Logo + Bookshelf + Novel Title + Genre + Debounced Live Save */}
+      {/* 1. Left Group: Logo + Bookshelf + Novel Title + Custom Genre Dropdown + Live Save */}
       <div className="flex items-center gap-2.5 flex-wrap min-w-0">
         <div
           onClick={() => navigateTo('workspace_home')}
@@ -74,12 +87,12 @@ function TopNavbar({ onOpenCommandPalette }) {
           </span>
         </div>
 
-        {/* Bookshelf button */}
-        <WarmTooltip content="สลับโปรเจกต์ หรือจัดการชั้นวางนิยาย" side="bottom">
+        {/* Return to Bookshelf Button */}
+        <WarmTooltip content="กลับสู่ชั้นวางนิยายของคุณ" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={() => navigateTo('workspace_home')}
-            className="elevated-surface border px-2.5 py-1.5 rounded-xl text-xs font-semibold text-violet-300 hover:text-white hover:border-violet-400/60 transition flex items-center gap-1.5 shrink-0"
+            className="elevated-surface border px-2.5 py-1.5 rounded-xl text-xs font-semibold text-violet-300 hover:text-white hover:border-violet-400/60 transition flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
             <span>📚</span>
             <span className="hidden md:inline">ชั้นวางนิยาย</span>
@@ -98,25 +111,49 @@ function TopNavbar({ onOpenCommandPalette }) {
           title="คลิกเพื่อแก้ไขชื่อเรื่อง"
         />
 
-        {/* Genre Selector */}
-        <div className="hidden lg:flex items-center relative">
-          <select
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="elevated-surface border border-violet-500/25 text-violet-300 text-xs px-2.5 py-1.5 rounded-xl outline-none cursor-pointer hover:border-violet-400/60 transition font-medium appearance-none pr-6 shadow-sm"
+        {/* 1. Custom Dark Obsidian Glass Genre Dropdown */}
+        <div ref={genreDropdownRef} className="hidden lg:flex items-center relative">
+          <button
+            type="button"
+            onClick={() => setGenreOpen(prev => !prev)}
+            className="bg-[#161229]/90 border border-purple-500/30 hover:border-purple-400/60 text-slate-200 rounded-full px-3.5 py-1.5 text-xs font-medium flex items-center gap-2 transition shadow-sm cursor-pointer"
           >
-            {GENRES.map(g => (
-              <option key={g} value={g} className="bg-[#16102a] text-white">{g}</option>
-            ))}
-          </select>
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-violet-400 pointer-events-none">
-            ▼
-          </span>
+            <span className="truncate max-w-[145px]">{genre || 'แฟนตาซี / กำลังภายใน'}</span>
+            <span className={`text-[9px] text-purple-300 transition-transform duration-200 ${genreOpen ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
+
+          {genreOpen && (
+            <div className="absolute left-0 top-full mt-2 w-56 rounded-xl bg-[#120e24]/95 backdrop-blur-xl border border-purple-500/30 shadow-[0_12px_32px_rgba(0,0,0,0.65)] p-1.5 z-50 animate-fade-in space-y-0.5">
+              {GENRES.map((g) => {
+                const isActive = (genre || 'แฟนตาซี / กำลังภายใน') === g
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => {
+                      setGenre(g)
+                      setGenreOpen(false)
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-between ${
+                      isActive
+                        ? 'bg-purple-600/30 text-purple-200 font-bold border border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
+                        : 'text-slate-300 hover:bg-purple-500/20 hover:text-white'
+                    }`}
+                  >
+                    <span>{g}</span>
+                    {isActive && <span className="text-purple-300 text-xs font-bold">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Save Status Indicator */}
         <div className="hidden md:flex items-center">
-          <WarmTooltip content="บันทึกอัตโนมัติลง Supabase หลังหยุดพิมพ์" side="bottom">
+          <WarmTooltip content="บันทึกอัตโนมัติลงเครื่องและระบบอย่างปลอดภัย" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/30 border border-white/10 text-[11px]">
               <StatusMark
                 status={saveStatus === 'saving' ? 'running' : 'done'}
@@ -132,32 +169,58 @@ function TopNavbar({ onOpenCommandPalette }) {
         </div>
       </div>
 
-      {/* 2. Center: React Bits PillNav Workspace Navigation */}
+      {/* 2. Center: Workspace Navigation with WarmTooltipGroup */}
       <div className="hidden xl:flex items-center">
-        <PillNav
-          items={navItems}
-          activeId="studio"
-          onChange={handleNavChange}
-        />
+        <WarmTooltipGroup delay={250} warmWindow={300} travel={280} lean={2}>
+          <div className="flex items-center gap-1 p-1 rounded-full bg-[#16102a]/80 border border-purple-500/25 backdrop-blur-md">
+            {navItems.map((item) => (
+              <WarmTooltip
+                key={item.id}
+                content={`เปิดหน้าต่าง ${item.label}`}
+                side="bottom"
+                surfaceColor="#1e1b2e"
+                inkColor="#f4f4f5"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleNavChange(item.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                    item.id === 'studio'
+                      ? 'bg-purple-600/35 text-purple-200 border border-purple-400/30 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              </WarmTooltip>
+            ))}
+          </div>
+        </WarmTooltipGroup>
       </div>
 
       {/* 3. Right Group: Command Palette, Trix Wallet, Import, Export, Focus Mode */}
       <div className="flex items-center gap-2 flex-wrap shrink-0">
         {/* Command Palette Trigger (Ctrl/Cmd + K) */}
-        <WarmTooltip content="เปิด Command Palette เพื่อค้นหาหรือสั่งการด่วน" shortcut="⌘K" side="bottom">
+        <WarmTooltip content="เปิด Command Palette ค้นหาคำศัพท์ / ข้ามตอน / คำสั่งด่วน" shortcut="⌘K" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl elevated-surface border hover:border-violet-500/60 text-xs text-slate-300 hover:text-white transition"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl elevated-surface border hover:border-violet-500/60 text-xs text-slate-300 hover:text-white transition cursor-pointer"
           >
-            <span className="text-violet-400 text-sm">⌘</span>
-            <span className="text-[11px] font-mono opacity-70">Cmd+K</span>
+            <span className="text-violet-400 text-sm font-bold">⌘</span>
+            <span className="text-[11px] font-mono opacity-80">Cmd+K</span>
           </button>
         </WarmTooltip>
 
         {/* Trix Wallet with Daily Claim */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1a142e] border border-amber-500/30">
-          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI" side="bottom">
+          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI (คลิกเพื่อเติมเหรียญ)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
@@ -169,11 +232,11 @@ function TopNavbar({ onOpenCommandPalette }) {
             </button>
           </WarmTooltip>
 
-          <WarmTooltip content="รับสิทธิ์ฟรี +3 Trix ทุกวัน!" side="bottom">
+          <WarmTooltip content="รับสิทธิ์ฟรี +3 Trix ทุกวัน!" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
             <button
               type="button"
               onClick={claimDailyTrix}
-              className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition border border-emerald-500/30"
+              className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition border border-emerald-500/30 cursor-pointer"
             >
               +3 ฟรี
             </button>
@@ -181,7 +244,7 @@ function TopNavbar({ onOpenCommandPalette }) {
         </div>
 
         {/* Free Novel Vocab Bank Button */}
-        <WarmTooltip content="คลังคำศัพท์เฉพาะทางสำหรับนักเขียนนิยาย (ฟรีทุกแพลน)" side="bottom">
+        <WarmTooltip content="คลังคำศัพท์เฉพาะทางสำหรับนักเขียนนิยาย (เปิดใช้ฟรี)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
@@ -193,12 +256,12 @@ function TopNavbar({ onOpenCommandPalette }) {
           >
             <span className="text-emerald-400">📚</span>
             <span className="hidden md:inline">คลังคำศัพท์</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300">ฟรี</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">ฟรี</span>
           </button>
         </WarmTooltip>
 
         {/* Import file button */}
-        <WarmTooltip content="นำเข้าไฟล์ต้นฉบับเดิม (.txt)" side="bottom">
+        <WarmTooltip content="นำเข้าไฟล์ต้นฉบับ (.txt / .docx)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={() => {
@@ -216,7 +279,7 @@ function TopNavbar({ onOpenCommandPalette }) {
               }
               input.click()
             }}
-            className="elevated-surface border hover:border-violet-500/60 px-2 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white transition hidden md:flex items-center gap-1"
+            className="elevated-surface border hover:border-violet-500/60 px-2.5 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white transition hidden md:flex items-center gap-1 cursor-pointer"
           >
             <span>📥</span>
             <span>นำเข้า</span>
@@ -224,7 +287,7 @@ function TopNavbar({ onOpenCommandPalette }) {
         </WarmTooltip>
 
         {/* Export Modal Button */}
-        <WarmTooltip content="ส่งออกผลงานพร้อมลง ReadAWrite, Dek-D Writer หรือ E-Book" side="bottom">
+        <WarmTooltip content="ส่งออกเป็นไฟล์ Word, PDF หรือ E-pub พร้อมลงเว็บนิยาย" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={() => setActiveModal('export')}
@@ -236,7 +299,7 @@ function TopNavbar({ onOpenCommandPalette }) {
         </WarmTooltip>
 
         {/* Focus Mode Button */}
-        <WarmTooltip content={isFocusMode ? "ออกจากโหมดสมาธิ (Esc)" : "โหมดสมาธิไร้สิ่งรบกวน (Focus Mode)"} shortcut="Esc" side="bottom">
+        <WarmTooltip content={isFocusMode ? "ออกจากโหมดสมาธิ (Esc)" : "โหมดสมาธิไร้สิ่งรบกวน (Focus Mode)"} shortcut="Esc" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
           <button
             type="button"
             onClick={() => setIsFocusMode(!isFocusMode)}
