@@ -578,9 +578,9 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            onClick={() => navigateTo('home')}
+            onClick={() => navigateTo('story_detail', { storyId })}
             className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-sm transition cursor-pointer shrink-0"
-            title="กลับสู่หน้าหลัก"
+            title="กลับสู่หน้ารายละเอียดนิยาย"
           >
             ←
           </button>
@@ -781,6 +781,67 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
       <main className="relative z-10 max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-14">
         {/* Reading Surface Card (Protects text contrast from 3D shards) */}
         <div className={`p-6 sm:p-10 rounded-3xl border backdrop-blur-xl shadow-2xl transition-colors duration-300 ${themeClasses.panel}`}>
+          {/* Story Intro & Synopsis Section (Shown on Chapter 1) */}
+          {currentChapterIdx === 0 && (
+            <div className="mb-10 pb-10 border-b border-white/10 text-center animate-fadeIn">
+              {/* Novel Cover */}
+              <div className="w-40 sm:w-48 aspect-[3/4] mx-auto rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl shadow-purple-950/60 mb-5 relative group">
+                <img
+                  src={story.cover_url || story.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'}
+                  alt={story.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+
+              {/* Title & Meta */}
+              <div className="space-y-2 mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-400/30">
+                  <span>{story.genre || 'สืบสวน / ระทึกขวัญ'}</span>
+                  {story.published_arc && <span>· {story.published_arc}</span>}
+                </div>
+
+                <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-snug">
+                  {story.title}
+                </h1>
+
+                <p className={`text-xs sm:text-sm ${themeClasses.dimText}`}>
+                  ประพันธ์โดย <strong className="text-purple-300 font-bold">{story.authorName}</strong>
+                </p>
+
+                {/* Tags */}
+                {Array.isArray(story.tags) && story.tags.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                    {story.tags.map((t, i) => (
+                      <span key={i} className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white/5 text-purple-200 border border-white/10">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Synopsis Box */}
+              {story.synopsis && (
+                <div className="p-5 rounded-2xl bg-black/40 border border-purple-500/30 text-left max-w-xl mx-auto shadow-inner">
+                  <div className="text-xs font-bold text-purple-300 mb-1.5 flex items-center gap-1.5">
+                    <span>📖</span>
+                    <span>เรื่องย่อ / คำโปรย:</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-thai whitespace-pre-line">
+                    {story.synopsis}
+                  </p>
+                </div>
+              )}
+
+              {/* Flow Divider into Chapter 1 */}
+              <div className="mt-8 flex items-center justify-center gap-3 text-xs font-bold text-purple-400 tracking-wider">
+                <span className="w-12 h-px bg-purple-500/40" />
+                <span>✦ เริ่มต้นเนื้อหาบทที่ 1 ✦</span>
+                <span className="w-12 h-px bg-purple-500/40" />
+              </div>
+            </div>
+          )}
+
           {/* Chapter Header */}
           <div className="text-center mb-10 pb-8 border-b border-white/10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-400/30 text-purple-300 text-xs font-semibold mb-3">

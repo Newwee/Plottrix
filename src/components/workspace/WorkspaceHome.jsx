@@ -3,6 +3,9 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
 import AeroShardsCanvas from './AeroShardsCanvas'
+import NovelCoverCarousel from '../common/NovelCoverCarousel'
+import CoverGalleryInput from '../common/CoverGalleryInput'
+import TagInput from '../common/TagInput'
 
 // Genre definitions with iconography
 const GENRES = [
@@ -148,6 +151,8 @@ export default function WorkspaceHome() {
   const [editGenre, setEditGenre] = useState('')
   const [editSynopsis, setEditSynopsis] = useState('')
   const [editCover, setEditCover] = useState('')
+  const [editCoverImages, setEditCoverImages] = useState([])
+  const [editTags, setEditTags] = useState([])
   const [editImageError, setEditImageError] = useState('')
 
   // Delete State
@@ -228,6 +233,12 @@ export default function WorkspaceHome() {
     setEditGenre(novel.genre || 'แฟนตาซี / กำลังภายใน')
     setEditSynopsis(novel.synopsis || '')
     setEditCover(novel.cover || DEFAULT_COVER)
+    setEditCoverImages(
+      Array.isArray(novel.cover_images) && novel.cover_images.length > 0
+        ? novel.cover_images
+        : [novel.cover || DEFAULT_COVER]
+    )
+    setEditTags(Array.isArray(novel.tags) ? novel.tags : [])
     setEditImageError('')
   }
 
@@ -239,7 +250,9 @@ export default function WorkspaceHome() {
       title: editTitle.trim(),
       genre: editGenre,
       synopsis: editSynopsis.trim(),
-      cover: editCover
+      cover: editCoverImages[0] || editCover || DEFAULT_COVER,
+      cover_images: editCoverImages,
+      tags: editTags
     })
     setEditingNovel(null)
   }
@@ -592,11 +605,10 @@ export default function WorkspaceHome() {
                     className="w-full h-64 rounded-xl overflow-hidden relative mb-4 shadow-md bg-gradient-to-br from-purple-950/60 via-[#16102a] to-indigo-950/60 border border-white/10 cursor-pointer"
                     onClick={() => openNovel(novel.id)}
                   >
-                    <img
-                      src={novel.cover}
+                    <NovelCoverCarousel
+                      images={Array.isArray(novel.cover_images) && novel.cover_images.length > 0 ? novel.cover_images : [novel.cover || DEFAULT_COVER]}
                       alt={novel.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
+                      className="w-full h-full"
                     />
 
                     {/* Live Publish Status Badge with Unpublished Draft Indicator */}
@@ -661,6 +673,20 @@ export default function WorkspaceHome() {
                       <span>แก้ไขล่าสุด:</span>
                       <span className="text-purple-300">{novel.updatedAt || 'วันนี้'}</span>
                     </div>
+
+                    {/* Novel Tags */}
+                    {Array.isArray(novel.tags) && novel.tags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-white/5">
+                        {novel.tags.slice(0, 3).map((tag, idx) => (
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-200 border border-purple-500/30 font-medium">
+                            #{tag}
+                          </span>
+                        ))}
+                        {novel.tags.length > 3 && (
+                          <span className="text-[9px] text-plottrix-muted">+{novel.tags.length - 3}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -860,58 +886,12 @@ export default function WorkspaceHome() {
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              {/* Cover Image Upload & Preview */}
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
-                  รูปภาพหน้าปก (Cover Image - ไม่เกิน 5MB)
-                </label>
-                <div className="flex items-start gap-4 p-3 rounded-xl bg-black/30 border border-white/10">
-                  <div className="w-20 h-28 rounded-lg overflow-hidden bg-purple-950/50 border border-white/15 shrink-0 shadow">
-                    <img
-                      src={editCover || DEFAULT_COVER}
-                      alt="Cover Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/30 text-xs font-bold cursor-pointer transition">
-                      <span>📁</span>
-                      <span>เลือกไฟล์ภาพใหม่</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            processImageFile(
-                              file,
-                              (dataUrl) => {
-                                setEditCover(dataUrl)
-                                setEditImageError('')
-                              },
-                              (errMsg) => setEditImageError(errMsg)
-                            )
-                          }
-                        }}
-                      />
-                    </label>
-                    <p className="text-[11px] text-plottrix-muted leading-tight">
-                      รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 5MB ระบบจะปรับขนาดและบีบอัดให้แสดงผลเร็วอัตโนมัติ
-                    </p>
-                    {editImageError && (
-                      <p className="text-[11px] text-red-400 font-semibold">{editImageError}</p>
-                    )}
-                    <input
-                      type="url"
-                      value={editCover}
-                      onChange={(e) => setEditCover(e.target.value)}
-                      placeholder="หรือวางลิงก์รูปภาพ (Image URL)..."
-                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/15 text-xs text-slate-200 focus:border-purple-400 outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* Cover Images Gallery (Up to 5 images) */}
+              <CoverGalleryInput
+                images={editCoverImages}
+                onChange={setEditCoverImages}
+                maxImages={5}
+              />
 
               {/* Title */}
               <div>
@@ -934,6 +914,18 @@ export default function WorkspaceHome() {
                   แนวเรื่อง (Genre)
                 </label>
                 <GenreDropdown value={editGenre} onChange={setEditGenre} />
+              </div>
+
+              {/* Tags Input */}
+              <div>
+                <label className="text-xs font-bold text-purple-300 block mb-1.5">
+                  แท็กนิยาย (Tags - ให้ผู้อ่านค้นพบผลงานของคุณ)
+                </label>
+                <TagInput
+                  tags={editTags}
+                  onChange={setEditTags}
+                  placeholder="พิมพ์แท็ก เช่น หักมุม, แก้แค้น, สดใหม่..."
+                />
               </div>
 
               {/* Synopsis */}

@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext'
 import { togglePublishStory } from '../../lib/publicStoriesService'
 import { modalBackdropVariants, modalContentVariants } from '../../lib/animations'
 import confetti from 'canvas-confetti'
+import CoverGalleryInput from '../common/CoverGalleryInput'
+import TagInput from '../common/TagInput'
 
 export default function PublishModal() {
   const {
@@ -28,6 +30,8 @@ export default function PublishModal() {
   const [synopsis, setSynopsis] = useState('')
   const [authorName, setAuthorName] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
+  const [coverImages, setCoverImages] = useState([])
+  const [tags, setTags] = useState([])
   const [arcName, setArcName] = useState('ARC 1: เงินที่หายไป (ตอนที่ 1–11)')
   const [isPublished, setIsPublished] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -42,6 +46,12 @@ export default function PublishModal() {
       setGenre(targetNovel.genre || 'ระทึกขวัญ / สืบสวน')
       setSynopsis(targetNovel.synopsis || '')
       setCoverUrl(targetNovel.cover || targetNovel.cover_url || '')
+      setCoverImages(
+        Array.isArray(targetNovel.cover_images) && targetNovel.cover_images.length > 0
+          ? targetNovel.cover_images
+          : [targetNovel.cover || targetNovel.cover_url].filter(Boolean)
+      )
+      setTags(Array.isArray(targetNovel.tags) ? targetNovel.tags : [])
       setIsPublished(Boolean(targetNovel.is_published))
       setArcName(targetNovel.published_arc || targetNovel.published_snapshot?.arc_name || 'ARC 1: เงินที่หายไป (ตอนที่ 1–11)')
       setAuthorName(
@@ -192,7 +202,9 @@ export default function PublishModal() {
       genre,
       synopsis,
       author_display_name: authorName,
-      cover_url: coverUrl,
+      cover_url: coverImages[0] || coverUrl,
+      cover_images: coverImages,
+      tags,
       published_arc: snapshot.arc_name,
       published_snapshot: snapshot,
       publish_history: updatedHistory
@@ -212,6 +224,10 @@ export default function PublishModal() {
             genre,
             synopsis,
             author_display_name: authorName,
+            cover_url: coverImages[0] || coverUrl,
+            cover: coverImages[0] || coverUrl,
+            cover_images: coverImages,
+            tags,
             is_published: true,
             published_at: new Date().toISOString(),
             published_arc: snapshot.arc_name,
@@ -652,6 +668,13 @@ export default function PublishModal() {
             {/* TAB 3: METADATA & AUTHOR INFO */}
             {activeTab === 'info' && (
               <div className="space-y-4">
+                {/* 5-Cover Images Gallery */}
+                <CoverGalleryInput
+                  images={coverImages}
+                  onChange={setCoverImages}
+                  maxImages={5}
+                />
+
                 {/* Story Title Input */}
                 <div>
                   <label className="block text-xs font-semibold text-purple-300 mb-1">
@@ -691,6 +714,18 @@ export default function PublishModal() {
                     onChange={(e) => setGenre(e.target.value)}
                     placeholder="เช่น ระทึกขวัญ / สืบสวน, แฟนตาซี..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-purple-500/30 text-white text-xs sm:text-sm focus:border-purple-400 focus:bg-white/10 outline-none transition"
+                  />
+                </div>
+
+                {/* Tags Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-purple-300 mb-1">
+                    แท็กนิยาย (Tags - ให้ผู้อ่านค้นพบผลงาน)
+                  </label>
+                  <TagInput
+                    tags={tags}
+                    onChange={setTags}
+                    placeholder="พิมพ์แท็ก เช่น หักมุม, แก้แค้น, สดใหม่..."
                   />
                 </div>
 

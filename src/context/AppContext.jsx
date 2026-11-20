@@ -99,6 +99,12 @@ export function AppProvider({ children }) {
     } else if (view === 'workspace_home' || view === 'workspace') {
       targetView = 'workspace_home'
       targetPath = '/home-workspace'
+    } else if (view === 'story_detail') {
+      targetView = 'story_detail'
+      let sid = typeof payload === 'object' ? payload?.storyId : payload
+      sid = sid || activeReadStoryId
+      if (sid) setActiveReadStoryId(sid)
+      targetPath = sid ? `/story/${sid}` : '/home'
     } else if (view === 'reader' || (view === 'read' && payload)) {
       targetView = 'reader'
       let sid = typeof payload === 'object' ? payload?.storyId : payload
@@ -139,7 +145,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.toLowerCase()
-      if (path.startsWith('/read/')) {
+      if (path.startsWith('/story/')) {
+        const sid = window.location.pathname.split('/story/')[1]?.split('/')[0]
+        if (sid) setActiveReadStoryId(sid)
+        setCurrentView('story_detail')
+      } else if (path.startsWith('/read/')) {
         const sid = window.location.pathname.split('/read/')[1]?.split('/')[0]
         if (sid) setActiveReadStoryId(sid)
         setCurrentView('reader')
@@ -533,6 +543,10 @@ export function AppProvider({ children }) {
               published_snapshot: n.published_snapshot || null,
               publish_history: Array.isArray(n.publish_history) ? n.publish_history : [],
               cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
+              cover_images: Array.isArray(n.cover_images) && n.cover_images.length > 0 ? n.cover_images : [n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80'],
+              tags: Array.isArray(n.tags) ? n.tags : [],
+              view_count: Number(n.view_count) || 0,
+              follower_count: Number(n.follower_count) || 0,
               wordCount: stats.words,
               chapterCount: stats.count,
               updatedAt: new Date(n.updated_at || n.created_at).toLocaleDateString('th-TH'),
@@ -943,6 +957,8 @@ export function AppProvider({ children }) {
       if (updates.pov) dbPayload.pov = updates.pov
       if (updates.synopsis !== undefined) dbPayload.synopsis = updates.synopsis
       if (updates.cover) dbPayload.cover_url = updates.cover
+      if (updates.cover_images !== undefined) dbPayload.cover_images = updates.cover_images
+      if (updates.tags !== undefined) dbPayload.tags = updates.tags
       dbPayload.updated_at = new Date().toISOString()
 
       supabase.from('novels').update(dbPayload).eq('id', id).then(({ error }) => {

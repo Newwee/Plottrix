@@ -10,6 +10,7 @@ import { pageVariants } from './lib/animations'
 const WorkspaceHome = lazy(() => import('./components/workspace/WorkspaceHome'))
 const WorkspaceLayout = lazy(() => import('./components/workspace/WorkspaceLayout'))
 const PublicReaderHub = lazy(() => import('./components/reader/PublicReaderHub'))
+const StoryDetailsView = lazy(() => import('./components/reader/StoryDetailsView'))
 const ReaderView = lazy(() => import('./components/reader/ReaderView'))
 const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'))
@@ -46,6 +47,8 @@ function ViewRouter() {
               <WorkspaceHome />
               <OnboardingTour />
             </>
+          ) : currentView === 'story_detail' ? (
+            <StoryDetailsView />
           ) : currentView === 'reader' ? (
             <ReaderView />
           ) : currentView === 'read' ? (
