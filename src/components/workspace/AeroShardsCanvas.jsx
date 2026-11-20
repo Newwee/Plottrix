@@ -181,15 +181,11 @@ export default function AeroShardsCanvas() {
           const targetBracket = pointer.inside && lvl <= 2 && distCursor < 75 ? 1 - distCursor / 75 : 0
           const blink = 0.35 + 0.45 * Math.sin(clock * 2.2 + mk.blinkPhase)
           const alpha = fade * (blink + targetBracket * 0.8)
-          ctx.strokeStyle = `rgba(194, 154, 255, ${alpha.toFixed(3)})`
-          ctx.lineWidth = 1
-          const s = mk.size
+          ctx.fillStyle = `rgba(247, 85, 193, ${alpha.toFixed(3)})`
+          const s = mk.size * 0.65
           ctx.beginPath()
-          ctx.moveTo(mx - s, my)
-          ctx.lineTo(mx + s, my)
-          ctx.moveTo(mx, my - s)
-          ctx.lineTo(mx, my + s)
-          ctx.stroke()
+          ctx.arc(mx, my, s, 0, Math.PI * 2)
+          ctx.fill()
         }
 
         for (const sh of shards) {
@@ -354,26 +350,23 @@ export default function AeroShardsCanvas() {
       >
         <AeroShards
           shardColor="#896ABD"
-          accentColor="#A855F7"
+          accentColor="#f755c1"
           placement="full"
-          material="glass"
-          markers="plus"
-          count={isHighEnd ? 1400 : 700}
-          shardSize={1.2}
-          spread={2.5}
-          twist={1.2}
-          billow={1.1}
-          speed={0.8}
-          scale={1.35}
-          depthOfField={0.5}
-          vignette={0}
-          glow={isHighEnd ? 0.38 : 0.18}
-          grain={isHighEnd ? 0.05 : 0}
+          material="chrome"
+          markers="dots"
+          count={1300}
+          depthOfField={0.75}
+          vignette={0.3}
           mouseInteraction={true}
-          mouseStrength={0.65}
-          parallax={0.55}
           pulseOnClick={true}
           holdToGather={true}
+          scale={1.25}
+          spread={1.8}
+          twist={1}
+          billow={1}
+          speed={0.9}
+          glow={isHighEnd ? 0.35 : 0.15}
+          grain={isHighEnd ? 0.06 : 0}
           dpr={isHighEnd ? 1.5 : 1.0}
           onError={() => setWebGpuFailed(true)}
           className="w-full h-full pointer-events-none"

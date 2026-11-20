@@ -141,7 +141,7 @@ export default function HomeNavbar() {
               <button
                 type="button"
                 className="btn btn-primary btn-small shadow-lg hover:shadow-purple-500/25 transition cursor-pointer"
-                onClick={() => navigateTo('workspace')}
+                onClick={() => navigateTo('workspace_home')}
               >
                 <span>เข้าสู่ Workspace</span>
                 <span>↗</span>

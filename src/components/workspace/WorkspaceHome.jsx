@@ -4,11 +4,119 @@ import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
 import AeroShardsCanvas from './AeroShardsCanvas'
 
+// Genre definitions with iconography
+const GENRES = [
+  { label: 'แฟนตาซี / กำลังภายใน', icon: '🔮' },
+  { label: 'สยองขวัญ / ระทึกขวัญ', icon: '👻' },
+  { label: 'สืบสวนสอบสวน', icon: '🔍' },
+  { label: 'โรแมนติก / ดราม่า', icon: '💖' },
+  { label: 'ไซไฟ / โลกอนาคต', icon: '🚀' },
+  { label: 'พีเรียด / ประวัติศาสตร์', icon: '📜' },
+  { label: 'เกิดใหม่ / ต่างโลก (Isekai)', icon: '🌀' },
+  { label: 'วาย / ยูริ (BL & GL)', icon: '🌈' },
+  { label: 'ชีวิตประจำวัน / ทั่วไป', icon: '🎭' }
+]
+
+const DEFAULT_COVER = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80'
+
+// Reusable Custom Obsidian Glass Genre Dropdown
+function GenreDropdown({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selected = GENRES.find(g => g.label === value) || GENRES[0]
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(prev => !prev)}
+        className="w-full px-3.5 py-2.5 rounded-xl bg-[#1b1435] border border-white/15 hover:border-purple-400/50 text-white text-xs flex items-center justify-between transition shadow-inner cursor-pointer"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-sm">{selected.icon}</span>
+          <span className="font-medium text-slate-100">{selected.label}</span>
+        </span>
+        <span className={`text-[10px] text-purple-300 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-56 overflow-y-auto rounded-xl bg-[#181130]/98 backdrop-blur-2xl border border-purple-500/30 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.8)] space-y-0.5">
+          {GENRES.map((g) => (
+            <button
+              key={g.label}
+              type="button"
+              onClick={() => {
+                onChange(g.label)
+                setIsOpen(false)
+              }}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2 transition cursor-pointer ${
+                value === g.label
+                  ? 'bg-purple-600/40 text-purple-200 font-bold border border-purple-400/30'
+                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <span className="text-sm">{g.icon}</span>
+              <span>{g.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Client-side image processor: compresses to Web-friendly Base64 and enforces 5MB limit
+function processImageFile(file, onSuccess, onError) {
+  if (!file) return
+  const MAX_MB = 5
+  if (file.size > MAX_MB * 1024 * 1024) {
+    if (onError) onError(`ขนาดไฟล์ภาพ (${(file.size / (1024 * 1024)).toFixed(1)}MB) เกินขีดจำกัด ${MAX_MB}MB`)
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const MAX_W = 600
+      const scale = Math.min(1, MAX_W / img.width)
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
+      onSuccess(dataUrl)
+    }
+    img.onerror = () => {
+      if (onError) onError('ไม่สามารถประมวลผลรูปภาพได้')
+    }
+    img.src = e.target.result
+  }
+  reader.onerror = () => {
+    if (onError) onError('เกิดข้อผิดพลาดในการอ่านไฟล์')
+  }
+  reader.readAsDataURL(file)
+}
+
 export default function WorkspaceHome() {
   const {
     novels,
     openNovel,
     createNovel,
+    updateNovel,
     deleteNovel,
     plan,
     trixBalance,
@@ -16,16 +124,34 @@ export default function WorkspaceHome() {
     lastDailyClaim,
     navigateTo,
     setActiveModal,
-    startTour
+    startTour,
+    addToast
   } = useApp()
   const { user } = useAuth()
 
+  // Creation State
   const [isCreating, setIsCreating] = useState(false)
-  const [novelToDelete, setNovelToDelete] = useState(null)
   const [newTitle, setNewTitle] = useState('')
   const [newGenre, setNewGenre] = useState('แฟนตาซี / กำลังภายใน')
   const [newSynopsis, setNewSynopsis] = useState('')
+  const [newCover, setNewCover] = useState(DEFAULT_COVER)
+  const [createImageError, setCreateImageError] = useState('')
 
+  // Edit / Settings State
+  const [editingNovel, setEditingNovel] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editGenre, setEditGenre] = useState('')
+  const [editSynopsis, setEditSynopsis] = useState('')
+  const [editCover, setEditCover] = useState('')
+  const [editImageError, setEditImageError] = useState('')
+
+  // Delete State
+  const [novelToDelete, setNovelToDelete] = useState(null)
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState(null)
+
+  // Carousel & Drag-to-scroll
   const scrollRef = useRef(null)
   const isDraggingRef = useRef(false)
   const startXRef = useRef(0)
@@ -38,7 +164,14 @@ export default function WorkspaceHome() {
   const today = new Date().toISOString().slice(0, 10)
   const canClaimDaily = lastDailyClaim !== today
 
-  // Mouse wheel horizontal scrolling over the bookshelf
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleCloseMenu = () => setContextMenu(null)
+    window.addEventListener('click', handleCloseMenu)
+    return () => window.removeEventListener('click', handleCloseMenu)
+  }, [])
+
+  // Mouse wheel horizontal scrolling over bookshelf
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -59,9 +192,8 @@ export default function WorkspaceHome() {
     }
   }
 
-  // Mouse drag-to-scroll handlers
+  // Mouse drag-to-scroll
   const handleMouseDown = (e) => {
-    // Avoid triggering drag when clicking directly on buttons
     if (e.target.closest('button, input, textarea, a, select')) return
     if (!scrollRef.current) return
     isDraggingRef.current = true
@@ -83,17 +215,44 @@ export default function WorkspaceHome() {
     setIsDragging(false)
   }
 
+  // Open Edit Modal
+  const openEditModal = (novel) => {
+    setEditingNovel(novel)
+    setEditTitle(novel.title || '')
+    setEditGenre(novel.genre || 'แฟนตาซี / กำลังภายใน')
+    setEditSynopsis(novel.synopsis || '')
+    setEditCover(novel.cover || DEFAULT_COVER)
+    setEditImageError('')
+  }
+
+  // Handle Edit Submit
+  const handleEditSubmit = (e) => {
+    e.preventDefault()
+    if (!editingNovel || !editTitle.trim()) return
+    updateNovel(editingNovel.id, {
+      title: editTitle.trim(),
+      genre: editGenre,
+      synopsis: editSynopsis.trim(),
+      cover: editCover
+    })
+    setEditingNovel(null)
+  }
+
+  // Handle Create Submit
   const handleCreateSubmit = (e) => {
     e.preventDefault()
     if (!newTitle.trim()) return
     const success = createNovel({
       title: newTitle.trim(),
       genre: newGenre,
-      synopsis: newSynopsis.trim()
+      synopsis: newSynopsis.trim(),
+      cover: newCover || DEFAULT_COVER
     })
     if (success) {
       setNewTitle('')
       setNewSynopsis('')
+      setNewCover(DEFAULT_COVER)
+      setCreateImageError('')
       setIsCreating(false)
     }
   }
@@ -132,7 +291,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs transition"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs transition cursor-pointer"
             >
               <span className="text-amber-300 font-bold">🪙 {trixBalance}</span>
               <span className="text-[10px] text-plottrix-muted">Trix</span>
@@ -147,7 +306,7 @@ export default function WorkspaceHome() {
               disabled={!canClaimDaily}
               className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
                 canClaimDaily
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:scale-105'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:scale-105 cursor-pointer'
                   : 'bg-white/5 text-slate-500 border border-white/5 cursor-default'
               }`}
             >
@@ -161,7 +320,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
-              className="text-xs font-bold px-3 py-1.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 hover:bg-purple-500/30 transition"
+              className="text-xs font-bold px-3 py-1.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 hover:bg-purple-500/30 transition cursor-pointer"
             >
               {plan}
             </button>
@@ -172,7 +331,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={startTour}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-purple-300 border border-white/10 transition"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-purple-300 border border-white/10 transition cursor-pointer"
             >
               ?
             </button>
@@ -183,7 +342,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={() => setActiveModal('settings')}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-slate-300 border border-white/10 transition"
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-slate-300 border border-white/10 transition cursor-pointer"
             >
               ⚙
             </button>
@@ -194,7 +353,7 @@ export default function WorkspaceHome() {
             <button
               type="button"
               onClick={() => navigateTo('home')}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition"
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition cursor-pointer"
             >
               หน้าแรก
             </button>
@@ -264,7 +423,7 @@ export default function WorkspaceHome() {
               <span>📚</span> ชั้นวางนิยายของคุณ ({novels.length})
             </h2>
             <p className="text-xs text-plottrix-muted mt-0.5">
-              เลือกผลงานเพื่อเข้าสู่ห้องเขียนงาน Studio หรือเริ่มสร้างเรื่องใหม่
+              คลิกเพื่อเปิดสตูดิโอ หรือคลิกขวาเพื่อแก้ไขชื่อ/รูปปก และจัดการนิยาย
             </p>
           </div>
 
@@ -304,7 +463,7 @@ export default function WorkspaceHome() {
           </div>
         </div>
 
-        {/* Horizontal Scrollable Book Shelf (ตรงตามแบบวาด 3 เล่มบนชั้นวาง) */}
+        {/* Horizontal Scrollable Book Shelf */}
         <div className="relative w-full">
           <div
             ref={scrollRef}
@@ -320,7 +479,7 @@ export default function WorkspaceHome() {
               scrollbarColor: '#9333ea rgba(255,255,255,0.08)'
             }}
           >
-            {/* Empty Bookshelf State if user deleted all novels */}
+            {/* Empty Bookshelf State */}
             {novels.length === 0 && (
               <div className="w-full max-w-lg mx-auto my-6 py-10 px-6 rounded-3xl border border-white/10 bg-[#16102a]/60 backdrop-blur-md text-center flex flex-col items-center shadow-xl">
                 <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl mb-3 shadow-inner">
@@ -347,6 +506,15 @@ export default function WorkspaceHome() {
               <article
                 key={novel.id}
                 id={index === 0 ? 'tour-target-novel-card' : undefined}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    novel
+                  })
+                }}
                 className="w-64 sm:w-72 md:w-80 shrink-0 rounded-2xl border border-white/15 bg-gradient-to-b from-[#1b1433] to-[#110d22] p-5 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:border-purple-400/50 hover:-translate-y-2 transition-all duration-300 group relative"
               >
                 <div>
@@ -398,6 +566,23 @@ export default function WorkspaceHome() {
                     <span>✍️</span>
                     <span>เปิดทำงาน (Open Studio)</span>
                   </button>
+
+                  {/* Settings Button */}
+                  <WarmTooltip content="ตั้งค่าผลงาน / เปลี่ยนชื่อ / เปลี่ยนรูปปก" side="top">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openEditModal(novel)
+                      }}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-white/10 flex items-center justify-center text-xs transition cursor-pointer"
+                      aria-label="Settings"
+                    >
+                      ⚙️
+                    </button>
+                  </WarmTooltip>
+
+                  {/* Delete Button */}
                   <WarmTooltip content="ลบนิยายเรื่องนี้" side="top">
                     <button
                       type="button"
@@ -441,10 +626,188 @@ export default function WorkspaceHome() {
         </div>
       </main>
 
+      {/* Right-Click Context Menu on Novel Card */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[210px] rounded-xl bg-[#191133]/95 backdrop-blur-2xl border border-purple-500/30 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.7)] animate-fade-in"
+          style={{
+            left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 230 : 100),
+            top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : 100)
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 text-[11px] font-bold text-purple-300 border-b border-white/10 truncate">
+            {contextMenu.novel.title}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              openNovel(contextMenu.novel.id)
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-3 py-2 text-xs rounded-lg text-slate-200 hover:bg-purple-600/30 hover:text-white flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>✍️</span>
+            <span>เปิดสตูดิโอ (Open Studio)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              openEditModal(contextMenu.novel)
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-3 py-2 text-xs rounded-lg text-slate-200 hover:bg-purple-600/30 hover:text-white flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>⚙️</span>
+            <span>ตั้งค่า (เปลี่ยนชื่อ / รูปปก / แนวเรื่อง)</span>
+          </button>
+          <div className="my-1 border-t border-white/10" />
+          <button
+            type="button"
+            onClick={() => {
+              setNovelToDelete(contextMenu.novel)
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-3 py-2 text-xs rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>🗑</span>
+            <span>ลบนิยายเรื่องนี้</span>
+          </button>
+        </div>
+      )}
+
+      {/* Modal: Edit Novel Settings */}
+      {editingNovel && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-[#16102a] border border-purple-500/30 p-6 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <span>⚙️</span> ตั้งค่านิยาย
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingNovel(null)}
+                className="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {/* Cover Image Upload & Preview */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  รูปภาพหน้าปก (Cover Image - ไม่เกิน 5MB)
+                </label>
+                <div className="flex items-start gap-4 p-3 rounded-xl bg-black/30 border border-white/10">
+                  <div className="w-20 h-28 rounded-lg overflow-hidden bg-purple-950/50 border border-white/15 shrink-0 shadow">
+                    <img
+                      src={editCover || DEFAULT_COVER}
+                      alt="Cover Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/30 text-xs font-bold cursor-pointer transition">
+                      <span>📁</span>
+                      <span>เลือกไฟล์ภาพใหม่</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            processImageFile(
+                              file,
+                              (dataUrl) => {
+                                setEditCover(dataUrl)
+                                setEditImageError('')
+                              },
+                              (errMsg) => setEditImageError(errMsg)
+                            )
+                          }
+                        }}
+                      />
+                    </label>
+                    <p className="text-[11px] text-plottrix-muted leading-tight">
+                      รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 5MB ระบบจะปรับขนาดและบีบอัดให้แสดงผลเร็วอัตโนมัติ
+                    </p>
+                    {editImageError && (
+                      <p className="text-[11px] text-red-400 font-semibold">{editImageError}</p>
+                    )}
+                    <input
+                      type="url"
+                      value={editCover}
+                      onChange={(e) => setEditCover(e.target.value)}
+                      placeholder="หรือวางลิงก์รูปภาพ (Image URL)..."
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/15 text-xs text-slate-200 focus:border-purple-400 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  ชื่อเรื่องนิยาย <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="ชื่อเรื่องนิยาย..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 focus:border-purple-400 text-white text-sm outline-none transition"
+                />
+              </div>
+
+              {/* Genre (Custom Dropdown) */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  แนวเรื่อง (Genre)
+                </label>
+                <GenreDropdown value={editGenre} onChange={setEditGenre} />
+              </div>
+
+              {/* Synopsis */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  เรื่องย่อ (Synopsis)
+                </label>
+                <textarea
+                  rows={3}
+                  value={editSynopsis}
+                  onChange={(e) => setEditSynopsis(e.target.value)}
+                  placeholder="เกริ่นนำปมเรื่องและแก่นหลัก..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-purple-400 text-white text-xs outline-none transition resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingNovel(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold shadow-md transition cursor-pointer"
+                >
+                  บันทึกการตั้งค่า
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Create Novel */}
       {isCreating && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[#16102a] border border-white/20 p-6 shadow-2xl animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-[#16102a] border border-purple-500/30 p-6 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <span>📖</span> สร้างนิยายเรื่องใหม่
@@ -452,13 +815,67 @@ export default function WorkspaceHome() {
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm"
+                className="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
+              {/* Cover Image Upload & Preview */}
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  รูปภาพหน้าปก (Cover Image - ไม่เกิน 5MB)
+                </label>
+                <div className="flex items-start gap-4 p-3 rounded-xl bg-black/30 border border-white/10">
+                  <div className="w-20 h-28 rounded-lg overflow-hidden bg-purple-950/50 border border-white/15 shrink-0 shadow">
+                    <img
+                      src={newCover || DEFAULT_COVER}
+                      alt="Cover Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/30 text-xs font-bold cursor-pointer transition">
+                      <span>📁</span>
+                      <span>เลือกไฟล์รูปภาพปก</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            processImageFile(
+                              file,
+                              (dataUrl) => {
+                                setNewCover(dataUrl)
+                                setCreateImageError('')
+                              },
+                              (errMsg) => setCreateImageError(errMsg)
+                            )
+                          }
+                        }}
+                      />
+                    </label>
+                    <p className="text-[11px] text-plottrix-muted leading-tight">
+                      อัปโหลดไฟล์รูปภาพปก (สูงสุด 5MB) หรือใช้ภาพเริ่มต้นที่ระบบเตรียมไว้ให้
+                    </p>
+                    {createImageError && (
+                      <p className="text-[11px] text-red-400 font-semibold">{createImageError}</p>
+                    )}
+                    <input
+                      type="url"
+                      value={newCover}
+                      onChange={(e) => setNewCover(e.target.value)}
+                      placeholder="หรือวางลิงก์รูปภาพ (Image URL)..."
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/15 text-xs text-slate-200 focus:border-purple-400 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title */}
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   ชื่อเรื่องนิยาย <span className="text-red-400">*</span>
@@ -473,30 +890,15 @@ export default function WorkspaceHome() {
                 />
               </div>
 
+              {/* Genre (Custom Dropdown) */}
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   แนวเรื่อง (Genre)
                 </label>
-                <div className="relative">
-                  <select
-                    value={newGenre}
-                    onChange={(e) => setNewGenre(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#1f1638] border border-white/15 text-white text-sm outline-none appearance-none cursor-pointer focus:border-purple-400 transition"
-                  >
-                    <option value="แฟนตาซี / กำลังภายใน">แฟนตาซี / กำลังภายใน</option>
-                    <option value="สยองขวัญ / ระทึกขวัญ">สยองขวัญ / ระทึกขวัญ</option>
-                    <option value="สืบสวนสอบสวน">สืบสวนสอบสวน</option>
-                    <option value="โรแมนติก / ดราม่า">โรแมนติก / ดราม่า</option>
-                    <option value="ไซไฟ / โลกอนาคต">ไซไฟ / โลกอนาคต</option>
-                    <option value="พีเรียด / ประวัติศาสตร์">พีเรียด / ประวัติศาสตร์</option>
-                    <option value="เกิดใหม่ / ต่างโลก (Isekai)">เกิดใหม่ / ต่างโลก (Isekai)</option>
-                  </select>
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
-                    ▼
-                  </span>
-                </div>
+                <GenreDropdown value={newGenre} onChange={setNewGenre} />
               </div>
 
+              {/* Synopsis */}
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   เรื่องย่อสั้นๆ (Synopsis)
@@ -510,17 +912,17 @@ export default function WorkspaceHome() {
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2.5">
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition"
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition cursor-pointer"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold shadow-md transition"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold shadow-md transition cursor-pointer"
                 >
                   เริ่มสร้างผลงาน →
                 </button>

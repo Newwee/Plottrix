@@ -228,10 +228,10 @@ export function AppProvider({ children }) {
     let targetView = view
     let targetPath = '/home'
 
-    if (view === 'workspace' || view === 'studio') {
+    if (view === 'studio') {
       targetView = 'studio'
       targetPath = '/workspace'
-    } else if (view === 'workspace_home') {
+    } else if (view === 'workspace_home' || view === 'workspace') {
       targetView = 'workspace_home'
       targetPath = '/home-workspace'
     } else {
@@ -588,6 +588,29 @@ export function AppProvider({ children }) {
     addToast({ title: 'ลบนิยายออกจากคลังแล้ว', duration: 2500 })
   }, [activeNovelId, openNovel, addToast])
 
+  // Update novel metadata (title, genre, synopsis, cover)
+  const updateNovel = useCallback((id, updates) => {
+    setNovels(prev => {
+      const next = prev.map(n => {
+        if (n.id === id) {
+          return {
+            ...n,
+            ...updates,
+            updatedAt: 'แก้ไขเมื่อสักครู่'
+          }
+        }
+        return n
+      })
+      return next
+    })
+    if (activeNovelId === id) {
+      if (updates.title) setNovelTitle(updates.title)
+      if (updates.genre) setGenre(updates.genre)
+      if (updates.pov) setPov(updates.pov)
+    }
+    addToast({ title: 'บันทึกการตั้งค่านิยายสำเร็จ!', duration: 2000, fuseColor: '#a855f7' })
+  }, [activeNovelId, addToast])
+
   // Upgrade Plan Handler with Confetti
   const upgradePlanPrototype = useCallback((newPlan) => {
     setPlan(newPlan)
@@ -727,6 +750,61 @@ export function AppProvider({ children }) {
       fuseColor: '#74d9b4'
     })
   }, [chapters.length, addToast])
+
+  // Reorder Chapters with Drag & Drop (Slide animation & renumbering)
+  const reorderChapters = useCallback((fromIdx, toIdx) => {
+    if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return
+    setChapters(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, moved)
+      const renumbered = next.map((ch, idx) => ({
+        ...ch,
+        number: idx + 1,
+        code: `บทที่ ${String(idx + 1).padStart(2, '0')}`
+      }))
+      setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: renumbered } : n))
+      return renumbered
+    })
+    addToast({ title: 'สลับลำดับตอนเรียบร้อยแล้ว ✓', duration: 1800 })
+  }, [activeNovelId, addToast])
+
+  // Delete Chapter
+  const deleteChapter = useCallback((chId) => {
+    if (chapters.length <= 1) {
+      addToast({
+        title: 'ไม่สามารถลบตอนสุดท้ายได้',
+        description: 'นิยายต้องมีอย่างน้อย 1 ตอน',
+        fuseColor: '#ef4444'
+      })
+      return
+    }
+    setChapters(prev => {
+      const remaining = prev.filter(c => c.id !== chId).map((ch, idx) => ({
+        ...ch,
+        number: idx + 1,
+        code: `บทที่ ${String(idx + 1).padStart(2, '0')}`
+      }))
+      if (activeChapterId === chId) {
+        setActiveChapterId(remaining[0].id)
+        setActivePageIdx(0)
+      }
+      setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: remaining, chapterCount: remaining.length } : n))
+      return remaining
+    })
+    addToast({ title: 'ลบตอนเรียบร้อยแล้ว', duration: 2000 })
+  }, [chapters.length, activeChapterId, activeNovelId, addToast])
+
+  // Rename Chapter
+  const renameChapter = useCallback((chId, newTitle) => {
+    if (!newTitle?.trim()) return
+    setChapters(prev => {
+      const updated = prev.map(ch => ch.id === chId ? { ...ch, title: newTitle.trim() } : ch)
+      setNovels(all => all.map(n => n.id === activeNovelId ? { ...n, chapters: updated } : n))
+      return updated
+    })
+    addToast({ title: 'เปลี่ยนชื่อตอนเรียบร้อย ✓', duration: 1800 })
+  }, [activeNovelId, addToast])
 
   // Add Page to current Chapter
   const addPage = useCallback(() => {
@@ -1056,6 +1134,7 @@ export function AppProvider({ children }) {
         setActiveNovelId,
         activeNovel,
         createNovel,
+        updateNovel,
         deleteNovel,
         openNovel,
 
@@ -1072,6 +1151,9 @@ export function AppProvider({ children }) {
         currentPageText,
         updateCurrentPageText,
         addChapter,
+        reorderChapters,
+        deleteChapter,
+        renameChapter,
         addPage,
         deletePage,
 

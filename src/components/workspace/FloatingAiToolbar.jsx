@@ -1,6 +1,5 @@
 import React, { memo, useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../../context/AppContext'
-import GlassSurface from '../react-bits/GlassSurface'
 import AnimatedContent from '../react-bits/AnimatedContent'
 import WarmTooltip from '../react-bits/WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
@@ -205,8 +204,8 @@ function FloatingAiToolbar() {
       }}
     >
       <AnimatedContent distance={8} direction="vertical" duration={0.2}>
-        <GlassSurface
-          className="rounded-2xl p-1.5 shadow-[0_12px_40px_rgba(147,51,234,0.35)] border border-purple-300/30 bg-gradient-to-r from-white/15 via-purple-100/10 to-indigo-100/15 backdrop-blur-2xl ring-1 ring-white/20"
+        <div
+          className="rounded-2xl p-2 shadow-[0_16px_50px_rgba(147,51,234,0.45)] border border-purple-400/40 bg-[#16102a]/95 backdrop-blur-2xl ring-1 ring-white/15 min-w-[340px]"
         >
           {/* Main Toolbar 5 Commands (Responsive scroll on narrow mobile) */}
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
@@ -384,7 +383,7 @@ function FloatingAiToolbar() {
               </div>
             </div>
           )}
-        </GlassSurface>
+        </div>
       </AnimatedContent>
     </div>
   )

@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React, { memo, useState, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
 
@@ -9,6 +9,9 @@ function LeftSidebar() {
     setActiveChapterId,
     setActivePageIdx,
     addChapter,
+    reorderChapters,
+    deleteChapter,
+    renameChapter,
     leftSidebarOpen,
     setLeftSidebarOpen,
     setActiveModal,
@@ -17,6 +20,24 @@ function LeftSidebar() {
     rightSidebarOpen,
     setRightSidebarOpen
   } = useApp()
+
+  const [draggedIdx, setDraggedIdx] = useState(null)
+  const [dragOverIdx, setDragOverIdx] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null)
+  const [editingChapter, setEditingChapter] = useState(null)
+  const [newTitleInput, setNewTitleInput] = useState('')
+  const [chapterToDelete, setChapterToDelete] = useState(null)
+
+  // Close context menu on outside click or scroll
+  useEffect(() => {
+    const handleOutsideClick = () => setContextMenu(null)
+    window.addEventListener('click', handleOutsideClick)
+    window.addEventListener('scroll', handleOutsideClick, true)
+    return () => {
+      window.removeEventListener('click', handleOutsideClick)
+      window.removeEventListener('scroll', handleOutsideClick, true)
+    }
+  }, [])
 
   if (!leftSidebarOpen) return null
 
@@ -64,31 +85,98 @@ function LeftSidebar() {
               {chapters.map((ch, idx) => {
                 const isActive = ch.id === activeChapterId
                 const pageCount = ch.pages?.length || 1
+                const isDragging = draggedIdx === idx
+                const isDragOver = dragOverIdx === idx
+
                 return (
-                  <button
+                  <div
                     key={ch.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveChapterId(ch.id)
-                      setActivePageIdx(0)
-                      if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                    draggable={true}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', String(idx))
+                      e.dataTransfer.effectAllowed = 'move'
+                      setDraggedIdx(idx)
                     }}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
-                      isActive
-                        ? 'bg-violet-600/25 border border-violet-500/50 text-violet-100 font-semibold shadow-sm'
-                        : 'hover:bg-violet-500/10 text-slate-300 opacity-80 hover:opacity-100'
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      if (dragOverIdx !== idx) setDragOverIdx(idx)
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverIdx === idx) setDragOverIdx(null)
+                    }}
+                    onDragEnd={() => {
+                      setDraggedIdx(null)
+                      setDragOverIdx(null)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (draggedIdx !== null && draggedIdx !== idx) {
+                        reorderChapters(draggedIdx, idx)
+                      }
+                      setDraggedIdx(null)
+                      setDragOverIdx(null)
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setContextMenu({
+                        x: Math.min(e.clientX, window.innerWidth - 190),
+                        y: Math.min(e.clientY, window.innerHeight - 150),
+                        chapter: ch
+                      })
+                    }}
+                    className={`w-full group relative transition-all duration-200 select-none ${
+                      isDragging ? 'opacity-40 scale-95' : ''
+                    } ${
+                      isDragOver ? 'border-t-2 border-purple-400 scale-[1.02]' : ''
                     }`}
                   >
-                    <span className="flex items-center gap-2 truncate">
-                      <span className="text-violet-400 text-sm">📄</span>
-                      <span className="truncate">
-                        {ch.code || `บทที่ ${String(ch.number || idx + 1).padStart(2, '0')}`}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveChapterId(ch.id)
+                        setActivePageIdx(0)
+                        if (window.innerWidth < 1024) setLeftSidebarOpen(false)
+                      }}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-grab active:cursor-grabbing ${
+                        isActive
+                          ? 'bg-violet-600/25 border border-violet-500/50 text-violet-100 font-semibold shadow-sm'
+                          : 'hover:bg-violet-500/10 text-slate-300 opacity-80 hover:opacity-100'
+                      }`}
+                      title="คลิกเพื่อเปิดบทนี้ / ลากเพื่อสลับลำดับ / คลิกขวาเพื่อตั้งค่า"
+                    >
+                      <span className="flex items-center gap-2 truncate flex-1 min-w-0">
+                        <span className="text-violet-400 text-sm shrink-0">📄</span>
+                        <span className="truncate">
+                          {ch.code || `บทที่ ${String(ch.number || idx + 1).padStart(2, '0')}`}
+                          {ch.title && ch.title !== `บทที่ ${ch.number || idx + 1} — ตอนใหม่` && !ch.title.startsWith('บทที่ ') ? ` • ${ch.title}` : ''}
+                        </span>
                       </span>
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded-md bg-black/30 text-[10px] text-violet-300 border border-white/5">
-                      {pageCount} หน้า
-                    </span>
-                  </button>
+
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        <span className="px-1.5 py-0.5 rounded-md bg-black/30 text-[10px] text-violet-300 border border-white/5">
+                          {pageCount} หน้า
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setContextMenu({
+                              x: Math.min(rect.left, window.innerWidth - 190),
+                              y: Math.min(rect.bottom + 4, window.innerHeight - 150),
+                              chapter: ch
+                            })
+                          }}
+                          className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
+                          title="เมนูตัวเลือก"
+                        >
+                          ⋯
+                        </button>
+                      </div>
+                    </button>
+                  </div>
                 )
               })}
             </div>
@@ -210,6 +298,125 @@ function LeftSidebar() {
           </div>
         </div>
       </aside>
+
+      {/* Context Menu for Chapters */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 rounded-xl bg-[#1a1233] border border-white/20 p-1.5 shadow-2xl min-w-[180px] animate-fade-in text-xs select-none backdrop-blur-xl"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-2.5 py-1 text-[10px] text-purple-300 font-bold border-b border-white/10 mb-1 truncate">
+            {contextMenu.chapter.title || `บทที่ ${contextMenu.chapter.number}`}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingChapter(contextMenu.chapter)
+              setNewTitleInput(contextMenu.chapter.title || '')
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-slate-200 hover:text-white flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>✏️</span>
+            <span>เปลี่ยนชื่อตอน</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChapterToDelete(contextMenu.chapter)
+              setContextMenu(null)
+            }}
+            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-red-500/20 text-red-300 hover:text-red-200 flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>🗑</span>
+            <span>ลบตอนนี้</span>
+          </button>
+        </div>
+      )}
+
+      {/* Modal: Rename Chapter */}
+      {editingChapter && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-[#16102a] border border-white/20 p-5 shadow-2xl animate-fade-in">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span>✏️</span> เปลี่ยนชื่อตอน
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              กำหนดชื่อตอนใหม่สำหรับ {editingChapter.code || `บทที่ ${editingChapter.number}`}
+            </p>
+            <input
+              type="text"
+              autoFocus
+              value={newTitleInput}
+              onChange={(e) => setNewTitleInput(e.target.value)}
+              placeholder="ระบุชื่อตอน..."
+              className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-purple-400 text-white text-xs outline-none mb-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  renameChapter(editingChapter.id, newTitleInput)
+                  setEditingChapter(null)
+                }
+              }}
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingChapter(null)}
+                className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-300 transition cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  renameChapter(editingChapter.id, newTitleInput)
+                  setEditingChapter(null)
+                }}
+                className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition cursor-pointer"
+              >
+                บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Chapter Confirmation */}
+      {chapterToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-[#16102a] border border-red-500/30 p-5 shadow-2xl animate-fade-in text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-xl text-red-400">
+              ⚠️
+            </div>
+            <h3 className="font-bold text-sm text-white mb-1.5">
+              ยืนยันการลบตอนนี้?
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-5">
+              คุณแน่ใจหรือไม่ว่าต้องการลบ <span className="text-purple-300 font-bold">"{chapterToDelete.title || `บทที่ ${chapterToDelete.number}`}"</span>? หน้ากระดาษทั้งหมดในบทนี้จะถูกลบออก
+            </p>
+            <div className="flex items-center justify-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setChapterToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteChapter(chapterToDelete.id)
+                  setChapterToDelete(null)
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold transition shadow-md cursor-pointer"
+              >
+                ลบตอนนี้ถาวร
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
