@@ -22,7 +22,7 @@ export default function PublishModal() {
   const isOpen = activeModal === 'publish'
   const targetNovel = activeNovel || novels.find(n => n.id === activeNovelId) || novels[0] || null
 
-  const [activeTab, setActiveTab] = useState('chapters') // 'chapters' | 'info'
+  const [activeTab, setActiveTab] = useState('chapters') // 'chapters' | 'history' | 'info'
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [synopsis, setSynopsis] = useState('')
@@ -74,6 +74,34 @@ export default function PublishModal() {
     }
     return new Set()
   }, [targetNovel?.published_snapshot])
+
+  // Unpublished new chapters stats
+  const publishedCount = Array.isArray(targetNovel?.published_snapshot?.chapters)
+    ? targetNovel.published_snapshot.chapters.length
+    : 0
+  const studioTotalCount = Array.isArray(studioChapters) ? studioChapters.length : 0
+  const hasNewUnpublished = isPublished && (studioTotalCount > publishedCount)
+  const diffUnpublished = Math.max(0, studioTotalCount - publishedCount)
+
+  const publishHistory = useMemo(() => {
+    if (Array.isArray(targetNovel?.publish_history) && targetNovel.publish_history.length > 0) {
+      return targetNovel.publish_history
+    }
+    // Synthesize initial v1.0 if novel is already published but history array is empty
+    if (targetNovel?.is_published && targetNovel?.published_at) {
+      return [{
+        version: 1,
+        version_tag: 'v1.0',
+        published_at: targetNovel.published_at,
+        arc_name: targetNovel.published_arc || 'ARC 1',
+        chapter_count: publishedCount || 1,
+        diff_chapters: publishedCount || 1,
+        author_name: targetNovel.author_display_name || 'AI',
+        note: 'การเผยแพร่ฉบับแรกขึ้นสู่หน้าหลัก'
+      }]
+    }
+    return []
+  }, [targetNovel, publishedCount])
 
   if (!isOpen || !targetNovel) return null
 
@@ -128,8 +156,31 @@ export default function PublishModal() {
         word_count: ch.wordCount || ch.word_count || 0
       }))
 
+    const prevHistory = Array.isArray(targetNovel.publish_history)
+      ? targetNovel.publish_history
+      : []
+
+    const nextVer = (targetNovel.published_snapshot?.version || prevHistory.length || 0) + 1
+    const newAddedDiff = Math.max(0, frozenChapters.length - publishedCount)
+
+    const newHistoryEntry = {
+      version: nextVer,
+      version_tag: `v${nextVer}.0`,
+      published_at: new Date().toISOString(),
+      arc_name: arcName.trim() || 'ARC 1',
+      chapter_count: frozenChapters.length,
+      diff_chapters: newAddedDiff,
+      total_words: frozenChapters.reduce((acc, c) => acc + (c.word_count || 0), 0),
+      author_name: authorName,
+      note: newAddedDiff > 0
+        ? `อัปเดตเวอร์ชัน v${nextVer}.0 เพิ่มขึ้น ${newAddedDiff} ตอนใหม่ (รวม ${frozenChapters.length} ตอน)`
+        : `อัปเดตการแก้ไขเนื้อหา v${nextVer}.0 (${frozenChapters.length} ตอน)`
+    }
+
+    const updatedHistory = [newHistoryEntry, ...prevHistory]
+
     const snapshot = {
-      version: (targetNovel.published_snapshot?.version || 0) + 1,
+      version: nextVer,
       published_at: new Date().toISOString(),
       arc_name: arcName.trim() || 'ARC 1',
       published_chapter_count: frozenChapters.length,
@@ -143,7 +194,8 @@ export default function PublishModal() {
       author_display_name: authorName,
       cover_url: coverUrl,
       published_arc: snapshot.arc_name,
-      published_snapshot: snapshot
+      published_snapshot: snapshot,
+      publish_history: updatedHistory
     })
 
     setSaving(false)
@@ -163,7 +215,8 @@ export default function PublishModal() {
             is_published: true,
             published_at: new Date().toISOString(),
             published_arc: snapshot.arc_name,
-            published_snapshot: snapshot
+            published_snapshot: snapshot,
+            publish_history: updatedHistory
           }
         }
         return n
@@ -177,8 +230,8 @@ export default function PublishModal() {
       })
 
       addToast({
-        title: 'เผยแพร่ / อัปเดตเวอร์ชันสำเร็จ! 🚀',
-        description: `ตรึง Snapshot ทั้งหมด ${frozenChapters.length} ตอนเรียบร้อย — นักอ่านจะเห็นเฉพาะเวอร์ชันนี้ ไม่ต้องกังวลเรื่องการแก้ไขร่างสดใน Studio`,
+        title: `เผยแพร่เวอร์ชัน ${newHistoryEntry.version_tag} สำเร็จ! 🚀`,
+        description: `ตรึง Snapshot ทั้งหมด ${frozenChapters.length} ตอนเรียบร้อย — ผู้อ่านบนหน้าหลักจะเห็นเวอร์ชันนี้ทันที`,
         fuseColor: '#74d9b4'
       })
     } else {
@@ -264,12 +317,26 @@ export default function PublishModal() {
                 <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
                   <span>ศูนย์จัดการการเผยแพร่ (Release Manager)</span>
                   <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
-                    isPublished
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-amber-500/15 text-amber-300 border border-amber-400/30'
+                    hasNewUnpublished
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : isPublished
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-slate-500/15 text-slate-300 border border-slate-400/30'
                   }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-                    <span>{isPublished ? 'เผยแพร่อยู่บนหน้าหลัก' : 'ฉบับร่างส่วนตัว'}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      hasNewUnpublished
+                        ? 'bg-amber-400 animate-ping'
+                        : isPublished
+                          ? 'bg-emerald-400 animate-ping'
+                          : 'bg-slate-400'
+                    }`} />
+                    <span>
+                      {hasNewUnpublished
+                        ? `ยังไม่ได้เผยแพร่ฉบับใหม่ (+${diffUnpublished} ตอน)`
+                        : isPublished
+                          ? 'เผยแพร่อยู่บนหน้าหลัก'
+                          : 'ฉบับร่างส่วนตัว'}
+                    </span>
                   </span>
                 </h3>
                 <p className="text-xs text-plottrix-muted">
@@ -288,11 +355,11 @@ export default function PublishModal() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="px-6 pt-3 border-b border-white/10 flex items-center gap-4 bg-white/[0.02]">
+          <div className="px-6 pt-3 border-b border-white/10 flex items-center gap-2 sm:gap-4 bg-white/[0.02] overflow-x-auto">
             <button
               type="button"
               onClick={() => setActiveTab('chapters')}
-              className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'chapters'
                   ? 'border-purple-400 text-purple-300'
                   : 'border-transparent text-slate-400 hover:text-white'
@@ -304,8 +371,21 @@ export default function PublishModal() {
 
             <button
               type="button"
+              onClick={() => setActiveTab('history')}
+              className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
+                activeTab === 'history'
+                  ? 'border-purple-400 text-purple-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>📜</span>
+              <span>ประวัติการเผยแพร่ ({publishHistory.length})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('info')}
-              className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'info'
                   ? 'border-purple-400 text-purple-300'
                   : 'border-transparent text-slate-400 hover:text-white'
@@ -318,8 +398,31 @@ export default function PublishModal() {
 
           {/* Body Content */}
           <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-            {activeTab === 'chapters' ? (
+            {activeTab === 'chapters' && (
               <div className="space-y-4">
+                {/* Unpublished Draft Warning Banner */}
+                {hasNewUnpublished && (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-base">⚠️</span>
+                      <div>
+                        <div className="font-bold text-amber-300">
+                          มีตอนใหม่ใน Studio ที่ยังไม่ได้เผยแพร่ (+{diffUnpublished} ตอน)
+                        </div>
+                        <div className="text-[11px] text-amber-200/80">
+                          ปัจจุบันหน้าหลักแสดง {publishedCount} ตอน จากทั้งหมด {studioTotalCount} ตอนในห้องเขียน
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shadow-md transition cursor-pointer"
+                    >
+                      + ติ๊กเลือกตอนใหม่ทั้งหมด ({studioTotalCount} ตอน)
+                    </button>
+                  </div>
+                )}
                 {/* Arc & Release Name Input */}
                 <div className="p-4 rounded-2xl bg-white/5 border border-purple-500/20">
                   <label className="block text-xs font-bold text-purple-300 mb-1.5 flex items-center gap-1.5">
@@ -435,8 +538,119 @@ export default function PublishModal() {
                   )}
                 </div>
               </div>
-            ) : (
-              /* TAB 2: METADATA & AUTHOR INFO */
+            )}
+
+            {/* TAB 2: RELEASE HISTORY */}
+            {activeTab === 'history' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-white/5 border border-purple-500/20 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                      <span>📜</span>
+                      <span>ประวัติการเผยแพร่ฉบับต่าง ๆ (Release History)</span>
+                    </h4>
+                    <p className="text-[11px] text-plottrix-muted mt-0.5">
+                      บันทึกประวัติการตรึง Snapshot ของแต่ละเวอร์ชัน พร้อมรายละเอียดจำนวนตอนและคำ
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30">
+                    รวม {publishHistory.length} เวอร์ชัน
+                  </span>
+                </div>
+
+                {publishHistory.length > 0 ? (
+                  <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-purple-500 before:via-indigo-500/50 before:to-transparent">
+                    {publishHistory.map((item, idx) => {
+                      const isLatest = idx === 0
+                      const dateStr = item.published_at
+                        ? new Date(item.published_at).toLocaleString('th-TH', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'ไม่ระบุเวลา'
+
+                      return (
+                        <div
+                          key={item.version_tag || item.version || idx}
+                          className={`relative p-4 rounded-2xl border transition-all ${
+                            isLatest
+                              ? 'bg-purple-950/40 border-purple-400/50 shadow-lg shadow-purple-950/50'
+                              : 'bg-white/[0.03] border-white/10 opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          {/* Timeline Dot */}
+                          <div
+                            className={`absolute -left-[19px] top-5 w-3 h-3 rounded-full border-2 ${
+                              isLatest
+                                ? 'bg-emerald-400 border-white shadow-emerald-400/50 shadow-[0_0_8px]'
+                                : 'bg-purple-400 border-[#120d22]'
+                            }`}
+                          />
+
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs px-2.5 py-0.5 rounded-lg bg-purple-600/30 text-purple-300 font-extrabold border border-purple-400/40">
+                                {item.version_tag || `v${item.version || 1}.0`}
+                              </span>
+                              <span className="text-xs font-bold text-white">
+                                {item.arc_name || 'ARC 1'}
+                              </span>
+                              {isLatest && isPublished && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-bold flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                  ฉบับปัจจุบันบนหน้าหลัก
+                                </span>
+                              )}
+                            </div>
+
+                            <span className="text-[11px] text-plottrix-muted font-mono">
+                              🕒 {dateStr}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                            {item.note || 'อัปเดตเนื้อหานิยาย'}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-plottrix-muted pt-2 border-t border-white/5">
+                            <span className="flex items-center gap-1 text-slate-200">
+                              <span>📖</span>
+                              <span><strong>{item.chapter_count || 0}</strong> ตอน</span>
+                            </span>
+                            {item.diff_chapters > 0 && (
+                              <span className="text-emerald-400 font-semibold">
+                                (+{item.diff_chapters} ตอนใหม่)
+                              </span>
+                            )}
+                            {item.total_words > 0 && (
+                              <span className="flex items-center gap-1 text-slate-300">
+                                <span>✍️</span>
+                                <span>{item.total_words.toLocaleString()} คำ</span>
+                              </span>
+                            )}
+                            {item.author_name && (
+                              <span className="ml-auto text-purple-300">
+                                โดย: {item.author_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-plottrix-muted">
+                    ยังไม่มีประวัติการเผยแพร่ — เมื่อคุณกดเผยแพร่นิยาย ประวัติแต่ละเวอร์ชันจะถูกบันทึกที่นี่
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: METADATA & AUTHOR INFO */}
+            {activeTab === 'info' && (
               <div className="space-y-4">
                 {/* Story Title Input */}
                 <div>

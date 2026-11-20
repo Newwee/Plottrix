@@ -304,27 +304,65 @@ function TopNavbar({ onOpenCommandPalette }) {
           </button>
         </WarmTooltip>
 
-        {/* Publish to Home Page Button */}
-        <WarmTooltip
-          content={activeNovel?.is_published ? "นิยายเรื่องนี้เผยแพร่อยู่บนหน้าหลัก (คลิกเพื่อแก้ไขหรือยกเลิกการเผยแพร่)" : "เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้นักอ่านทั่วไปเข้าชม"}
-          side="bottom"
-          surfaceColor="#1e1b2e"
-          inkColor="#f4f4f5"
-        >
-          <button
-            type="button"
-            onClick={() => setActiveModal('publish')}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer ${
-              activeNovel?.is_published
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
-                : 'bg-purple-600/25 hover:bg-purple-600/40 text-purple-200 border-purple-400/40'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${activeNovel?.is_published ? 'bg-emerald-400 animate-ping' : 'bg-purple-400'}`} />
-            <span className="hidden sm:inline">{activeNovel?.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่ขึ้นหน้าหลัก'}</span>
-            <span className="sm:hidden">{activeNovel?.is_published ? 'เผยแพร่' : 'เผยแพร่'}</span>
-          </button>
-        </WarmTooltip>
+        {/* Publish to Home Page Button with New Chapter Draft Detection */}
+        {(() => {
+          const isPublished = Boolean(activeNovel?.is_published)
+          const publishedSnapshotCount = Array.isArray(activeNovel?.published_snapshot?.chapters)
+            ? activeNovel.published_snapshot.chapters.length
+            : 0
+          const studioChapterCount = Array.isArray(chapters) ? chapters.length : 0
+          const hasNewUnpublishedChapters = isPublished && (studioChapterCount > publishedSnapshotCount)
+          const newChaptersDiff = Math.max(0, studioChapterCount - publishedSnapshotCount)
+
+          const tooltipText = !isPublished
+            ? 'เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้นักอ่านทั่วไปเข้าชมฟรี 5 ตอนแรก'
+            : hasNewUnpublishedChapters
+            ? `มีตอนใหม่ใน Studio ทั้งหมด ${newChaptersDiff} ตอนที่ยังไม่ได้เผยแพร่ (คลิกเพื่ออัปเดตเวอร์ชันและดูประวัติ)`
+            : `เผยแพร่อยู่บนหน้าหลักครบถ้วนแล้ว (${publishedSnapshotCount} ตอน) — คลิกเพื่อดูประวัติหรือตั้งค่า`
+
+          return (
+            <WarmTooltip
+              content={tooltipText}
+              side="bottom"
+              surfaceColor="#1e1b2e"
+              inkColor="#f4f4f5"
+            >
+              <button
+                type="button"
+                onClick={() => setActiveModal('publish')}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer ${
+                  !isPublished
+                    ? 'bg-purple-600/25 hover:bg-purple-600/40 text-purple-200 border-purple-400/40'
+                    : hasNewUnpublishedChapters
+                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-400/50 shadow-amber-500/10 animate-pulse'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                  !isPublished
+                    ? 'bg-purple-400'
+                    : hasNewUnpublishedChapters
+                    ? 'bg-amber-400 animate-ping'
+                    : 'bg-emerald-400'
+                }`} />
+                <span className="hidden sm:inline whitespace-nowrap">
+                  {!isPublished
+                    ? 'เผยแพร่ขึ้นหน้าหลัก'
+                    : hasNewUnpublishedChapters
+                    ? `ยังไม่ได้เผยแพร่ฉบับใหม่ (+${newChaptersDiff} ตอน)`
+                    : 'เผยแพร่แล้ว'}
+                </span>
+                <span className="sm:hidden whitespace-nowrap">
+                  {!isPublished
+                    ? 'เผยแพร่'
+                    : hasNewUnpublishedChapters
+                    ? 'ฉบับใหม่'
+                    : 'เผยแพร่'}
+                </span>
+              </button>
+            </WarmTooltip>
+          )
+        })()}
 
         {/* Tablet / Mobile AI Studio Toggle */}
         <button

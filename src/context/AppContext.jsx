@@ -531,6 +531,7 @@ export function AppProvider({ children }) {
               published_at: n.published_at || null,
               published_arc: n.published_arc || '',
               published_snapshot: n.published_snapshot || null,
+              publish_history: Array.isArray(n.publish_history) ? n.publish_history : [],
               cover: n.cover_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80',
               wordCount: stats.words,
               chapterCount: stats.count,

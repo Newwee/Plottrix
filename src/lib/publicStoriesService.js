@@ -225,6 +225,7 @@ export async function togglePublishStory(storyId, isPublished, metadata = {}) {
     if (metadata.cover_url) payload.cover_url = metadata.cover_url
     if (metadata.published_arc !== undefined) payload.published_arc = metadata.published_arc
     if (metadata.published_snapshot !== undefined) payload.published_snapshot = metadata.published_snapshot
+    if (metadata.publish_history !== undefined) payload.publish_history = metadata.publish_history
 
     let { data, error } = await supabase
       .from('novels')
@@ -234,11 +235,12 @@ export async function togglePublishStory(storyId, isPublished, metadata = {}) {
       .single()
 
     // Gracefully handle missing optional columns in schema cache
-    if (error && (error.message?.includes('published_snapshot') || error.message?.includes('published_arc') || error.message?.includes('author_display_name'))) {
+    if (error && (error.message?.includes('published_snapshot') || error.message?.includes('published_arc') || error.message?.includes('author_display_name') || error.message?.includes('publish_history'))) {
       console.warn('[StoriesService] Optional publishing column missing in schema cache, retrying without new columns...', error.message)
       delete payload.published_snapshot
       delete payload.published_arc
       delete payload.author_display_name
+      delete payload.publish_history
       const retry = await supabase
         .from('novels')
         .update(payload)

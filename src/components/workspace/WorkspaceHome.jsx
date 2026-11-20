@@ -599,17 +599,43 @@ export default function WorkspaceHome() {
                       loading="lazy"
                     />
 
-                    {/* Live Publish Status Badge */}
-                    <div className="absolute top-3 right-3 z-10">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border shadow-md ${
-                        novel.is_published
-                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-400/50'
-                          : 'bg-black/70 text-slate-300 border-white/20'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${novel.is_published ? 'bg-emerald-400 animate-ping' : 'bg-slate-400'}`} />
-                        <span>{novel.is_published ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span>
-                      </span>
-                    </div>
+                    {/* Live Publish Status Badge with Unpublished Draft Indicator */}
+                    {(() => {
+                      const isPublished = Boolean(novel.is_published)
+                      const publishedSnapCount = Array.isArray(novel.published_snapshot?.chapters)
+                        ? novel.published_snapshot.chapters.length
+                        : 0
+                      const totalChapters = novel.chapterCount ?? novel.chapters?.length ?? 0
+                      const hasNewUnpublished = isPublished && (totalChapters > publishedSnapCount)
+                      const diffNew = Math.max(0, totalChapters - publishedSnapCount)
+
+                      return (
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 backdrop-blur-md border shadow-md ${
+                            !isPublished
+                              ? 'bg-black/70 text-slate-300 border-white/20'
+                              : hasNewUnpublished
+                              ? 'bg-amber-950/85 text-amber-300 border-amber-400/60 shadow-amber-500/20 animate-pulse'
+                              : 'bg-emerald-950/80 text-emerald-300 border-emerald-400/50'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              !isPublished
+                                ? 'bg-slate-400'
+                                : hasNewUnpublished
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-400 animate-ping'
+                            }`} />
+                            <span>
+                              {!isPublished
+                                ? 'ฉบับร่าง'
+                                : hasNewUnpublished
+                                ? `มีฉบับใหม่ (+${diffNew})`
+                                : 'เผยแพร่แล้ว'}
+                            </span>
+                          </span>
+                        </div>
+                      )
+                    })()}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-600/80 text-white w-fit backdrop-blur-sm mb-1.5 border border-purple-400/30">
@@ -650,24 +676,50 @@ export default function WorkspaceHome() {
                   </button>
 
                   {/* Publish to Home Page Button */}
-                  <WarmTooltip content={novel.is_published ? "นิยายเรื่องนี้เผยแพร่อยู่บนหน้าหลัก (คลิกเพื่อแก้ไข/ยกเลิก)" : "เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้อ่านฟรี 5 ตอนแรก"} side="top">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setActiveNovelId(novel.id)
-                        setActiveModal('publish')
-                      }}
-                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
-                        novel.is_published
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
-                          : 'bg-white/5 hover:bg-purple-600/20 text-purple-200 border-white/10 hover:border-purple-400/40'
-                      }`}
-                    >
-                      <span>🌐</span>
-                      <span className="hidden sm:inline whitespace-nowrap">{novel.is_published ? 'เผยแพร่แล้ว' : 'เผยแพร่'}</span>
-                    </button>
-                  </WarmTooltip>
+                  {(() => {
+                    const isPublished = Boolean(novel.is_published)
+                    const publishedSnapCount = Array.isArray(novel.published_snapshot?.chapters)
+                      ? novel.published_snapshot.chapters.length
+                      : 0
+                    const totalChapters = novel.chapterCount ?? novel.chapters?.length ?? 0
+                    const hasNewUnpublished = isPublished && (totalChapters > publishedSnapCount)
+                    const diffNew = Math.max(0, totalChapters - publishedSnapCount)
+
+                    const tooltipMsg = !isPublished
+                      ? 'เผยแพร่นิยายเรื่องนี้ขึ้นหน้าหลักให้อ่านฟรี 5 ตอนแรก'
+                      : hasNewUnpublished
+                      ? `มีตอนใหม่ใน Studio ทั้งหมด ${diffNew} ตอนที่ยังไม่ได้เผยแพร่ (คลิกเพื่ออัปเดตเวอร์ชันและดูประวัติ)`
+                      : `นิยายเรื่องนี้เผยแพร่อยู่บนหน้าหลัก (${publishedSnapCount} ตอน) — คลิกเพื่อดูประวัติหรือแก้ไข`
+
+                    return (
+                      <WarmTooltip content={tooltipMsg} side="top">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveNovelId(novel.id)
+                            setActiveModal('publish')
+                          }}
+                          className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
+                            !isPublished
+                              ? 'bg-white/5 hover:bg-purple-600/20 text-purple-200 border-white/10 hover:border-purple-400/40'
+                              : hasNewUnpublished
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-400/50 hover:bg-amber-500/30 shadow-amber-500/10'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                          }`}
+                        >
+                          <span>{hasNewUnpublished ? '⚠️' : '🌐'}</span>
+                          <span className="hidden sm:inline whitespace-nowrap">
+                            {!isPublished
+                              ? 'เผยแพร่'
+                              : hasNewUnpublished
+                              ? `ยังไม่เผยแพร่ฉบับใหม่ (+${diffNew})`
+                              : 'เผยแพร่แล้ว'}
+                          </span>
+                        </button>
+                      </WarmTooltip>
+                    )
+                  })()}
 
                   {/* Settings Button */}
                   <WarmTooltip content="ตั้งค่าผลงาน / เปลี่ยนชื่อ / เปลี่ยนรูปปก" side="top">
