@@ -370,6 +370,7 @@ export function AppProvider({ children }) {
 
   const completeTour = useCallback(() => {
     setIsTourOpen(false)
+    if (typeof document !== 'undefined') document.body.style.overflow = ''
     localStorage.setItem('plottrix_tour_completed', 'true')
     addToast({
       title: 'ยินดีด้วย! คุณพร้อมเริ่มเขียนนิยายแล้ว',
@@ -380,6 +381,7 @@ export function AppProvider({ children }) {
 
   const skipTour = useCallback(() => {
     setIsTourOpen(false)
+    if (typeof document !== 'undefined') document.body.style.overflow = ''
     localStorage.setItem('plottrix_tour_completed', 'true')
   }, [])
 

@@ -1,21 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useDevicePerformance } from '../../hooks/useDevicePerformance'
+import AeroShards from '../react-bits/AeroShards'
 
 /**
  * AeroShardsCanvas
- * Adaptive 3D Ribbon Shards & Markers Ambient Engine
- * - Low-end: Fully disabled, replaced with lightweight CSS gradient & static SVG
- * - Balanced: 250-350 shards, DPR <= 1.15, lightweight 2D canvas
- * - High-end: Full particle richness, bloom, DPR <= 1.5
- * - Viewport Culling & Visibility Pause: 100% pauses RAF when offscreen or tab hidden
+ * Hybrid 3D WebGPU & Canvas 2D Ambient Shards Engine
+ * 1. High-End / Modern WebGPU: Authentic React Bits WebGPU <AeroShards /> shader engine
+ * 2. Balanced / No-WebGPU Fallback: Optimized Canvas 2D floating glass ribbon shards
+ * 3. Low-End / Potato PC Mode: 100% disabled GPU execution, pure CSS radial gradient + static SVG
+ * 4. Zero Click-Blocking: Fixed pointer-events-none -z-10 layer throughout
  */
 export default function AeroShardsCanvas() {
-  const { isLowEnd, isBalanced, shardCount, maxDpr, enableAeroCanvas } = useDevicePerformance()
+  const { isLowEnd, isBalanced, isHighEnd, maxDpr, enableAeroCanvas } = useDevicePerformance()
+  const [webGpuFailed, setWebGpuFailed] = useState(false)
+  const [hasWebGpuSupport, setHasWebGpuSupport] = useState(false)
+
+  // Canvas 2D fallback refs
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
 
   useEffect(() => {
-    if (!enableAeroCanvas) return
+    if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      setHasWebGpuSupport(true)
+    } else {
+      setHasWebGpuSupport(false)
+    }
+  }, [])
+
+  // Canvas 2D fallback animation loop (only runs when WebGPU is unavailable or fails, and NOT in low-end mode)
+  const shouldUse2DCanvas = !isLowEnd && enableAeroCanvas && (!hasWebGpuSupport || webGpuFailed)
+
+  useEffect(() => {
+    if (!shouldUse2DCanvas) return
 
     const canvas = canvasRef.current
     const container = containerRef.current
@@ -41,8 +57,7 @@ export default function AeroShardsCanvas() {
     const shards = []
     const markers = []
 
-    // Adjust shards based on adaptive performance tier
-    const baseCount = isBalanced ? 18 : 36
+    const baseCount = isBalanced ? 16 : 28
     for (let lvl = 0; lvl < 5; lvl++) {
       const count = Math.round(lvl === 0 ? baseCount : lvl === 1 ? baseCount * 0.9 : baseCount * 0.75)
       for (let i = 0; i < count; i++) {
@@ -62,7 +77,7 @@ export default function AeroShardsCanvas() {
           flash: 0
         })
       }
-      const markerCount = isBalanced ? 4 : 8
+      const markerCount = isBalanced ? 4 : 7
       for (let m = 0; m < markerCount; m++) {
         markers.push({
           lvl,
@@ -77,14 +92,13 @@ export default function AeroShardsCanvas() {
     function resize() {
       w = Math.max(1, window.innerWidth)
       h = Math.max(1, window.innerHeight)
-      dpr = Math.min(window.devicePixelRatio || 1, maxDpr || 1.2)
+      dpr = Math.min(window.devicePixelRatio || 1, maxDpr || 1.15)
       canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
     }
     resize()
     window.addEventListener('resize', resize)
 
-    // Window-level pointer listeners for global interaction without blocking clicks
     const handlePointerMove = (e) => {
       pointer.tx = e.clientX / w
       pointer.ty = e.clientY / h
@@ -142,7 +156,6 @@ export default function AeroShardsCanvas() {
       const camX = (pointer.x - 0.5) * 36
       const camY = (pointer.y - 0.5) * 22
 
-      // Shockwave rings (only in High-end mode)
       if (!isBalanced && rings.length > 0) {
         for (let i = rings.length - 1; i >= 0; i--) {
           rings[i].r += dt * 520
@@ -153,14 +166,12 @@ export default function AeroShardsCanvas() {
         }
       }
 
-      // Draw layers back-to-front
       for (let lvl = 4; lvl >= 0; lvl--) {
         const depth = DEPTHS[lvl]
         const fade = FADE[lvl]
         const parallaxX = -camX / depth
         const parallaxY = -camY / depth
 
-        // Survey markers
         for (const mk of markers) {
           if (mk.lvl !== lvl) continue
           const mx = (((mk.x * w + clock * 8 / depth + parallaxX) % w) + w) % w
@@ -180,7 +191,6 @@ export default function AeroShardsCanvas() {
           ctx.stroke()
         }
 
-        // Flowing 3D ribbon glass shards
         for (const sh of shards) {
           if (sh.lvl !== lvl) continue
           const s0 = (sh.phase + clock * (0.032 / depth)) % 1
@@ -242,7 +252,6 @@ export default function AeroShardsCanvas() {
       }
     }
 
-    // Viewport Culling & Visibility Pause
     const startAnimation = () => {
       if (!animId && isVisible) {
         last = performance.now()
@@ -269,7 +278,6 @@ export default function AeroShardsCanvas() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    // IntersectionObserver to stop rendering when scrolled out of view
     let io = null
     if (container && 'IntersectionObserver' in window) {
       io = new IntersectionObserver((entries) => {
@@ -296,9 +304,9 @@ export default function AeroShardsCanvas() {
       if (io) io.disconnect()
       stopAnimation()
     }
-  }, [enableAeroCanvas, isBalanced, maxDpr])
+  }, [shouldUse2DCanvas, isBalanced, maxDpr])
 
-  // Low-End Potato PC Mode Fallback: 100% Canvas & RAF Disabled
+  // 1. Low-End Potato PC Mode Fallback: 100% Canvas & RAF Disabled
   if (!enableAeroCanvas || isLowEnd) {
     return (
       <div
@@ -315,7 +323,6 @@ export default function AeroShardsCanvas() {
           background: 'radial-gradient(ellipse at 50% 40%, #15102a 0%, #0c0817 65%, #07050e 100%)'
         }}
       >
-        {/* Subtle static ambient stars SVG for depth without GPU cost */}
         <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="15%" cy="20%" r="1" fill="#c29aff" opacity="0.6" />
           <circle cx="85%" cy="15%" r="1.5" fill="#a855f7" opacity="0.5" />
@@ -336,6 +343,52 @@ export default function AeroShardsCanvas() {
     )
   }
 
+  // 2. High-End / Modern WebGPU: React Bits authentic WebGPU <AeroShards /> component
+  if (hasWebGpuSupport && !webGpuFailed) {
+    return (
+      <div
+        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none -z-10 overflow-hidden"
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100dvh',
+          pointerEvents: 'none',
+          zIndex: -1,
+          overflow: 'hidden'
+        }}
+      >
+        <AeroShards
+          shardColor="#896ABD"
+          accentColor="#A855F7"
+          placement="full"
+          material="glass"
+          count={isHighEnd ? 1100 : 360}
+          dpr={isHighEnd ? 1.5 : 1.0}
+          speed={0.7}
+          glow={isHighEnd ? 0.35 : 0.15}
+          grain={isHighEnd ? 0.05 : 0}
+          mouseInteraction={true}
+          pulseOnClick={!isBalanced}
+          onError={() => setWebGpuFailed(true)}
+          className="w-full h-full pointer-events-none"
+        />
+        <div
+          className="aero-shards-vignette absolute inset-0 pointer-events-none"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            background:
+              'radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(9,7,19,0.88) 100%), linear-gradient(180deg, rgba(9,7,19,0.35) 0%, transparent 22%, transparent 78%, rgba(9,7,19,0.96) 100%)'
+          }}
+        />
+      </div>
+    )
+  }
+
+  // 3. Fallback Canvas 2D mode (when WebGPU is not supported or failed to initialize)
   return (
     <div
       ref={containerRef}

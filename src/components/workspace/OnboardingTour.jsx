@@ -116,13 +116,9 @@ export default function OnboardingTour() {
     }
   }, [isTourOpen, tourStep, currentView, updateRect])
 
-  // Reset body overflow when tour opens/closes
+  // Never lock body scroll so users can navigate and inspect elements freely
   useEffect(() => {
-    if (isTourOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = ''
     return () => {
       document.body.style.overflow = ''
     }

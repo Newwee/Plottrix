@@ -1,43 +1,45 @@
-import React, { useState } from 'react'
+import React from 'react'
+import AnimatedList from '../react-bits/AnimatedList'
+import { HugeiconsIcon } from '@hugeicons/react'
+import {
+  AiEditingIcon,
+  SparklesIcon,
+  AiBrain01Icon,
+  GitBranchIcon
+} from '@hugeicons/core-free-icons'
 
-const FEATURES = [
+const FEATURE_ITEMS = [
   {
     id: 'proofread',
-    icon: '✎',
+    icon: <HugeiconsIcon icon={AiEditingIcon} size={20} strokeWidth={1.8} />,
     title: 'Thai Editorial & Grammar Engine',
-    badge: 'Realtime NLP',
-    desc: 'ตรวจจับคำผิด คำพ้องเสียง (น่า/หน้า, ผูก/ผูกมัด) เกลาวรรคตอน และตรวจความสละสลวยของประโยคตามบริบทภาษาไทย',
-    tag: 'ความแม่นยำภาษาไทย 99%'
+    description: 'ตรวจจับคำผิด คำพ้องเสียง (น่า/หน้า, ผูก/ผูกมัด) เกลาวรรคตอน และตรวจความสละสลวยของประโยคตามบริบทภาษาไทย',
+    meta: 'Realtime NLP'
   },
   {
     id: 'style',
-    icon: '✧',
+    icon: <HugeiconsIcon icon={SparklesIcon} size={20} strokeWidth={1.8} />,
     title: 'Style Persona & Voice Lock',
-    badge: 'Tone Guardian',
-    desc: 'จดจำและล็อกสไตล์การเขียนเฉพาะตัว (ได้ถึง 3 โปรไฟล์) ไม่ว่าจะเป็นแนวพีเรียด กำลังภายใน หรือไซไฟ ให้ AI เกลาโดยไม่เปลี่ยนเสียงของคุณ',
-    tag: 'คงเอกลักษณ์นักเขียน 100%'
+    description: 'จดจำและล็อกสไตล์การเขียนเฉพาะตัว (ได้ถึง 3 โปรไฟล์) ไม่ว่าจะเป็นแนวพีเรียด กำลังภายใน หรือไซไฟ ให้ AI เกลาโดยไม่เปลี่ยนเสียงของคุณ',
+    meta: 'Tone Guardian'
   },
   {
     id: 'memory',
-    icon: '⌘',
+    icon: <HugeiconsIcon icon={AiBrain01Icon} size={20} strokeWidth={1.8} />,
     title: 'Story Bible & 15+ Chapters Deep Memory',
-    badge: 'Deep Memory',
-    desc: 'คลังความจำอัจฉริยะ จดจำปม ประวัติตัวละคร และความสัมพันธ์ย้อนหลังกว่า 15 บท ช่วยเตือนทันทีหากมีจุดขัดแย้งกับบทก่อนหน้า',
-    tag: 'เช็คความต่อเนื่องข้ามบท'
+    description: 'คลังความจำอัจฉริยะ จดจำปม ประวัติตัวละคร และความสัมพันธ์ย้อนหลังกว่า 15 บท ช่วยเตือนทันทีหากมีจุดขัดแย้งกับบทก่อนหน้า',
+    meta: 'Deep Memory'
   },
   {
     id: 'branch',
-    icon: '⑂',
+    icon: <HugeiconsIcon icon={GitBranchIcon} size={20} strokeWidth={1.8} />,
     title: 'Smart Branching & Plot Experimenter',
-    badge: 'Multi-Branch',
-    desc: 'ทดลองแตกเส้นเรื่อง 3 ทางเลือกเมื่อคิดพล็อตไม่ออก พร้อมย่อหน้าเกริ่นนำเพื่อจุดประกายและส่งต่อจินตนาการให้นักเขียนนำไปต่อยอดเอง',
-    tag: 'จุดประกายไอเดียพล็อต'
+    description: 'ทดลองแตกเส้นเรื่อง 3 ทางเลือกเมื่อคิดพล็อตไม่ออก พร้อมย่อหน้าเกริ่นนำเพื่อจุดประกายและส่งต่อจินตนาการให้นักเขียนนำไปต่อยอดเอง',
+    meta: 'Multi-Branch'
   }
 ]
 
 export default function FeaturesSection() {
-  const [activeFeature, setActiveFeature] = useState('proofread')
-
   return (
     <section className="section why" id="features">
       <div className="wrap">
@@ -52,36 +54,23 @@ export default function FeaturesSection() {
           </p>
         </div>
 
-        {/* Core Capabilities Interactive Feed */}
+        {/* Core Capabilities Interactive Feed powered by React Bits AnimatedList */}
         <div className="features-animated-list-wrap">
           <div className="features-list-header">
             <div className="features-list-badge">✦ CORE CAPABILITIES</div>
             <h3>ฟีเจอร์เด่นที่ขับเคลื่อนด้วยระบบอัจฉริยะ</h3>
           </div>
 
-          <div className="animated-list-container">
-            {FEATURES.map((feat) => {
-              const isActive = activeFeature === feat.id
-              return (
-                <div
-                  key={feat.id}
-                  className={`animated-list-item cursor-pointer transition ${isActive ? 'is-active' : ''}`}
-                  onMouseEnter={() => setActiveFeature(feat.id)}
-                  onClick={() => setActiveFeature(feat.id)}
-                >
-                  <div className="animated-list-icon">{feat.icon}</div>
-                  <div className="animated-list-body">
-                    <div className="animated-list-title-row">
-                      <span className="animated-list-title">{feat.title}</span>
-                      <span className="animated-list-badge">{feat.badge}</span>
-                    </div>
-                    <p className="animated-list-desc">{feat.desc}</p>
-                    <span className="animated-list-tag">{feat.tag}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <AnimatedList
+            items={FEATURE_ITEMS}
+            animation="pop"
+            theme="dark"
+            width="100%"
+            maxHeight={520}
+            gap={10}
+            radius={14}
+            accentColor="#c29aff"
+          />
         </div>
 
         {/* 3 Pillar Cards */}
