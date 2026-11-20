@@ -598,9 +598,9 @@ html.perf-low .modal-backdrop {
 /* =========================================================
    2. REACT BITS: <AeroShards /> HERO AMBIENT CANVAS
    ========================================================= */
-.hero{padding:52px 0 78px;min-height:670px;display:flex;align-items:center;position:relative;isolation:isolate;overflow:hidden}
-.aero-shards{position:fixed;inset:0;z-index:-1;width:100vw;height:100dvh;overflow:hidden;pointer-events:none;contain:strict}
-.aero-shards-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;transform:translateZ(0);will-change:transform}
+.hero{padding:52px 0 78px;min-height:670px;display:flex;align-items:center;position:relative!important;z-index:10!important;background:transparent!important;overflow:visible!important}
+.aero-shards,.aero-shards-global{position:fixed!important;inset:0!important;z-index:0!important;width:100vw!important;height:100vh!important;overflow:hidden!important;pointer-events:none!important;background:transparent!important}
+.aero-shards-canvas{position:absolute!important;inset:0!important;display:block!important;width:100vw!important;height:100vh!important;pointer-events:none!important;transform:translateZ(0);will-change:transform}
 .aero-shards-vignette{display:none!important}
 .hero-grid{display:grid;grid-template-columns:.82fr 1.18fr;gap:46px;align-items:center;position:relative;z-index:2;pointer-events:none}
 .hero-copy,.hero-visual{pointer-events:auto}
@@ -714,7 +714,7 @@ html.perf-low .modal-backdrop {
 .pixel-card > :not(.pixel-card-canvas){position:relative;z-index:1}
 
 /* trust strip */
-.feature-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(22,16,39,.85),rgba(18,13,32,.6));padding:20px 0}
+.feature-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(22,16,39,.45)!important;backdrop-filter:blur(10px);position:relative!important;z-index:10!important;padding:20px 0}
 .strip-grid{display:grid;grid-template-columns:repeat(5,1fr)}
 .strip-item{display:flex;align-items:center;gap:10px;padding:0 17px;border-right:1px solid var(--line);min-width:0}
 .strip-item:first-child{padding-left:0}.strip-item:last-child{border:0}
@@ -723,7 +723,7 @@ html.perf-low .modal-backdrop {
 .strip-item span{display:block;font-size:9.5px;color:#8f849f;margin-top:3px}
 
 /* why / feature cards */
-.why{background:linear-gradient(180deg,rgba(13,9,25,.2),rgba(23,15,40,.42))}
+.why{background:transparent!important;position:relative!important;z-index:10!important}
 .why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .why-card{padding:24px}
 .card-icon{width:40px;height:40px;border:1px solid rgba(177,133,255,.22);border-radius:12px;display:grid;place-items:center;color:#c6a7ff;background:rgba(137,85,225,.13);margin-bottom:18px}
@@ -766,7 +766,7 @@ html.perf-low .modal-backdrop {
 .hotspot-detail strong{color:#e7dcff}
 
 /* action / branching */
-.action-section{background:linear-gradient(180deg,rgba(20,13,36,.65),rgba(10,8,20,.1))}
+.action-section{background:transparent!important;position:relative!important;z-index:10!important}
 .action-grid{display:grid;grid-template-columns:.82fr 1.18fr;gap:40px;align-items:center}
 .action-copy h2,.branch-copy h2{font-size:clamp(31px,4vw,46px);line-height:1.18;letter-spacing:-.04em;margin:12px 0}
 .action-copy p,.branch-copy p{font-size:14px;color:var(--muted)}
@@ -789,7 +789,7 @@ html.perf-low .modal-backdrop {
 .branch-output strong{color:#e8dcff;display:block;margin-bottom:5px}
 
 /* translation */
-.translation-section{background:linear-gradient(110deg,rgba(16,11,30,.82),rgba(34,20,57,.48),rgba(12,9,23,.8))}
+.translation-section{background:transparent!important;position:relative!important;z-index:10!important}
 .translation-layout{display:grid;grid-template-columns:.78fr 1.22fr;gap:42px;align-items:center}
 .translation-copy h2{font-size:clamp(30px,3.7vw,44px);line-height:1.2;margin:13px 0}
 .translation-copy p{font-size:14px;color:var(--muted)}
@@ -806,7 +806,7 @@ html.perf-low .modal-backdrop {
 .vocab-tags span{font-size:9px;border:1px solid var(--line);padding:3px 7px;border-radius:20px;color:#c8b8df}
 
 /* comparison */
-.compare-section{background:linear-gradient(180deg,rgba(10,7,19,.1),rgba(28,18,46,.45))}
+.compare-section{background:transparent!important;position:relative!important;z-index:10!important}
 .compare-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:45px;align-items:center}
 .compare-table{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(18,13,31,.8)}
 .compare-table table{width:100%;border-collapse:collapse;font-size:11px}
@@ -818,7 +818,7 @@ html.perf-low .modal-backdrop {
 .yes{color:var(--mint);font-weight:700}.no{color:#ff8caa}.partial{color:var(--gold)}
 
 /* pricing */
-.pricing{background:linear-gradient(180deg,rgba(24,15,42,.45),rgba(10,7,19,.35))}
+.pricing{background:transparent!important;position:relative!important;z-index:10!important}
 .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
 .price-card{padding:25px;display:flex;flex-direction:column;min-height:360px}
 .price-card.featured{--pixel-card-surface:linear-gradient(150deg,rgba(63,39,96,.72),rgba(21,15,36,.96));--pixel-card-edge:rgba(181,135,255,.55);box-shadow:0 0 0 1px rgba(164,111,248,.15),0 18px 50px rgba(91,47,164,.22)}
@@ -835,7 +835,7 @@ html.perf-low .modal-backdrop {
 .pricing-footnote{text-align:center;margin-top:19px;color:#8e829f;font-size:10.5px}
 
 /* CTA + footer */
-.final-cta{padding:74px 0;text-align:center;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 100%,rgba(121,67,213,.28),transparent 55%),linear-gradient(110deg,#16102a,#21133b 55%,#120d22);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.final-cta{padding:74px 0;text-align:center;position:relative!important;z-index:10!important;background:rgba(22,16,42,.35)!important;backdrop-filter:blur(8px);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .final-cta:before,.final-cta:after{content:"✦";position:absolute;color:rgba(188,151,255,.28);font-size:80px}
 .final-cta:before{left:12%;top:25px}.final-cta:after{right:13%;bottom:16px;font-size:54px}
 .final-cta h2{font-size:clamp(30px,4vw,46px);line-height:1.2;margin:0 0 10px}

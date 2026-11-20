@@ -303,12 +303,11 @@ export default function AeroShardsCanvas() {
     }
   }, [shouldUse2DCanvas, isBalanced, maxDpr])
 
-  // 1. Low-End Potato PC Mode Fallback: 100% Canvas & RAF Disabled
-  // 1. Low-End / Potato PC Mode: Zero Canvas, zero WebGPU, pure CSS radial gradient
+  // 1. Low-End / Potato PC Mode: Zero Canvas, zero WebGPU
   if (!enableAeroCanvas || isLowEnd) {
     return (
       <div
-        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
+        className="aero-shards aero-shards-global"
         aria-hidden="true"
         style={{
           position: 'fixed',
@@ -317,8 +316,7 @@ export default function AeroShardsCanvas() {
           height: '100vh',
           pointerEvents: 'none',
           zIndex: 0,
-          overflow: 'hidden',
-          background: 'radial-gradient(ellipse at 50% 40%, #15102a 0%, #0c0817 65%, #07050e 100%)'
+          overflow: 'hidden'
         }}
       >
         <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
@@ -336,7 +334,7 @@ export default function AeroShardsCanvas() {
   if (hasWebGpuSupport && !webGpuFailed) {
     return (
       <div
-        className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
+        className="aero-shards aero-shards-global"
         aria-hidden="true"
         style={{
           position: 'fixed',
@@ -370,6 +368,13 @@ export default function AeroShardsCanvas() {
           dpr={isHighEnd ? 1.5 : 1.0}
           onError={() => setWebGpuFailed(true)}
           className="w-full h-full pointer-events-none"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100vw',
+            height: '100vh',
+            pointerEvents: 'none'
+          }}
         />
       </div>
     )
@@ -379,7 +384,7 @@ export default function AeroShardsCanvas() {
   return (
     <div
       ref={containerRef}
-      className="aero-shards fixed inset-0 w-screen h-screen pointer-events-none z-0 overflow-hidden"
+      className="aero-shards aero-shards-global"
       aria-hidden="true"
       style={{
         position: 'fixed',
@@ -393,13 +398,14 @@ export default function AeroShardsCanvas() {
     >
       <canvas
         ref={canvasRef}
-        className="aero-shards-canvas absolute inset-0 w-full h-full block pointer-events-none"
+        className="aero-shards-canvas"
         style={{
           position: 'absolute',
           inset: 0,
-          width: '100%',
-          height: '100%',
-          display: 'block'
+          width: '100vw',
+          height: '100vh',
+          display: 'block',
+          pointerEvents: 'none'
         }}
       />
     </div>

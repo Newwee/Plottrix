@@ -163,9 +163,7 @@ function TopNavbar({ onOpenCommandPalette }) {
               onClick={() => setActiveModal('pricing')}
               className="flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-white transition cursor-pointer"
             >
-              <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-[#0d0b14] font-bold text-[10px] flex items-center justify-center shadow">
-                T
-              </span>
+              <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
               <span>{trixBalance?.toLocaleString() || 0}</span>
               <span className="text-[10px] text-amber-400/80 font-normal">Trix</span>
             </button>

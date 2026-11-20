@@ -56,7 +56,7 @@ export default function PricingModal() {
             {/* Header */}
             <div className="px-6 py-4 border-b border-plottrix-line/40 flex items-center justify-between bg-plottrix-panel2/60">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🪙</span>
+                <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-8 h-8 object-contain" />
                 <div>
                   <h3 className="font-bold text-base sm:text-lg text-white">
                     Trix Coins & Membership (เหรียญและแพ็กเกจสมาชิก)
@@ -90,8 +90,9 @@ export default function PricingModal() {
               <div className="pt-6 border-t border-plottrix-line/30">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <div className="text-xs uppercase tracking-wider text-amber-300 font-bold">
-                      🪙 เติมเหรียญ Trix แยกตามการใช้งาน (Pay-As-You-Go)
+                    <div className="text-xs uppercase tracking-wider text-amber-300 font-bold flex items-center gap-1.5">
+                      <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
+                      <span>เติมเหรียญ Trix แยกตามการใช้งาน (Pay-As-You-Go)</span>
                     </div>
                     <div className="text-xs text-plottrix-muted">
                       เหรียญไม่มีวันหมดอายุ ใช้งานได้กับฟีเจอร์ AI ทุกระดับ

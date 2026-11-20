@@ -125,8 +125,9 @@ export default function PricingCards({ currentPlan = 'Free Plan', onSelectPlan }
                 </span>
               </div>
 
-              <div className="plan-trix-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 border border-purple-400/25 text-purple-200 mb-4">
-                {planItem.trixBadge}
+              <div className="plan-trix-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-400/30 text-amber-200 mb-4">
+                <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
+                <span>{planItem.trixBadge}</span>
               </div>
 
               <p className="plan-desc text-xs text-plottrix-text/80 mb-5 leading-relaxed">

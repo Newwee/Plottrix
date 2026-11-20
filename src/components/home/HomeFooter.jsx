@@ -32,6 +32,7 @@ export default function HomeFooter() {
           <div className="footer-col">
             <h4>PRODUCT</h4>
             <a href="#features">Features</a>
+            <a href="#coin-trix">Coin Trix (เหรียญ AI)</a>
             <a
               href="#workspace"
               onClick={(e) => {

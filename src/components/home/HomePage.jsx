@@ -3,6 +3,7 @@ import AeroShardsCanvas from '../workspace/AeroShardsCanvas'
 import HomeNavbar from './HomeNavbar'
 import HeroSection from './HeroSection'
 import FeaturesSection from './FeaturesSection'
+import TrixCoinSection from './TrixCoinSection'
 import WorkspaceShowcaseSection from './WorkspaceShowcaseSection'
 import InteractiveDemoSection from './InteractiveDemoSection'
 import PlotBranchSection from './PlotBranchSection'
@@ -28,6 +29,10 @@ export default function HomePage() {
 
         <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
           <FeaturesSection />
+        </AnimatedContent>
+
+        <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>
+          <TrixCoinSection />
         </AnimatedContent>
 
         <AnimatedContent distance={80} direction="vertical" duration={0.8} ease="power3.out" threshold={0.1}>

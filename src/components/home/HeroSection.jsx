@@ -36,18 +36,24 @@ export default function HeroSection() {
 
             <div className="hero-actions">
               <button
-                className="btn btn-primary btn-hero-glow"
+                className="btn btn-primary btn-hero-glow flex items-center gap-2"
                 onClick={() => navigateTo('workspace')}
               >
-                รับฟรี 30 Trix เริ่มเขียนเลย <span>→</span>
+                <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-5 h-5 object-contain inline-block" />
+                <span>รับฟรี 30 Trix เริ่มเขียนเลย</span> <span>→</span>
               </button>
+              <a className="btn btn-ghost flex items-center gap-2" href="#coin-trix">
+                <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
+                <span>ทำความรู้จัก Coin Trix</span>
+              </a>
               <a className="btn btn-ghost" href="#workspace">
                 <span>▷</span> สำรวจ Workspace
               </a>
             </div>
 
             <div className="trial-note">
-              <span className="spark">✦</span> เริ่มต้นฟรีทันที 30 Trix แรกเข้า + รับเพิ่มทุกวัน · ไม่ต้องผูกบัตร
+              <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-3.5 h-3.5 object-contain inline-block mr-1" />
+              <span>เริ่มต้นฟรีทันที 30 Trix แรกเข้า + รับเพิ่มฟรีทุกวัน · ไม่ต้องผูกบัตร</span>
             </div>
           </div>
 

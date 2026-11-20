@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'ฟีเจอร์', href: '#features' },
+  { label: 'Coin Trix', href: '#coin-trix' },
   { label: 'เวิร์กสเปซ', href: '#workspace' },
   { label: 'เปรียบเทียบ', href: '#about' },
   { label: 'ราคา', href: '#pricing' }
@@ -117,6 +118,15 @@ export default function HomeNavbar() {
 
         {/* Right Desktop Nav Action Buttons */}
         <div className="nav-actions">
+          <a
+            href="#coin-trix"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-200 text-xs font-semibold transition"
+            title="ระบบเหรียญ Coin Trix"
+          >
+            <img src="/Logo/TrixCoinLogo.png" alt="Coin Trix" className="w-4 h-4 object-contain inline-block" />
+            <span className="hidden sm:inline">รับฟรี 30 Trix</span>
+          </a>
+
           {user ? (
             <div className="flex items-center gap-2">
               <button

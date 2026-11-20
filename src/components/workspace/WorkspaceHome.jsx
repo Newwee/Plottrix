@@ -258,7 +258,7 @@ export default function WorkspaceHome() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#0d091a] text-slate-100 flex flex-col font-sans relative overflow-x-hidden overflow-y-auto">
+    <div className="min-h-[100dvh] w-full bg-transparent text-slate-100 flex flex-col font-sans relative overflow-x-hidden overflow-y-auto">
       {/* 3D Ambient Background Shards - Full-Screen Fixed Across Workspace */}
       <AeroShardsCanvas />
 
@@ -287,13 +287,14 @@ export default function WorkspaceHome() {
 
         <div className="flex items-center gap-3">
           {/* Trix Balance Indicator */}
-          <WarmTooltip content="ยอดเหรียญ Trix คงเหลือสำหรับใช้ AI" side="bottom">
+          <WarmTooltip content="ยอดเหรียญ Trix คงเหลือสำหรับใช้ AI (คลิกเพื่อดูรายละเอียด)" side="bottom">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-amber-400/30 text-xs transition cursor-pointer shadow-sm hover:border-amber-400/60"
             >
-              <span className="text-amber-300 font-bold">🪙 {trixBalance}</span>
+              <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
+              <span className="text-amber-300 font-bold">{trixBalance}</span>
               <span className="text-[10px] text-plottrix-muted">Trix</span>
             </button>
           </WarmTooltip>
