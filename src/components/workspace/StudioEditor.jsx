@@ -119,6 +119,23 @@ function StudioEditor() {
     return () => window.removeEventListener('keydown', handleKeyNav)
   }, [activePageIdx, currentChapter?.pages?.length])
 
+  // Listen to file import event from TopNavbar
+  useEffect(() => {
+    const handleImportText = (e) => {
+      if (e.detail && typeof e.detail === 'string') {
+        const text = e.detail
+        setLocalText(text)
+        updateCurrentPageText(text)
+        addToast({
+          title: '📥 นำเข้าเนื้อหาต้นฉบับสำเร็จ',
+          description: 'เนื้อหาถูกโหลดลงในหน้ากระดาษปัจจุบันเรียบร้อยแล้ว'
+        })
+      }
+    }
+    window.addEventListener('plottrix-import-text', handleImportText)
+    return () => window.removeEventListener('plottrix-import-text', handleImportText)
+  }, [updateCurrentPageText, addToast])
+
   // Close popover when clicking outside
   useEffect(() => {
     const handleOutsideClick = () => setShowPageGridPopover(false)
