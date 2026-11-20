@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { useApp } from '../../context/AppContext'
 import AeroShardsCanvas from './AeroShardsCanvas'
 import TopNavbar from './TopNavbar'
@@ -6,6 +6,7 @@ import LeftSidebar from './LeftSidebar'
 import EditorialAssistantSidebar from './EditorialAssistantSidebar'
 import VocabularySidebar from './VocabularySidebar'
 import AiResultDrawer from './AiResultDrawer'
+import CommandPalette from './CommandPalette'
 
 // Lazy loaded heavy components & Modals for optimum performance
 const StudioEditor = lazy(() => import('./StudioEditor'))
@@ -24,11 +25,17 @@ export default function WorkspaceLayout() {
     editorialCheckOpen, toggleEditorialCheck
   } = useApp()
 
-  // Handle Escape key to exit focus mode
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+
+  // Handle Escape key to exit focus mode & Ctrl/Cmd + K for Command Palette
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isFocusMode) {
         setIsFocusMode(false)
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setIsCommandPaletteOpen(prev => !prev)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -41,7 +48,7 @@ export default function WorkspaceLayout() {
       <AeroShardsCanvas />
 
       {/* Top Pill Navbar */}
-      {!isFocusMode && <TopNavbar />}
+      {!isFocusMode && <TopNavbar onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />}
 
       {/* Main Workspace Frame */}
       <main className="flex-1 flex overflow-hidden relative z-10 px-2 sm:px-4 pb-2 sm:pb-3 pt-1 min-h-0">
@@ -108,6 +115,7 @@ export default function WorkspaceLayout() {
 
       {/* Overlays & Specific Modals with Suspense */}
       <AiResultDrawer />
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       <Suspense fallback={null}>
         <CharacterBibleModal />
         <StylePersonaModal />

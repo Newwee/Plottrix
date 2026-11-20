@@ -26,8 +26,20 @@ function StudioEditor() {
   } = useApp()
 
   const textareaRef = useRef(null)
+  const [showPageGridPopover, setShowPageGridPopover] = useState(false)
+  const [quickJumpVal, setQuickJumpVal] = useState('')
   const activePersona = personas.find(p => p.id === activePersonaId) || personas[0]
-  const [showSuggestion, setShowSuggestion] = useState(true)
+
+  // Adaptive action frequency counters for adaptive toolbar
+  const [adaptiveCounts, setAdaptiveCounts] = useState({
+    proofread: 12,
+    wordcheck: 7,
+    plot: 4,
+    translate: 3
+  })
+
+  // Pages with AI editorial notes (mocked flagged pages for demonstration: pages 2, 14, 38, 52)
+  const flaggedPages = useMemo(() => new Set([2, 14, 38, 52]), [])
 
   // Local text state for ultra-fast 60 FPS typing without re-rendering the whole app tree
   const [localText, setLocalText] = useState(currentPageText || '')
@@ -72,7 +84,7 @@ function StudioEditor() {
     }
   }, [])
 
-  // Debounced Word count & reading time (300ms) to avoid running regex on every single keystroke
+  // Debounced Word count & reading time (300ms)
   const [wordMetrics, setWordMetrics] = useState({ words: 0, time: '0.0' })
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -88,9 +100,33 @@ function StudioEditor() {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.max(460, textareaRef.current.scrollHeight)}px`
+      textareaRef.current.style.height = `${Math.max(520, textareaRef.current.scrollHeight)}px`
     }
   }, [localText])
+
+  // Keyboard shortcut Alt + Left / Right for page navigation
+  useEffect(() => {
+    const handleKeyNav = (e) => {
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault()
+        handleStepPage(-1)
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault()
+        handleStepPage(1)
+      }
+    }
+    window.addEventListener('keydown', handleKeyNav)
+    return () => window.removeEventListener('keydown', handleKeyNav)
+  }, [activePageIdx, currentChapter?.pages?.length])
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = () => setShowPageGridPopover(false)
+    if (showPageGridPopover) {
+      window.addEventListener('click', handleOutsideClick)
+      return () => window.removeEventListener('click', handleOutsideClick)
+    }
+  }, [showPageGridPopover])
 
   // Handle typing in textarea
   const handleTextChange = (e) => {
@@ -138,172 +174,376 @@ function StudioEditor() {
     }, 10)
   }
 
-  const handleInsertSceneBreak = () => {
-    if (!textareaRef.current) return
-    const el = textareaRef.current
-    const start = el.selectionStart
-    const newText = localText.substring(0, start) + '\n\n***\n\n' + localText.substring(start)
-    setLocalText(newText)
-    updateCurrentPageText(newText)
-    setTimeout(() => {
-      el.selectionStart = el.selectionEnd = start + 7
-      el.focus()
-    }, 10)
+  // Smart Pagination Helpers
+  const totalPages = currentChapter?.pages?.length || 1
+  const currentPageNumber = activePageIdx + 1
+
+  const handleStepPage = (delta) => {
+    const target = activePageIdx + delta
+    if (target >= 0 && target < totalPages) {
+      flushSave()
+      setActivePageIdx(target)
+    }
   }
 
-  // Handle applying persona suggestion card
-  const handleApplySuggestion = () => {
-    const suggestedText = 'หญิงสาวทอดสายตาผ่านม่านน้ำฝนไปยังเงาร่างลึกลับที่ยืนนิ่งอยู่ใต้ซุ้มไม้เลื้อย'
-    let replaced
-    if (localText.includes('รินลดาหยุดฝีเท้า')) {
-      replaced = localText.replace(
-        'รินลดาหยุดฝีเท้า ดวงตาคู่เรียวมองฝ่าม่านน้ำฝนไปยังเงาร่างลึกลับที่ยืนนิ่งอยู่ใต้ซุ้มไม้เลื้อย',
-        suggestedText
-      )
+  const handleJumpToPage = (e) => {
+    e.preventDefault()
+    const pageNum = parseInt(quickJumpVal, 10)
+    if (pageNum && pageNum >= 1 && pageNum <= totalPages) {
+      flushSave()
+      setActivePageIdx(pageNum - 1)
+      setQuickJumpVal('')
+      setShowPageGridPopover(false)
     } else {
-      replaced = localText + '\n\n' + suggestedText
+      addToast({ title: `กรุณาระบุเลขหน้าระหว่าง 1 ถึง ${totalPages}` })
     }
-    setLocalText(replaced)
-    updateCurrentPageText(replaced)
-    setShowSuggestion(false)
-    addToast({
-      title: 'ปรับใช้สำนวนแนะนำเรียบร้อย!',
-      description: 'ข้อความถูกขัดเกลาตาม Style Persona เรียบร้อย',
-      fuseColor: '#74d9b4'
-    })
   }
+
+  // Build Compact Smart Ellipsis Page Pills (max 7 items even for 500+ pages)
+  const smartPills = useMemo(() => {
+    const items = []
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) items.push(i)
+    } else {
+      items.push(1)
+      if (currentPageNumber > 3) items.push('...')
+
+      const start = Math.max(2, currentPageNumber - 1)
+      const end = Math.min(totalPages - 1, currentPageNumber + 1)
+      for (let i = start; i <= end; i++) items.push(i)
+
+      if (currentPageNumber < totalPages - 2) items.push('...')
+      items.push(totalPages)
+    }
+    return items
+  }, [totalPages, currentPageNumber])
+
+  // Total words calculation
+  const totalChapterWords = useMemo(() => {
+    if (!currentChapter?.pages) return 0
+    return currentChapter.pages.reduce((acc, p) => acc + (p.trim() ? p.trim().replace(/\s+/g, ' ').length : 0), 0)
+  }, [currentChapter, localText])
 
   return (
     <div
       id="tour-target-editor"
-      className="flex-1 flex flex-col h-full overflow-hidden relative studio-editor-area"
+      className="flex-1 flex flex-col h-full overflow-hidden relative studio-editor-area app-surface"
     >
-      {/* Floating AI Context Toolbar inside Studio Editor */}
+      {/* Floating AI Context Toolbar */}
       <FloatingAiToolbar />
 
-      {/* Top Controls Subbar (Responsive scroll on mobile) */}
-      <div className="h-12 px-3 sm:px-4 border-b border-plottrix-line/40 bg-plottrix-panel2/50 flex items-center justify-between gap-3 text-xs shrink-0 backdrop-blur-md overflow-x-auto no-scrollbar">
-        {/* Left: Chapter & Page Tabs */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="font-bold text-plottrix-purple2 whitespace-nowrap">
+      {/* ========================================================================= */}
+      {/* SCALABLE 50+ PAGE NAVIGATION & TOOLBAR (SINGLE-LINE ZERO OVERFLOW) */}
+      {/* ========================================================================= */}
+      <div className="panel-surface border-b px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 relative z-20 shrink-0">
+        {/* Left: Chapter Code & Smart Pagination */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-bold text-violet-300 mr-1 whitespace-nowrap">
             บทที่ {currentChapter?.number || 1}
           </span>
-          <span className="text-plottrix-line">/</span>
-          <div className="flex items-center gap-1 bg-plottrix-panel/80 p-0.5 rounded-lg border border-plottrix-line/40">
-            {currentChapter?.pages?.map((_, idx) => (
+
+          {/* Compact Smart Pagination */}
+          <div className="flex items-center gap-1 p-1 rounded-xl elevated-surface border">
+            {/* Prev Page Button */}
+            <button
+              type="button"
+              onClick={() => handleStepPage(-1)}
+              disabled={currentPageNumber <= 1}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs hover:bg-violet-500/20 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer font-bold text-slate-200"
+              title="หน้าก่อนหน้า (Alt + ←)"
+            >
+              ‹
+            </button>
+
+            {/* Smart Ellipsis Pills */}
+            <div className="flex items-center gap-0.5">
+              {smartPills.map((item, idx) => {
+                if (item === '...') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-xs opacity-45 select-none">
+                      …
+                    </span>
+                  )
+                }
+                const isCurrent = item === currentPageNumber
+                const hasFlag = flaggedPages.has(item)
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      flushSave()
+                      setActivePageIdx(item - 1)
+                    }}
+                    className={`relative min-w-[28px] h-7 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                      isCurrent
+                        ? 'bg-violet-600 text-white font-bold shadow'
+                        : 'hover:bg-violet-500/20 text-slate-300 opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    {item}
+                    {hasFlag && !isCurrent && (
+                      <span
+                        className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400"
+                        title="มีจุดสังเกตจาก AI"
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Next Page Button */}
+            <button
+              type="button"
+              onClick={() => handleStepPage(1)}
+              disabled={currentPageNumber >= totalPages}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs hover:bg-violet-500/20 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer font-bold text-slate-200"
+              title="หน้าถัดไป (Alt + →)"
+            >
+              ›
+            </button>
+
+            <div className="h-4 w-[1px] bg-violet-500/25 mx-0.5" />
+
+            {/* 10-Column Page Grid Popover Trigger ("หน้า X / Y ▾") */}
+            <div className="relative">
               <button
-                key={idx}
                 type="button"
-                onClick={() => {
-                  flushSave()
-                  setActivePageIdx(idx)
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPageGridPopover(!showPageGridPopover)
                 }}
-                className={`px-2.5 py-1 min-h-[30px] rounded-md font-medium transition text-[11px] cursor-pointer whitespace-nowrap ${
-                  activePageIdx === idx
-                    ? 'bg-plottrix-purple text-white font-bold shadow-xs'
-                    : 'text-plottrix-muted hover:text-white'
-                }`}
+                className="px-2.5 h-7 rounded-lg bg-violet-600/20 hover:bg-violet-600/35 border border-violet-500/35 text-violet-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                title="เปิดสารบัญหน้าทั้งหมดและค้นหาเลขหน้า"
               >
-                หน้า {idx + 1}
+                <span>หน้า {currentPageNumber} / {totalPages}</span>
+                <span className="text-[10px] opacity-80">▾</span>
               </button>
-            ))}
-            <WarmTooltip content="เพิ่มหน้าใหม่" shortcut="⌘P" side="bottom">
-              <button
-                type="button"
-                onClick={() => {
-                  flushSave()
-                  addPage()
-                }}
-                className="px-2 py-1 min-h-[30px] rounded text-[11px] text-plottrix-purple2 hover:text-white hover:bg-plottrix-purple/20 font-bold cursor-pointer whitespace-nowrap"
-              >
-                + หน้า
-              </button>
-            </WarmTooltip>
+
+              {/* INTERACTIVE 10-COLUMN PAGE GRID MATRIX POPOVER */}
+              {showPageGridPopover && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute left-0 top-full mt-2 w-[320px] sm:w-[420px] rounded-2xl panel-surface border border-violet-500/50 shadow-2xl shadow-black/80 p-3.5 z-50 animate-float-in"
+                >
+                  {/* Header & Quick Page Jump */}
+                  <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-violet-500/20">
+                    <div>
+                      <div className="text-xs font-bold text-violet-200">
+                        📑 สารบัญหน้ากระดาษ ({totalPages} หน้า)
+                      </div>
+                      <div className="text-[10px] opacity-65">
+                        คลิกเลือกหน้า หรือพิมพ์เลขหน้าเพื่อกระโดดไปทันที
+                      </div>
+                    </div>
+                    <form onSubmit={handleJumpToPage} className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={quickJumpVal}
+                        onChange={(e) => setQuickJumpVal(e.target.value)}
+                        placeholder="ไปหน้า..."
+                        className="w-20 px-2.5 py-1 rounded-lg elevated-surface border border-violet-500/40 text-xs text-white focus:outline-none focus:border-violet-400"
+                      />
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium cursor-pointer"
+                      >
+                        ไป
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* First & Last Page Shortcuts */}
+                  <div className="flex items-center justify-between gap-1.5 mb-2.5 text-[11px]">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          flushSave()
+                          setActivePageIdx(0)
+                          setShowPageGridPopover(false)
+                        }}
+                        className="px-2 py-1 rounded-lg elevated-surface border hover:border-violet-500/50 text-slate-300"
+                      >
+                        ⇤ หน้าแรก (1)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          flushSave()
+                          setActivePageIdx(totalPages - 1)
+                          setShowPageGridPopover(false)
+                        }}
+                        className="px-2 py-1 rounded-lg elevated-surface border hover:border-violet-500/50 text-slate-300"
+                      >
+                        หน้าสุดท้าย ({totalPages}) ⇥
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] opacity-75">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-500" />
+                        หน้าปัจจุบัน
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        จุดสังเกต AI
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Scrollable 10-Column Matrix Grid */}
+                  <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                    {Array.from({ length: totalPages }).map((_, pIdx) => {
+                      const pNum = pIdx + 1
+                      const isCurr = pIdx === activePageIdx
+                      const isFlagged = flaggedPages.has(pNum)
+                      return (
+                        <button
+                          key={pNum}
+                          type="button"
+                          onClick={() => {
+                            flushSave()
+                            setActivePageIdx(pIdx)
+                            setShowPageGridPopover(false)
+                          }}
+                          className={`relative h-8 rounded-lg text-xs font-medium flex items-center justify-center transition cursor-pointer ${
+                            isCurr
+                              ? 'bg-violet-600 text-white font-bold ring-2 ring-violet-400/60 shadow'
+                              : 'elevated-surface border hover:border-violet-400 hover:bg-violet-500/20 text-slate-200'
+                          }`}
+                        >
+                          {pNum}
+                          {isFlagged && (
+                            <span
+                              className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400"
+                              title="มีจุดสังเกตจาก AI"
+                            />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Popover Footer */}
+                  <div className="mt-2.5 pt-2 border-t border-violet-500/20 flex items-center justify-between text-[11px] opacity-75">
+                    <span>รวมทั้งตอน ~{totalChapterWords.toLocaleString()} คำ</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        flushSave()
+                        addPage()
+                        setShowPageGridPopover(false)
+                      }}
+                      className="text-violet-300 hover:underline font-semibold cursor-pointer"
+                    >
+                      + เพิ่มหน้าใหม่ต่อท้าย
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Add Page (+ หน้า) */}
+            <button
+              type="button"
+              onClick={() => {
+                flushSave()
+                addPage()
+              }}
+              className="px-2.5 h-7 rounded-lg text-xs text-violet-300 hover:bg-violet-500/20 font-bold transition whitespace-nowrap cursor-pointer"
+              title="เพิ่มหน้ากระดาษใหม่"
+            >
+              + หน้า
+            </button>
           </div>
         </div>
 
-        {/* Center: Formatting Helpers */}
-        <WarmTooltipGroup delay={200}>
-          <div className="flex items-center gap-1 shrink-0">
-            <WarmTooltip content="แทรกย่อหน้า (Tab)" shortcut="Tab" side="bottom">
-              <button
-                type="button"
-                onClick={handleInsertIndent}
-                className="px-2.5 py-1.5 min-h-[32px] rounded-md bg-white/5 hover:bg-white/10 text-plottrix-text text-[11px] transition cursor-pointer whitespace-nowrap"
-              >
-                ⇥ ย่อหน้า
-              </button>
-            </WarmTooltip>
+        {/* Middle Group: Quick Formatting Snippets */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleInsertIndent}
+            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer"
+            title="เพิ่มย่อหน้ามาตรฐาน 4 เคาะ"
+          >
+            ⇥ ย่อหน้า
+          </button>
+          <button
+            type="button"
+            onClick={handleInsertDialogue}
+            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs font-serif transition cursor-pointer"
+            title="แทรกเครื่องหมายคำพูด “...”"
+          >
+            “คำพูด”
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (textareaRef.current) {
+                textareaRef.current.focus()
+                const len = localText.length
+                textareaRef.current.selectionStart = Math.max(0, len - 80)
+                textareaRef.current.selectionEnd = len
+                handleSelect({ target: textareaRef.current })
+              }
+            }}
+            className="elevated-surface border hover:border-violet-500/50 px-2.5 py-1.5 rounded-xl text-xs text-violet-300 transition cursor-pointer"
+            title="แสดงแถบเครื่องมือคลุมดำ AI"
+          >
+            ✦ แถบ AI
+          </button>
+        </div>
 
-            <WarmTooltip content="ครอบ “คำพูด”" shortcut="⌘Q" side="bottom">
-              <button
-                type="button"
-                onClick={handleInsertDialogue}
-                className="px-2.5 py-1.5 min-h-[32px] rounded-md bg-white/5 hover:bg-white/10 text-plottrix-text text-[11px] font-serif transition cursor-pointer whitespace-nowrap"
-              >
-                “คำพูด”
-              </button>
-            </WarmTooltip>
-
-            <WarmTooltip content="แทรกจุดแบ่งฉาก ***" shortcut="⌘B" side="bottom">
-              <button
-                type="button"
-                onClick={handleInsertSceneBreak}
-                className="px-2.5 py-1.5 min-h-[32px] rounded-md bg-white/5 hover:bg-white/10 text-plottrix-text text-[11px] font-mono tracking-widest transition cursor-pointer whitespace-nowrap"
-              >
-                ***
-              </button>
-            </WarmTooltip>
-          </div>
-        </WarmTooltipGroup>
-
-        {/* Right: Typography & Theme */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right Group: Font Size & 3 Themes (Obsidian, Midnight, Paper) */}
+        <div className="flex items-center gap-2.5">
           {/* Font Size */}
-          <div className="flex items-center bg-plottrix-panel px-1 py-0.5 rounded-md border border-plottrix-line/40">
+          <div className="flex items-center px-2 py-1 rounded-xl elevated-surface border text-xs">
             <button
               type="button"
               onClick={() => setFontSize(s => Math.max(14, s - 1))}
-              className="px-1.5 py-1 min-h-[28px] text-[11px] text-plottrix-muted hover:text-white font-bold cursor-pointer"
+              className="hover:text-violet-400 px-1 font-bold cursor-pointer"
             >
               ก-
             </button>
-            <span className="text-[11px] font-mono text-plottrix-text w-6 text-center">{fontSize}</span>
+            <span className="font-bold w-6 text-center text-slate-200">{fontSize}</span>
             <button
               type="button"
               onClick={() => setFontSize(s => Math.min(24, s + 1))}
-              className="px-1.5 py-1 min-h-[28px] text-[11px] text-plottrix-muted hover:text-white font-bold cursor-pointer"
+              className="hover:text-violet-400 px-1 font-bold cursor-pointer"
             >
               ก+
             </button>
           </div>
 
-          {/* Theme Dots */}
-          <div className="flex items-center gap-1.5">
-            <WarmTooltip content="Midnight Obsidian" side="bottom">
+          {/* Theme Switcher Dots */}
+          <div className="flex items-center gap-1.5" title="เปลี่ยนโทนสีหน้ากระดาษ">
+            <WarmTooltip content="Dark Obsidian (ม่วงเข้ม)" side="bottom">
+              <button
+                type="button"
+                onClick={() => setPaperTheme('obsidian')}
+                className={`w-4 h-4 rounded-full bg-[#161224] border border-violet-500/40 transition cursor-pointer ${
+                  paperTheme === 'obsidian' ? 'ring-2 ring-violet-400 scale-110' : 'opacity-60'
+                }`}
+              />
+            </WarmTooltip>
+            <WarmTooltip content="Midnight Blue (น้ำเงินค่ำ)" side="bottom">
               <button
                 type="button"
                 onClick={() => setPaperTheme('midnight')}
-                className={`w-4 h-4 rounded-full bg-[#130e24] border border-plottrix-purple/40 cursor-pointer ${
-                  paperTheme === 'midnight' ? 'ring-2 ring-plottrix-purple2' : 'opacity-60'
+                className={`w-4 h-4 rounded-full bg-[#1e293b] border border-slate-500 transition cursor-pointer ${
+                  paperTheme === 'midnight' ? 'ring-2 ring-violet-400 scale-110' : 'opacity-60'
                 }`}
               />
             </WarmTooltip>
-            <WarmTooltip content="Velvet Royal" side="bottom">
+            <WarmTooltip content="Warm Paper (กระดาษถนอมสายตา)" side="bottom">
               <button
                 type="button"
-                onClick={() => setPaperTheme('velvet')}
-                className={`w-4 h-4 rounded-full bg-[#1e1338] border border-plottrix-purple/50 cursor-pointer ${
-                  paperTheme === 'velvet' ? 'ring-2 ring-plottrix-purple2' : 'opacity-60'
-                }`}
-              />
-            </WarmTooltip>
-            <WarmTooltip content="Sepia Cream" side="bottom">
-              <button
-                type="button"
-                onClick={() => setPaperTheme('cream')}
-                className={`w-4 h-4 rounded-full bg-[#f9f6ef] border border-slate-300 cursor-pointer ${
-                  paperTheme === 'cream' ? 'ring-2 ring-plottrix-purple2' : 'opacity-60'
+                onClick={() => setPaperTheme('paper')}
+                className={`w-4 h-4 rounded-full bg-[#f5f2eb] border border-stone-400 transition cursor-pointer ${
+                  paperTheme === 'paper' ? 'ring-2 ring-violet-400 scale-110' : 'opacity-60'
                 }`}
               />
             </WarmTooltip>
@@ -311,133 +551,72 @@ function StudioEditor() {
         </div>
       </div>
 
-      {/* Main Paper Content Area (Virtualization: Only renders the active page) */}
-      <div className={`workspace-paper flex-1 min-h-0 overflow-y-auto paper-theme-${paperTheme} relative`}>
-        {/* Document Overline & Title */}
-        <div className="paper-overline">
-          CHAPTER {String(currentChapter?.number || 1).padStart(2, '0')} • PAGE {activePageIdx + 1}
-        </div>
-
-        <input
-          type="text"
-          value={currentChapter?.title || ''}
-          onChange={(e) => {
-            const val = e.target.value
-            setChapters(prev => prev.map(c => c.id === activeChapterId ? { ...c, title: val } : c))
-          }}
-          placeholder="ตั้งชื่อตอนที่นี่..."
-          className="paper-title bg-transparent border-0 outline-none w-full p-0 text-plottrix-text hover:opacity-90 focus:opacity-100"
-        />
-
-        {/* Inline AI Action Toolbar */}
-        <div className="inline-toolbar">
-          <WarmTooltip content="ตรวจคำผิด & ไวยากรณ์ (1 Trix)" side="top">
-            <button
-              type="button"
-              disabled={isAIProcessing}
-              onClick={() => triggerAiTask('proofread')}
-              className={`min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer ${activeAITool === 'proofread' ? 'animate-pulse text-purple-400' : ''}`}
-              title="ตรวจคำผิด"
-            >
-              🔍
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content={`ขัดเกลาสำนวนตาม ${activePersona.name} (3 Trix)`} side="top">
-            <button
-              type="button"
-              disabled={isAIProcessing}
-              onClick={() => triggerAiTask('polish')}
-              className={`min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer ${activeAITool === 'polish' ? 'animate-pulse text-purple-400' : ''}`}
-              title="เกลาสำนวน"
-            >
-              ✦
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="เสนอ 3 ทางแยกเนื้อเรื่อง (4 Trix)" side="top">
-            <button
-              type="button"
-              disabled={isAIProcessing}
-              onClick={() => triggerAiTask('plotBranch')}
-              className={`min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer ${activeAITool === 'plotBranch' ? 'animate-pulse text-purple-400' : ''}`}
-              title="3 ทางแยกพล็อต"
-            >
-              🌱
-            </button>
-          </WarmTooltip>
-
-          <WarmTooltip content="แปลวรรณกรรมภาษาอังกฤษ (2 Trix)" side="top">
-            <button
-              type="button"
-              disabled={isAIProcessing}
-              onClick={() => triggerAiTask('translate')}
-              className={`min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer ${activeAITool === 'translate' ? 'animate-pulse text-purple-400' : ''}`}
-              title="แปลวรรณกรรม"
-            >
-              🌐
-            </button>
-          </WarmTooltip>
-        </div>
-
-        {/* Core Editable Area (Virtualization: Active page only) */}
-        <textarea
-          id="tour-target-editor-text"
-          ref={textareaRef}
-          value={localText}
-          onChange={handleTextChange}
-          onBlur={flushSave}
-          onSelect={handleSelect}
-          onKeyUp={handleSelect}
-          onMouseUp={handleSelect}
-          onTouchEnd={handleSelect}
-          placeholder="จรดปลายนิ้ว เขียนเรื่องราวของคุณที่นี่..."
-          style={{ fontSize: `${fontSize}px`, lineHeight: 2.1 }}
-          className="w-full bg-transparent resize-none outline-none leading-relaxed tracking-wide text-inherit placeholder:opacity-35 min-h-[460px]"
-        />
-
-        {/* Floating Style Persona Suggestion Card */}
-        {showSuggestion && (
-          <div className="suggestion relative group">
-            <button
-              type="button"
-              onClick={() => setShowSuggestion(false)}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-xs transition cursor-pointer"
-              title="ปิดการ์ดคำแนะนำ"
-            >
-              ✕
-            </button>
-            <small>
-              <span>✦</span>
-              <span>STYLE PERSONA · {activePersona.name.split(' ')[0]}</span>
-            </small>
-            <strong>คำแนะนำการเกลาสำนวนตามโปรไฟล์</strong>
-            <span>ลองพิจารณา: "หญิงสาวทอดสายตาผ่านม่านน้ำฝน..."</span>
-            <button type="button" onClick={handleApplySuggestion} className="fix-pill cursor-pointer">
-              ใช้คำนี้ ↗
-            </button>
+      {/* ========================================================================= */}
+      {/* SCROLLABLE WRITING CANVAS (DISTRACTION-FREE THAI MANUSCRIPT) */}
+      {/* ========================================================================= */}
+      <div
+        id="editorScrollArea"
+        className="flex-1 overflow-y-auto px-4 sm:px-10 lg:px-16 py-8 relative"
+      >
+        <div className="max-w-3xl mx-auto">
+          {/* Chapter & Page Header */}
+          <div className="mb-4 flex items-end justify-between gap-2 border-b border-white/5 pb-2">
+            <div className="flex-1">
+              <div className="text-[11px] font-bold tracking-widest uppercase text-violet-400/80 mb-1">
+                CHAPTER {String(currentChapter?.number || 1).padStart(2, '0')} • PAGE {currentPageNumber} OF {totalPages}
+              </div>
+              <input
+                type="text"
+                value={currentChapter?.title || ''}
+                onChange={(e) => {
+                  const newTitle = e.target.value
+                  setChapters(prev => prev.map(c => c.id === activeChapterId ? { ...c, title: newTitle } : c))
+                }}
+                placeholder="ชื่อตอน..."
+                className="w-full bg-transparent text-xl sm:text-2xl font-bold focus:outline-none border-b border-transparent focus:border-violet-500/40 pb-1 text-white"
+              />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Bottom Status Bar */}
-      <div className="editor-bottom shrink-0 flex items-center justify-between px-4 py-2 border-t border-plottrix-line/30 bg-[#120d22]/80 text-[11px] text-plottrix-muted">
-        <div className="flex items-center gap-2">
-          <StatusMark
-            status={saveStatus === 'saving' ? 'running' : 'done'}
-            size={12}
-            fontSize={11}
-            label={saveStatus === 'saving' ? 'กำลังบันทึก...' : 'บันทึกแล้ว ✓'}
-            doneColor="#34d399"
+          {/* Actual Manuscript Textarea Editor */}
+          <textarea
+            ref={textareaRef}
+            id="tour-target-editor-text"
+            value={localText}
+            onChange={handleTextChange}
+            onSelect={handleSelect}
+            onBlur={flushSave}
+            style={{ fontSize: `${fontSize}px` }}
+            placeholder="เริ่มต้นจรดปลายปากกาเขียนนิยายของคุณที่นี่..."
+            className="w-full bg-transparent resize-none outline-none novel-font text-white placeholder-slate-500 min-h-[520px] focus:ring-0 border-none leading-relaxed tracking-wide select-text"
           />
         </div>
-
-        <div className="flex items-center gap-3">
-          <span>{wordMetrics.words} คำ</span>
-          <span>•</span>
-          <span>เวลาอ่าน ~{wordMetrics.time} นาที</span>
-        </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* BOTTOM STATUS BAR */}
+      {/* ========================================================================= */}
+      <footer className="panel-surface border-t px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs opacity-85 shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <span>✓</span>
+            <span>{saveStatus === 'saving' ? 'กำลังบันทึกอัตโนมัติ...' : 'บันทึกแล้วอัตโนมัติ'}</span>
+          </span>
+          <span className="hidden sm:inline opacity-30">|</span>
+          <span className="hidden md:inline text-violet-300/80">
+            คีย์ลัดเปลี่ยนหน้า: Alt + ← / →
+          </span>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-4 font-medium text-slate-300">
+          <span>หน้านี้ {wordMetrics.words.toLocaleString()} คำ</span>
+          <span className="text-violet-300">
+            ทั้งตอน ~{totalChapterWords.toLocaleString()} คำ ({totalPages} หน้า)
+          </span>
+          <span className="hidden sm:inline opacity-70">
+            เวลาอ่าน ~{wordMetrics.time} นาที
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -940,22 +940,30 @@ export function AppProvider({ children }) {
     }
   }
 
-  // Apply AI Result to editor text
+  // Apply AI Result to editor text safely without corrupting surrounding manuscript
   const applyAiResult = useCallback((replacementText) => {
     if (!replacementText) return
-    if (selection.text && selection.end > selection.start) {
-      const full = currentPageText
+    const full = currentPageText || ''
+
+    if (selection.text && selection.end > selection.start && full.substring(selection.start, selection.end) === selection.text) {
       const before = full.substring(0, selection.start)
       const after = full.substring(selection.end)
       updateCurrentPageText(before + replacementText + after)
-    } else {
+    } else if (selection.text && full.includes(selection.text)) {
+      const idx = full.indexOf(selection.text)
+      const before = full.substring(0, idx)
+      const after = full.substring(idx + selection.text.length)
+      updateCurrentPageText(before + replacementText + after)
+    } else if (full.trim().length === 0) {
       updateCurrentPageText(replacementText)
+    } else {
+      updateCurrentPageText(full + '\n\n' + replacementText)
     }
 
     setAiDrawer(prev => ({ ...prev, isOpen: false }))
     addToast({
       title: 'นำข้อความที่ขัดเกลาไปใช้แล้ว!',
-      description: 'เนื้อหาในหน้ากระดาษได้รับการอัปเดตเรียบร้อย',
+      description: 'เนื้อหาในหน้ากระดาษได้รับการอัปเดตเรียบร้อย โดยรักษาเนื้อหาแวดล้อม 100%',
       fuseColor: '#74d9b4'
     })
   }, [selection, currentPageText, updateCurrentPageText, addToast])

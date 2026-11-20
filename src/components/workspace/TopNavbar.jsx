@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import WarmTooltip from '../react-bits/WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
+import PillNav from '../react-bits/PillNav'
 
 const GENRES = [
   'แฟนตาซี / กำลังภายใน',
@@ -16,97 +17,112 @@ const GENRES = [
   'ทั่วไป / ยังไม่ระบุ'
 ]
 
-function TopNavbar() {
-  const { user, profile } = useAuth()
+function TopNavbar({ onOpenCommandPalette }) {
+  const { user } = useAuth()
   const {
     novelTitle, setNovelTitle,
     genre, setGenre,
     trixBalance, claimDailyTrix,
     saveStatus,
-    rightSidebarOpen, setRightSidebarOpen,
-    isFocusMode, setIsFocusMode,
     setActiveModal,
-    personas, activePersonaId,
+    setRightSidebarOpen,
+    rightSidebarOpen,
+    editorialCheckOpen,
+    setEditorialCheckOpen,
     navigateTo,
-    startTour,
-    isAIProcessing
+    isAIProcessing,
+    isFocusMode,
+    setIsFocusMode
   } = useApp()
 
-  const activePersona = personas.find(p => p.id === activePersonaId) || personas[0]
+  const navItems = [
+    { id: 'studio', label: 'ห้องเขียน Studio', icon: '✍️' },
+    { id: 'bible', label: 'Story Bible', icon: '📖' },
+    { id: 'vocab', label: 'คลังคำศัพท์', icon: '📚', badge: 'ฟรี' },
+    { id: 'history', label: 'ประวัติแก้ไข', icon: '🕒' },
+    { id: 'export', label: 'ส่งออก', icon: '🚀' }
+  ]
+
+  const handleNavChange = (id) => {
+    if (id === 'studio') {
+      navigateTo('studio')
+    } else if (id === 'bible') {
+      setActiveModal('characterBible')
+    } else if (id === 'vocab') {
+      setRightSidebarOpen(true)
+    } else if (id === 'history') {
+      setActiveModal('history')
+    } else if (id === 'export') {
+      setActiveModal('export')
+    }
+  }
 
   return (
-    <header className="sticky top-0 z-40 px-4 py-2.5 bg-gradient-to-b from-[#120d22]/95 to-[#120d22]/70 backdrop-blur-xl border-b border-plottrix-line/30 flex items-center justify-between gap-4 select-none">
-      {/* 1. Left: Authentic PillNav Logo & Novel Navigation */}
-      <div className="flex items-center gap-3">
-        <nav className="pill-nav" aria-label="Plottrix Brand">
-          <div
-            className="pill-nav__logo pill-nav__surface cursor-pointer group"
-            onClick={() => navigateTo('workspace_home')}
-            title="คลิกเพื่อกลับไปยังชั้นวางนิยาย (Workspace Home)"
-          >
-            <img
-              src="/Logo/PlottrixSingleLogo.png"
-              alt="Plottrix Logo"
-              className="pill-nav__logo-img group-hover:scale-110 transition-transform"
-            />
-            <span className="bg-gradient-to-r from-white via-purple-200 to-plottrix-purple2 bg-clip-text text-transparent font-bold text-sm tracking-tight">
-              Plottrix
-            </span>
+    <header className="sticky top-0 z-40 px-3 sm:px-5 py-2 panel-surface border-b flex flex-wrap items-center justify-between gap-3 select-none backdrop-blur-xl">
+      {/* 1. Left Group: Logo + Bookshelf + Novel Title + Genre + Debounced Live Save */}
+      <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+        <div
+          onClick={() => navigateTo('workspace_home')}
+          className="flex items-center gap-2 cursor-pointer group shrink-0"
+          title="กลับไปยังชั้นวางนิยาย (Workspace Home)"
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-600/30 text-white font-bold text-base group-hover:scale-105 transition-transform">
+            P
           </div>
-        </nav>
+          <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-violet-300 via-fuchsia-200 to-indigo-300 bg-clip-text text-transparent hidden sm:inline">
+            Plottrix
+          </span>
+        </div>
 
-        {/* Back to Workspace Home Button */}
-        <WarmTooltip content="กลับสู่ชั้นวางนิยายของคุณ" side="bottom">
+        {/* Bookshelf button */}
+        <WarmTooltip content="สลับโปรเจกต์ หรือจัดการชั้นวางนิยาย" side="bottom">
           <button
             type="button"
             onClick={() => navigateTo('workspace_home')}
-            className="text-xs text-purple-300 hover:text-white px-3 py-1.5 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/25 transition flex items-center gap-1.5 font-semibold"
+            className="elevated-surface border px-2.5 py-1.5 rounded-xl text-xs font-semibold text-violet-300 hover:text-white hover:border-violet-400/60 transition flex items-center gap-1.5 shrink-0"
           >
             <span>📚</span>
-            <span className="hidden sm:inline">ชั้นวางนิยาย</span>
+            <span className="hidden md:inline">ชั้นวางนิยาย</span>
           </button>
         </WarmTooltip>
 
-        {/* Novel Title Input */}
-        <div className="flex items-center gap-2">
-          <span className="text-plottrix-line text-sm hidden sm:inline">/</span>
-          <input
-            type="text"
-            value={novelTitle}
-            onChange={(e) => setNovelTitle(e.target.value)}
-            placeholder="ตั้งชื่อนิยาย..."
-            className="bg-transparent hover:bg-white/5 focus:bg-plottrix-panel border border-transparent hover:border-plottrix-line focus:border-plottrix-purple2/50 px-2.5 py-1 rounded-lg text-xs sm:text-sm font-semibold text-plottrix-text w-48 sm:w-60 transition outline-none"
-            title="คลิกเพื่อแก้ไขชื่อเรื่อง"
-          />
+        <span className="text-slate-600 hidden sm:inline">/</span>
+
+        {/* Editable Novel Title Input */}
+        <input
+          type="text"
+          value={novelTitle}
+          onChange={(e) => setNovelTitle(e.target.value)}
+          placeholder="ตั้งชื่อนิยาย..."
+          className="bg-transparent hover:bg-white/5 focus:bg-black/30 border border-transparent hover:border-violet-500/30 focus:border-violet-400 px-2.5 py-1 rounded-xl text-xs sm:text-sm font-bold text-white max-w-[160px] sm:max-w-[210px] transition outline-none"
+          title="คลิกเพื่อแก้ไขชื่อเรื่อง"
+        />
+
+        {/* Genre Selector */}
+        <div className="hidden lg:flex items-center relative">
+          <select
+            value={genre}
+            onChange={(e) => setGenre(e.target.value)}
+            className="elevated-surface border border-violet-500/25 text-violet-300 text-xs px-2.5 py-1.5 rounded-xl outline-none cursor-pointer hover:border-violet-400/60 transition font-medium appearance-none pr-6 shadow-sm"
+          >
+            {GENRES.map(g => (
+              <option key={g} value={g} className="bg-[#16102a] text-white">{g}</option>
+            ))}
+          </select>
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-violet-400 pointer-events-none">
+            ▼
+          </span>
         </div>
 
-        {/* Custom Glass Genre Selector */}
-        <WarmTooltip content="แนวเรื่องนิยาย (จูนคลังคำศัพท์และโทนอัตโนมัติ)" side="bottom">
-          <div className="hidden lg:flex items-center relative">
-            <select
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              className="bg-[#1e1636] hover:bg-[#261c44] border border-white/15 text-purple-200 text-xs px-3 py-1.5 rounded-xl outline-none cursor-pointer transition font-medium appearance-none pr-7 shadow-sm"
-            >
-              {GENRES.map(g => (
-                <option key={g} value={g} className="bg-[#16102a] text-white">{g}</option>
-              ))}
-            </select>
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-purple-300 pointer-events-none">
-              ▼
-            </span>
-          </div>
-        </WarmTooltip>
-
-        {/* Debounced Auto-Save Live Status (2.5s) */}
+        {/* Save Status Indicator */}
         <div className="hidden md:flex items-center">
-          <WarmTooltip content="บันทึกอัตโนมัติลง Supabase 2.5 วินาทีหลังหยุดพิมพ์" side="bottom">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/30 border border-white/10 text-[11px]">
+          <WarmTooltip content="บันทึกอัตโนมัติลง Supabase หลังหยุดพิมพ์" side="bottom">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/30 border border-white/10 text-[11px]">
               <StatusMark
                 status={saveStatus === 'saving' ? 'running' : 'done'}
-                size={14}
-                fontSize={11}
-                strokeWidth={2.2}
+                size={13}
+                fontSize={10}
+                strokeWidth={2}
                 label={saveStatus === 'saving' ? 'กำลังบันทึก...' : 'บันทึกแล้ว ✓'}
                 color="rgba(203, 183, 255, 0.75)"
                 doneColor="#34d399"
@@ -116,148 +132,123 @@ function TopNavbar() {
         </div>
       </div>
 
-      {/* 2. Right: AI Lock Status, Persona, Trix Coins, Vocab Toggle, Export, Settings, Tour & Focus */}
-      <div id="tour-target-top-actions" className="flex items-center gap-2">
-        {/* Global AI Processing Indicator */}
-        {isAIProcessing && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-600/30 border border-purple-400 text-xs font-bold text-purple-200 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-            <span>AI กำลังทำงาน...</span>
-          </div>
-        )}
+      {/* 2. Center: React Bits PillNav Workspace Navigation */}
+      <div className="hidden xl:flex items-center">
+        <PillNav
+          items={navItems}
+          activeId="studio"
+          onChange={handleNavChange}
+        />
+      </div>
 
-        {/* Style Persona Pill */}
-        <WarmTooltip content={`สไตล์สำนวน: ${activePersona.name}`} shortcut="⌥P" side="bottom">
+      {/* 3. Right Group: Command Palette, Trix Wallet, Import, Export, Focus Mode */}
+      <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* Command Palette Trigger (Ctrl/Cmd + K) */}
+        <WarmTooltip content="เปิด Command Palette เพื่อค้นหาหรือสั่งการด่วน" shortcut="⌘K" side="bottom">
           <button
             type="button"
-            onClick={() => setActiveModal('stylePersona')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-purple-600/20 border border-white/10 hover:border-purple-400/40 text-xs text-plottrix-text transition font-medium"
+            onClick={onOpenCommandPalette}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl elevated-surface border hover:border-violet-500/60 text-xs text-slate-300 hover:text-white transition"
           >
-            <span className="text-purple-300">✦</span>
-            <span>{activePersona.name.split(' ')[0]}</span>
+            <span className="text-violet-400 text-sm">⌘</span>
+            <span className="text-[11px] font-mono opacity-70">Cmd+K</span>
           </button>
         </WarmTooltip>
 
-        {/* Trix Coin Indicator & Daily Claim Button */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/10">
-          <WarmTooltip content="เหรียญ Trix สำหรับใช้งานฟีเจอร์ AI" side="bottom">
+        {/* Trix Wallet with Daily Claim */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1a142e] border border-amber-500/30">
+          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI" side="bottom">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
-              className="flex items-center gap-1 text-xs font-bold text-amber-300 hover:text-white transition"
+              className="flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-white transition cursor-pointer"
             >
-              <span>🪙</span>
-              <span>{trixBalance}</span>
-              <span className="text-[10px] text-plottrix-muted font-normal">Trix</span>
+              <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-[#0d0b14] font-bold text-[10px] flex items-center justify-center shadow">
+                T
+              </span>
+              <span>{trixBalance?.toLocaleString() || 0}</span>
+              <span className="text-[10px] text-amber-400/80 font-normal">Trix</span>
             </button>
           </WarmTooltip>
 
-          <WarmTooltip content="รับฟรี +3 Trix ทุกวัน!" side="bottom">
+          <WarmTooltip content="รับสิทธิ์ฟรี +3 Trix ทุกวัน!" side="bottom">
             <button
               type="button"
               onClick={claimDailyTrix}
-              className="px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-[10px] font-bold text-white transition shadow-sm"
+              className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold transition border border-emerald-500/30"
             >
               +3 ฟรี
             </button>
           </WarmTooltip>
         </div>
 
-        {/* Vocabulary Sidebar Toggle */}
-        <WarmTooltip content="คลังคำศัพท์สำหรับนักเขียน (1,041 คำ)" shortcut="⌘2" side="bottom">
+        {/* Free Novel Vocab Bank Button */}
+        <WarmTooltip content="คลังคำศัพท์เฉพาะทางสำหรับนักเขียนนิยาย (ฟรีทุกแพลน)" side="bottom">
           <button
             type="button"
             onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-            className={`px-3 py-1.5 rounded-full border text-xs font-medium transition flex items-center gap-1.5 ${
+            className={`elevated-surface border px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
               rightSidebarOpen
-                ? 'bg-purple-600/25 text-purple-200 border-purple-400/40 shadow-sm'
-                : 'bg-white/5 hover:bg-white/10 text-plottrix-muted hover:text-white border-white/10'
+                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200'
+                : 'hover:border-emerald-400/50 text-slate-200'
             }`}
           >
-            <span>📚</span>
+            <span className="text-emerald-400">📚</span>
             <span className="hidden md:inline">คลังคำศัพท์</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300">ฟรี</span>
           </button>
         </WarmTooltip>
 
-        {/* Tour Button */}
-        <WarmTooltip content="เปิดทัวร์แนะนำการใช้งาน (Tour)" side="bottom">
+        {/* Import file button */}
+        <WarmTooltip content="นำเข้าไฟล์ต้นฉบับเดิม (.txt)" side="bottom">
           <button
             type="button"
-            onClick={startTour}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-xs text-purple-300 font-bold transition"
+            onClick={() => {
+              const input = document.createElement('input')
+              input.type = 'file'
+              input.accept = '.txt'
+              input.onchange = (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = (re) => {
+                  window.dispatchEvent(new CustomEvent('plottrix-import-text', { detail: re.target.result }))
+                }
+                reader.readAsText(file)
+              }
+              input.click()
+            }}
+            className="elevated-surface border hover:border-violet-500/60 px-2 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white transition hidden md:flex items-center gap-1"
           >
-            ?
+            <span>📥</span>
+            <span>นำเข้า</span>
           </button>
         </WarmTooltip>
 
-        {/* Settings Button & Profile (Auth-Gated) */}
-        {user ? (
-          <div className="flex items-center gap-1.5">
-            <WarmTooltip content={`โปรไฟล์: ${profile?.display_name || user.email?.split('@')[0]}`} side="bottom">
-              <button
-                type="button"
-                onClick={() => setActiveModal('settings')}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition cursor-pointer"
-              >
-                <div className="w-5 h-5 rounded-full overflow-hidden bg-purple-600/50 flex items-center justify-center text-[10px] font-bold">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    profile?.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()
-                  )}
-                </div>
-                <span className="hidden xl:inline max-w-[100px] truncate text-[11px]">
-                  {profile?.display_name || user.email?.split('@')[0]}
-                </span>
-              </button>
-            </WarmTooltip>
-
-            <WarmTooltip content="การตั้งค่าห้องเขียนและโปรไฟล์" side="bottom">
-              <button
-                type="button"
-                onClick={() => setActiveModal('settings')}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-xs text-slate-300 transition cursor-pointer"
-              >
-                ⚙
-              </button>
-            </WarmTooltip>
-          </div>
-        ) : (
-          <WarmTooltip content="เข้าสู่ระบบเพื่อซิงก์ข้อมูลและบันทึกลงคลาวด์" side="bottom">
-            <button
-              type="button"
-              onClick={() => setActiveModal('auth')}
-              className="px-3 py-1.5 rounded-full bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-xs font-semibold text-purple-200 transition cursor-pointer"
-            >
-              เข้าสู่ระบบ
-            </button>
-          </WarmTooltip>
-        )}
-
-        {/* Export Button */}
-        <WarmTooltip content="ส่งออกต้นฉบับ (ReadAWrite / Dek-D / TXT)" shortcut="⌘E" side="bottom">
+        {/* Export Modal Button */}
+        <WarmTooltip content="ส่งออกผลงานพร้อมลง ReadAWrite, Dek-D Writer หรือ E-Book" side="bottom">
           <button
             type="button"
             onClick={() => setActiveModal('export')}
-            className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-plottrix-text border border-white/10 text-xs font-semibold transition flex items-center gap-1"
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-violet-600/30 transition cursor-pointer"
           >
-            <span>📤</span>
-            <span className="hidden sm:inline">ส่งออก</span>
+            <span>🚀</span>
+            <span>ส่งออก</span>
           </button>
         </WarmTooltip>
 
-        {/* Focus Mode */}
-        <WarmTooltip content={isFocusMode ? 'ออกจากโหมดไร้สิ่งรบกวน (Esc)' : 'โหมดไร้สิ่งรบกวน (Focus Mode)'} shortcut="F11" side="bottom">
+        {/* Focus Mode Button */}
+        <WarmTooltip content={isFocusMode ? "ออกจากโหมดสมาธิ (Esc)" : "โหมดสมาธิไร้สิ่งรบกวน (Focus Mode)"} shortcut="Esc" side="bottom">
           <button
             type="button"
             onClick={() => setIsFocusMode(!isFocusMode)}
-            className={`w-8 h-8 rounded-full flex items-center justify-center border text-xs transition ${
+            className={`w-8 h-8 rounded-xl border flex items-center justify-center text-xs transition cursor-pointer ${
               isFocusMode
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-white/5 hover:bg-white/10 text-plottrix-muted hover:text-white border-white/10'
+                ? 'bg-violet-600 text-white border-violet-400'
+                : 'elevated-surface border-white/10 text-slate-300 hover:text-white'
             }`}
           >
-            ⛶
+            {isFocusMode ? '⛶' : '⊡'}
           </button>
         </WarmTooltip>
       </div>
