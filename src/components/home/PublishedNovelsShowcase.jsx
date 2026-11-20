@@ -60,19 +60,26 @@ export default function PublishedNovelsShowcase() {
     return () => { isMounted = false }
   }, [])
 
-  // Filtered stories based on category & tag
+  // Filtered stories based on category & tag, sorted by view_count descending (มากสุดอยู่อันแรก)
   const filteredStories = useMemo(() => {
-    return stories.filter(story => {
-      const matchCategory = selectedCategory === 'all'
-        ? true
-        : (story.genre && story.genre.includes(selectedCategory))
+    return stories
+      .filter(story => {
+        const matchCategory = selectedCategory === 'all'
+          ? true
+          : (story.genre && story.genre.includes(selectedCategory))
 
-      const matchTag = selectedTag
-        ? Array.isArray(story.tags) && story.tags.includes(selectedTag)
-        : true
+        const matchTag = selectedTag
+          ? Array.isArray(story.tags) && story.tags.includes(selectedTag)
+          : true
 
-      return matchCategory && matchTag
-    })
+        return matchCategory && matchTag
+      })
+      .sort((a, b) => {
+        const vA = typeof a.view_count === 'number' ? a.view_count : 0
+        const vB = typeof b.view_count === 'number' ? b.view_count : 0
+        if (vB !== vA) return vB - vA
+        return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)
+      })
   }, [stories, selectedCategory, selectedTag])
 
   // Pagination / Limit logic: show 6 by default (2 rows of 3), expand if showAll

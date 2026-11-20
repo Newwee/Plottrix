@@ -120,12 +120,13 @@ export async function toggleStoryFollow(storyId, userId = null, deviceId = null)
  */
 export async function fetchPublishedStories() {
   try {
-    // 1. Fetch stories where is_published is true (select specific fields with 8s timeout guard)
+    // 1. Fetch stories where is_published is true (ordered by view_count DESC from highest to lowest)
     const fetchPromise = supabase
       .from('novels')
       .select('id, title, genre, pov, synopsis, author_display_name, cover_url, cover_images, tags, view_count, follower_count, is_published, published_at, published_arc, published_snapshot, created_at, updated_at')
       .eq('is_published', true)
-      .order('published_at', { ascending: false })
+      .order('view_count', { ascending: false, nullsFirst: false })
+      .order('updated_at', { ascending: false })
 
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase fetch query timed out')), 8000)
@@ -199,6 +200,11 @@ export async function fetchPublishedStories() {
         publishedDateTime: formatDmyTime(s.published_at || s.created_at),
         updatedDateTime: formatDmyTime(s.updated_at || s.published_at)
       }
+    }).sort((a, b) => {
+      const vA = typeof a.view_count === 'number' ? a.view_count : 0
+      const vB = typeof b.view_count === 'number' ? b.view_count : 0
+      if (vB !== vA) return vB - vA
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)
     })
   } catch (err) {
     console.warn('[StoriesService] Exception:', err)
@@ -358,6 +364,11 @@ export async function fetchStoryChapters(storyId, isAuthenticated = false, prelo
         isLocked: false,
         wordCount: ch.word_count || 0
       }
+    }).sort((a, b) => {
+      const vA = typeof a.view_count === 'number' ? a.view_count : 0
+      const vB = typeof b.view_count === 'number' ? b.view_count : 0
+      if (vB !== vA) return vB - vA
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)
     })
   } catch (err) {
     console.warn('[StoriesService] Error loading chapters:', err)

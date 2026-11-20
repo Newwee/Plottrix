@@ -389,9 +389,19 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
 
   const handlePostComment = async (e) => {
     e.preventDefault()
+    if (!user) {
+      setActiveModal('auth')
+      addToast({
+        title: 'ต้องเข้าสู่ระบบก่อนแสดงความคิดเห็น 💬',
+        description: 'กรุณาเข้าสู่ระบบหรือสมัครสมาชิกเพื่อร่วมพูดคุยกับนักเขียน',
+        fuseColor: '#ec4899'
+      })
+      return
+    }
+
     if (!newCommentText.trim()) return
 
-    const name = newCommentName.trim() || 'ผู้อ่านทั่วไป'
+    const name = newCommentName.trim() || user?.user_metadata?.full_name || profile?.display_name || 'สมาชิก Plottrix'
     setSubmittingComment(true)
 
     const result = await addComment({
@@ -1096,50 +1106,68 @@ export default function ReaderView({ storyId: propStoryId, chapterIndex = 1 }) {
             </div>
           </div>
 
-          {/* Comment Form */}
-          <form onSubmit={handlePostComment} className={`p-5 rounded-3xl border mb-8 ${themeClasses.panel}`}>
-            <div className="mb-3">
-              <label className="block text-[11px] font-semibold text-purple-300 mb-1">
-                ชื่อผู้แสดงความคิดเห็น
-              </label>
-              <input
-                type="text"
-                value={newCommentName}
-                onChange={(e) => setNewCommentName(e.target.value)}
-                placeholder="ระบุชื่อหรือนามแฝงของคุณ..."
-                required
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-xs sm:text-sm focus:border-purple-400 outline-none transition"
-              />
-            </div>
+          {/* Comment Form / Login Requirement Banner */}
+          {user ? (
+            <form onSubmit={handlePostComment} className={`p-5 rounded-3xl border mb-8 ${themeClasses.panel}`}>
+              <div className="mb-3">
+                <label className="block text-[11px] font-semibold text-purple-300 mb-1">
+                  ชื่อผู้แสดงความคิดเห็น
+                </label>
+                <input
+                  type="text"
+                  value={newCommentName}
+                  onChange={(e) => setNewCommentName(e.target.value)}
+                  placeholder="ระบุชื่อหรือนามแฝงของคุณ..."
+                  required
+                  className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-xs sm:text-sm focus:border-purple-400 outline-none transition"
+                />
+              </div>
 
-            <div className="mb-3">
-              <label className="block text-[11px] font-semibold text-purple-300 mb-1">
-                ข้อความความคิดเห็น
-              </label>
-              <textarea
-                rows={3}
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                placeholder="เขียนความรู้สึกของคุณต่อตอนนี้..."
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-purple-500/30 text-xs sm:text-sm focus:border-purple-400 outline-none transition resize-none leading-relaxed"
-              />
-            </div>
+              <div className="mb-3">
+                <label className="block text-[11px] font-semibold text-purple-300 mb-1">
+                  ข้อความความคิดเห็น
+                </label>
+                <textarea
+                  rows={3}
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  placeholder="เขียนความรู้สึกของคุณต่อตอนนี้..."
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-purple-500/30 text-xs sm:text-sm focus:border-purple-400 outline-none transition resize-none leading-relaxed"
+                />
+              </div>
 
-            <div className="flex items-center justify-between">
-              <span className={`text-[10px] ${themeClasses.dimText}`}>
-                {user ? `✓ โพสต์ในฐานะสมาชิก: ${newCommentName}` : '✦ โพสต์ในฐานะนักอ่านทั่วไป'}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] ${themeClasses.dimText}`}>
+                  ✓ โพสต์ในฐานะสมาชิก: {newCommentName}
+                </span>
 
+                <button
+                  type="submit"
+                  disabled={submittingComment || !newCommentText.trim()}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 disabled:opacity-50 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                >
+                  {submittingComment ? <span>กำลังส่ง...</span> : <span>ส่งความคิดเห็น 🚀</span>}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className={`p-6 rounded-3xl border mb-8 text-center space-y-3 ${themeClasses.panel}`}>
+              <span className="text-2xl block">🔒</span>
+              <h4 className="text-sm font-bold text-white">เฉพาะสมาชิกเท่านั้นที่สามารถแสดงความคิดเห็นได้</h4>
+              <p className="text-xs text-plottrix-muted max-w-md mx-auto">
+                เข้าสู่ระบบหรือสมัครสมาชิก Plottrix เพื่อร่วมพูดคุย ทายพล็อต และส่งกำลังใจให้นักเขียนในแต่ละตอน
+              </p>
               <button
-                type="submit"
-                disabled={submittingComment || !newCommentText.trim()}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 disabled:opacity-50 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                type="button"
+                onClick={() => setActiveModal('auth')}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white font-bold text-xs shadow-lg transition cursor-pointer inline-flex items-center gap-1.5"
               >
-                {submittingComment ? <span>กำลังส่ง...</span> : <span>ส่งความคิดเห็น 🚀</span>}
+                <span>เข้าสู่ระบบ / สมัครสมาชิกเพื่อแสดงความคิดเห็น</span>
+                <span>→</span>
               </button>
             </div>
-          </form>
+          )}
 
           {/* Comments List */}
           <div className="space-y-3">

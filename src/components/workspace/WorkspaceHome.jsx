@@ -374,18 +374,6 @@ export default function WorkspaceHome() {
             </button>
           </WarmTooltip>
 
-          {/* Test AI Laboratory */}
-          <WarmTooltip content="ห้องทดสอบ Test AI Lab (Localhost Sandbox)" side="bottom">
-            <button
-              type="button"
-              onClick={() => navigateTo('test_ai')}
-              className="px-3 py-1.5 rounded-full bg-purple-500/20 hover:bg-purple-500/35 border border-purple-400/40 text-xs font-semibold text-purple-200 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <span>🧪</span>
-              <span className="hidden sm:inline">Test AI</span>
-            </button>
-          </WarmTooltip>
-
           {/* Settings */}
           <WarmTooltip content="การตั้งค่าระบบ" side="bottom">
             <button

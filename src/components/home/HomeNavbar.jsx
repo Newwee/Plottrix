@@ -119,16 +119,6 @@ export default function HomeNavbar() {
 
         {/* Right Desktop Nav Action Buttons */}
         <div className="nav-actions">
-          <button
-            type="button"
-            onClick={() => navigateTo('test_ai')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-600/20 hover:bg-purple-600/35 border border-purple-400/40 text-purple-200 text-xs font-semibold transition cursor-pointer shadow-sm"
-            title="ห้องทดสอบ AI (Localhost Sandbox)"
-          >
-            <span>🧪</span>
-            <span className="hidden sm:inline">Test AI Lab</span>
-          </button>
-
           <a
             href="#coin-trix"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-200 text-xs font-semibold transition"
@@ -231,18 +221,6 @@ export default function HomeNavbar() {
             </ul>
 
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  navigateTo('test_ai')
-                }}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-600/25 border border-purple-400/40 text-purple-200 text-xs font-bold min-h-[44px]"
-              >
-                <span>🧪</span>
-                <span>ห้องทดสอบ Test AI Lab (Localhost)</span>
-              </button>
-
               <a
                 href="#coin-trix"
                 onClick={() => setMobileMenuOpen(false)}
