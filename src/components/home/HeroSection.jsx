@@ -1,9 +1,11 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import LogoLoop from '../react-bits/LogoLoop'
 
 export default function HeroSection() {
   const { navigateTo } = useApp()
+  const { user } = useAuth()
 
   const featureLogos = [
     {
@@ -181,10 +183,10 @@ export default function HeroSection() {
               <button
                 type="button"
                 className="btn btn-ghost flex items-center gap-2 font-bold px-5 py-3.5 rounded-2xl border border-white/15 hover:border-purple-400/50 hover:bg-white/5 cursor-pointer text-xs sm:text-sm"
-                onClick={() => navigateTo('workspace')}
+                onClick={() => navigateTo('workspace_home')}
               >
                 <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
-                <span>เริ่มเขียนเลย (Workspace)</span>
+                <span>{user ? 'เข้าสู่ Workspace' : '🔒 เริ่มเขียนเลย (Workspace)'}</span>
               </button>
 
               <a className="btn btn-ghost text-xs hidden md:flex items-center gap-1.5" href="#coin-trix">

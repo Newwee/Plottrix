@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 
 const HOTSPOT_DATA = {
   editor: {
@@ -30,9 +31,23 @@ const HOTSPOT_DATA = {
 }
 
 export default function WorkspaceShowcaseSection() {
-  const { navigateTo, addToast } = useApp()
+  const { navigateTo, addToast, setActiveModal } = useApp()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('editor')
   const current = HOTSPOT_DATA[activeTab]
+
+  const handleLockedDemoAction = (title, message, fuseColor) => {
+    if (!user) {
+      setActiveModal('auth')
+      addToast({
+        title: 'ต้องเข้าสู่ระบบก่อนใช้งาน 🔒',
+        description: 'กรุณาเข้าสู่ระบบหรือสมัครสมาชิกเพื่อใช้งานเครื่องมือ AI ในสตูดิโอจริง',
+        fuseColor: '#ff7fa0'
+      })
+      return
+    }
+    addToast({ title, description: message, fuseColor })
+  }
 
   return (
     <section className="section py-20 relative overflow-hidden" id="workspace">
@@ -124,22 +139,22 @@ export default function WorkspaceShowcaseSection() {
                     <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-400/40 inline-flex items-center gap-1.5 shadow-lg">
                       <button
                         type="button"
-                        onClick={() => addToast({ title: 'แก้คำผิด (1 Trix)', message: 'ตรวจสอบคำพ้องเสียงและวรรคตอนเสร็จสิ้น', fuseColor: '#38bdf8' })}
-                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition"
+                        onClick={() => handleLockedDemoAction('แก้คำผิด (1 Trix)', 'ตรวจสอบคำพ้องเสียงและวรรคตอนเสร็จสิ้น', '#38bdf8')}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition cursor-pointer"
                       >
                         ✎ แก้คำผิด (1)
                       </button>
                       <button
                         type="button"
-                        onClick={() => addToast({ title: 'เกลาสำนวน (1 Trix)', message: 'ปรับสำนวนให้ตรงกับ Persona ดราม่าลึกลับ', fuseColor: '#c084fc' })}
-                        className="px-2.5 py-1 rounded-lg bg-purple-600/60 hover:bg-purple-600 text-xs font-bold text-white transition"
+                        onClick={() => handleLockedDemoAction('เกลาสำนวน (1 Trix)', 'ปรับสำนวนให้ตรงกับ Persona ดราม่าลึกลับ', '#c084fc')}
+                        className="px-2.5 py-1 rounded-lg bg-purple-600/60 hover:bg-purple-600 text-xs font-bold text-white transition cursor-pointer"
                       >
                         ✦ เกลาสำนวน (1)
                       </button>
                       <button
                         type="button"
-                        onClick={() => addToast({ title: 'แปลวรรณกรรม (3 Trix)', message: 'แปลเป็นภาษาอังกฤษคงน้ำเสียงตัวละคร', fuseColor: '#34d399' })}
-                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition"
+                        onClick={() => handleLockedDemoAction('แปลวรรณกรรม (3 Trix)', 'แปลเป็นภาษาอังกฤษคงน้ำเสียงตัวละคร', '#34d399')}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition cursor-pointer"
                       >
                         文 แปลภาษา (3)
                       </button>

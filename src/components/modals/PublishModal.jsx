@@ -113,7 +113,7 @@ export default function PublishModal() {
     return []
   }, [targetNovel, publishedCount])
 
-  if (!isOpen || !targetNovel) return null
+  if (!isOpen || !targetNovel || !user) return null
 
   // Selection toggles
   const handleToggleChapter = (chId) => {

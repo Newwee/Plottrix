@@ -1,11 +1,13 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import TopNavbar from './TopNavbar'
 import LeftSidebar from './LeftSidebar'
 import EditorialAssistantSidebar from './EditorialAssistantSidebar'
 import VocabularySidebar from './VocabularySidebar'
 import AiResultDrawer from './AiResultDrawer'
 import CommandPalette from './CommandPalette'
+import AuthRequiredView from '../common/AuthRequiredView'
 
 // Lazy loaded heavy components & Modals for optimum performance
 const StudioEditor = lazy(() => import('./StudioEditor'))
@@ -18,6 +20,7 @@ const ExportModal = lazy(() => import('../modals/ExportModal'))
 const ApiTestModal = lazy(() => import('../modals/ApiTestModal'))
 
 export default function WorkspaceLayout() {
+  const { user, loading: authLoading } = useAuth()
   const {
     isFocusMode, setIsFocusMode,
     editorialCheckOpen
@@ -39,6 +42,9 @@ export default function WorkspaceLayout() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isFocusMode, setIsFocusMode])
+
+  if (authLoading) return <AuthRequiredView isLoading />
+  if (!user) return <AuthRequiredView />
 
   return (
     <div className="flex flex-col h-[100dvh] min-h-[100dvh] w-screen overflow-hidden bg-plottrix-bg text-plottrix-text relative font-thai">

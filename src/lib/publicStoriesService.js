@@ -72,20 +72,18 @@ export async function recordStoryView(storyId) {
 }
 
 /**
- * Check if the current user or device is following a novel
+ * Check if the current authenticated user is following a novel
  */
-export async function checkStoryFollowing(storyId, userId = null, deviceId = null) {
-  if (!storyId) return false
-  const devId = deviceId || getOrCreateDeviceId()
+export async function checkStoryFollowing(storyId, userId = null) {
+  if (!storyId || !userId) return false
 
   try {
-    let query = supabase.from('story_followers').select('id').eq('novel_id', storyId)
-    if (userId) {
-      query = query.eq('user_id', userId)
-    } else {
-      query = query.eq('device_id', devId)
-    }
-    const { data } = await query.limit(1)
+    const { data } = await supabase
+      .from('story_followers')
+      .select('id')
+      .eq('novel_id', storyId)
+      .eq('user_id', userId)
+      .limit(1)
     return Boolean(data && data.length > 0)
   } catch (err) {
     console.warn('[StoriesService] Check following notice:', err?.message)
@@ -94,23 +92,30 @@ export async function checkStoryFollowing(storyId, userId = null, deviceId = nul
 }
 
 /**
- * Toggle following a novel (returns { is_following, follower_count })
+ * Toggle following a novel (Authenticated Members Only)
  */
-export async function toggleStoryFollow(storyId, userId = null, deviceId = null) {
-  if (!storyId) return { is_following: false, follower_count: 0 }
-  const devId = deviceId || getOrCreateDeviceId()
+export async function toggleStoryFollow(storyId, userId = null) {
+  if (!storyId || !userId) {
+    return { is_following: false, follower_count: 0, authRequired: true }
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession()
+  const activeUid = sessionData?.session?.user?.id
+  if (!activeUid || activeUid !== userId) {
+    return { is_following: false, follower_count: 0, authRequired: true }
+  }
 
   try {
     const { data, error } = await supabase.rpc('toggle_novel_follow', {
       target_novel_id: storyId,
-      p_user_id: userId || null,
-      p_device_id: devId
+      p_user_id: activeUid,
+      p_device_id: activeUid
     })
     if (error) throw error
     return data || { is_following: false, follower_count: 0 }
   } catch (err) {
     console.warn('[StoriesService] Toggle follow error:', err?.message)
-    return { is_following: false, follower_count: 0 }
+    return { is_following: false, follower_count: 0, error: err?.message }
   }
 }
 

@@ -1,34 +1,74 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const AuthContext = createContext(null)
+
+const PRIVATE_STORAGE_KEYS = [
+  'plottrix_novels',
+  'plottrix_characters',
+  'plottrix_dictionary',
+  'plottrix_snapshots',
+  'plottrix_trix',
+  'plottrix_plan',
+  'plottrix_plan_tier',
+  'plottrix_trial_used',
+  'plottrix_trial_started_at',
+  'plottrix_trial_ends_at',
+  'plottrix_last_claim',
+  'plottrix_tour_completed'
+]
+
+export function clearPrivateUserStorage() {
+  if (typeof window === 'undefined') return
+  PRIVATE_STORAGE_KEYS.forEach((key) => {
+    try {
+      localStorage.removeItem(key)
+    } catch (_) {}
+  })
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [oauthError, setOauthError] = useState(null)
+
+  const clearOAuthError = useCallback(() => setOauthError(null), [])
 
   useEffect(() => {
+    // Check OAuth error parameters returned via redirect URL (hash or query)
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const hashStr = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash
+      const hashParams = new URLSearchParams(hashStr)
+      const errDesc = searchParams.get('error_description') || hashParams.get('error_description') || searchParams.get('error') || hashParams.get('error')
+      if (errDesc) {
+        setOauthError(decodeURIComponent(errDesc.replace(/\+/g, ' ')))
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+
     // Initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user || null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
+    supabase.auth.getSession().then(({ data: { session: initSession } }) => {
+      setSession(initSession)
+      setUser(initSession?.user || null)
+      if (initSession?.user) {
+        fetchProfile(initSession.user)
       } else {
         setLoading(false)
       }
     })
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user || null)
       if (newSession?.user) {
-        await fetchProfile(newSession.user.id)
+        await fetchProfile(newSession.user)
       } else {
         setProfile(null)
+        clearPrivateUserStorage()
       }
       setLoading(false)
     })
@@ -38,7 +78,13 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  async function fetchProfile(userId) {
+  async function fetchProfile(userObj) {
+    const userId = typeof userObj === 'string' ? userObj : userObj?.id
+    if (!userId) {
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -53,11 +99,21 @@ export function AuthProvider({ children }) {
       if (data) {
         setProfile(data)
       } else {
-        // Create fallback profile if trigger hasn't run yet
+        const meta = (typeof userObj === 'object' ? userObj?.user_metadata : null) || {}
+        const fallbackName =
+          meta.full_name ||
+          meta.global_name ||
+          meta.name ||
+          meta.user_name ||
+          meta.preferred_username ||
+          (typeof userObj === 'object' && userObj?.email ? userObj.email.split('@')[0] : '') ||
+          'นักเขียน Plottrix'
+
         const defaultProf = {
           id: userId,
-          email: user?.email || '',
-          display_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'นักเขียน',
+          email: (typeof userObj === 'object' ? userObj?.email : '') || '',
+          display_name: fallbackName,
+          avatar_url: meta.avatar_url || '',
           plan: 'Free Plan',
           plan_tier: 'free',
           trial_used: false,
@@ -129,10 +185,12 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    clearPrivateUserStorage()
     setUser(null)
     setProfile(null)
+    setSession(null)
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
   }
 
   async function uploadAvatar(file) {
@@ -182,6 +240,8 @@ export function AuthProvider({ children }) {
         profile,
         session,
         loading,
+        oauthError,
+        clearOAuthError,
         signIn,
         signUp,
         signInWithOAuth,
@@ -190,7 +250,7 @@ export function AuthProvider({ children }) {
         signOut,
         updateProfile,
         uploadAvatar,
-        refreshProfile: () => user && fetchProfile(user.id)
+        refreshProfile: () => user && fetchProfile(user)
       }}
     >
       {children}

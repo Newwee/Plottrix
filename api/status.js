@@ -12,24 +12,34 @@ export default async function handler(req, res) {
     return res.status(204).end()
   }
 
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
-  const hasGeminiKey = Boolean(key)
-  const maskedKey = hasGeminiKey ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null
+  const key =
+    process.env.ASTRACODE_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    ''
+  const hasKey = Boolean(key)
+  const maskedKey = hasKey ? `${key.substring(0, 10)}...${key.substring(key.length - 4)}` : null
   const hasSupabaseUrl = Boolean(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL)
+
+  const fastModel = process.env.ASTRACODE_FAST_MODEL || 'claude-haiku-5.5-eco'
+  const hardModel = process.env.ASTRACODE_HARD_MODEL || 'chatgpt-6-luna'
 
   return res.status(200).json({
     status: 'ok',
-    version: '2.0.0-production',
+    version: '2.1.0-production',
     service: 'Plottrix Vercel Serverless',
     timestamp: new Date().toISOString(),
     config: {
-      geminiKeyConfigured: hasGeminiKey,
+      aiProvider: key.startsWith('sk-') ? 'Astracode Gateway' : 'AI Gateway',
+      geminiKeyConfigured: hasKey,
       geminiKeyMasked: maskedKey,
       supabaseConfigured: hasSupabaseUrl,
       models: {
-        primary: 'gemini-3.5-flash-lite (Speed: ~0.89s)',
-        backup: 'gemini-3.1-flash-lite',
-        heavy: 'gemini-3.8-flash'
+        fast: fastModel,
+        hard: hardModel,
+        primary: fastModel,
+        backup: hardModel,
+        heavy: hardModel
       }
     }
   })

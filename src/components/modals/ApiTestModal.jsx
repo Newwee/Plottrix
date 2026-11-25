@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import { modalBackdropVariants, modalContentVariants } from '../../lib/animations'
 
 export default function ApiTestModal() {
   const { activeModal, setActiveModal, addToast } = useApp()
+  const { session } = useAuth()
 
   const [serverStatus, setServerStatus] = useState(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
@@ -62,9 +64,13 @@ export default function ApiTestModal() {
 
     const startTime = performance.now()
     try {
+      const token = session?.access_token || ''
       const res = await fetch('/api/ai/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           actionType: testAction,
           payload: {
@@ -86,7 +92,7 @@ export default function ApiTestModal() {
       const data = await res.json()
       setAiTestResult(data)
       addToast({
-        title: 'ทดสอบสำเร็จ! Gemini API ใช้งานได้จริง',
+        title: 'ทดสอบสำเร็จ! AI Engine ใช้งานได้จริง',
         description: `ตอบกลับภายใน ${(elapsed / 1000).toFixed(2)} วินาที ผ่านโมเดล ${data.model}`,
         fuseColor: '#74d9b4'
       })
@@ -141,7 +147,7 @@ export default function ApiTestModal() {
                     </span>
                   </div>
                   <p className="text-xs text-purple-200/70">
-                    แดชบอร์ดตรวจสอบสถานะ API Key การเชื่อมต่อ Gemini และความเร็วในการประมวลผล
+                    แดชบอร์ดตรวจสอบสถานะ API Key และการสลับโมเดลอัตโนมัติ (Smart Model Routing)
                   </p>
                 </div>
               </div>
@@ -169,10 +175,10 @@ export default function ApiTestModal() {
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {/* SECTION 1: SYSTEM HEALTH OVERVIEW */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Card 1: Gemini API Key */}
+                {/* Card 1: API Key */}
                 <div className="p-4 rounded-2xl bg-[#191336]/80 border border-purple-500/25 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gemini API Key</span>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">AI Gateway Key</span>
                     <span className={`w-2.5 h-2.5 rounded-full ${serverStatus?.config?.geminiKeyConfigured ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-red-400'}`} />
                   </div>
                   <div className="text-sm font-mono font-bold text-white">
@@ -183,17 +189,18 @@ export default function ApiTestModal() {
                   </p>
                 </div>
 
-                {/* Card 2: Primary Speed Model */}
+                {/* Card 2: Smart Model Routing */}
                 <div className="p-4 rounded-2xl bg-[#191336]/80 border border-purple-500/25 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fastest Model</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold">~0.89s</span>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Model Routing</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold">Auto</span>
                   </div>
-                  <div className="text-sm font-mono font-bold text-purple-200">
-                    gemini-3.5-flash-lite
+                  <div className="text-xs font-mono font-bold text-purple-200 space-y-0.5">
+                    <div>Fast: {serverStatus?.config?.models?.fast || 'claude-haiku-5.5-eco'}</div>
+                    <div>Deep: {serverStatus?.config?.models?.hard || 'chatgpt-6-luna'}</div>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    โมเดลหลักความเร็วสูงสุด ประหยัด Token ถึง 80%
+                    เลือกโมเดลตามความซับซ้อนของงานอัตโนมัติ
                   </p>
                 </div>
 
@@ -218,7 +225,7 @@ export default function ApiTestModal() {
                   <div>
                     <h4 className="font-bold text-sm text-white flex items-center gap-2">
                       <span>🧪</span>
-                      <span>ทดสอบยิงคำสั่งไปยัง Gemini API ของจริง (Live Test)</span>
+                      <span>ทดสอบยิงคำสั่งไปยัง AI Gateway ของจริง (Live Test)</span>
                     </h4>
                     <p className="text-xs text-slate-400 mt-0.5">
                       ทดสอบส่งข้อความเข้าไปประมวลผลจริง เพื่อวัดความเร็ว (Latency) และตรวจเช็คผลลัพธ์
@@ -317,22 +324,16 @@ export default function ApiTestModal() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5">
-                    <div className="font-bold text-amber-300">1. ทำไม Free Plan บางครั้งถึงช้า?</div>
+                    <div className="font-bold text-amber-300">1. งานทั่วไป (Fast Route)</div>
                     <p className="text-slate-400 leading-relaxed">
-                      Google AI Studio Free Plan มีคิวรันร่วมกับผู้ใช้ฟรีทั่วโลก และโมเดลหนักอย่าง <code>gemini-3.8-flash</code> อาจเจอ Error 503 หรือรอคิวนาน 10–30 วินาที
-                    </p>
-                    <p className="text-emerald-400 font-medium">
-                      ✓ เราได้ตั้งค่า <code>gemini-3.5-flash-lite</code> เป็นโมเดลแรก ตอบกลับเร็วเพียง <strong>0.89 วินาที</strong>
+                      งานตรวจคำผิด (Proofread), แปลประโยค และคำสั่งทั่วไปใช้ <code>claude-haiku-5.5-eco</code> เพื่อความเร็วสูงสุด
                     </p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5">
-                    <div className="font-bold text-indigo-300">2. เติมเครดิต (Pay-As-You-Go) จะเร็วขึ้นไหม?</div>
+                    <div className="font-bold text-indigo-300">2. งานวิเคราะห์ลึก (Deep Route)</div>
                     <p className="text-slate-400 leading-relaxed">
-                      <strong>เร็วขึ้นแน่นอน 100%!</strong> บัญชี Paid Tier จะได้ช่องสัญญาณ Priority บน TPU ของ Google โดยตรง ไม่ต้องรอคิวรวม และไม่มีปัญหา 503 High Demand
-                    </p>
-                    <p className="text-purple-300 font-medium">
-                      ✓ ค่าบริการรุ่น Flash-Lite ถูกมาก (เพียง ~$0.075 ต่อ 1 ล้านโทเค็น แปลได้เป็นร้อยๆ ตอน)
+                      งานเกลาสำนวน, ตรวจความต่อเนื่องข้ามบท และวิเคราะห์พล็อตใช้ <code>chatgpt-6-luna</code> พร้อมระบบสลับสำรองอัตโนมัติ
                     </p>
                   </div>
                 </div>
@@ -342,7 +343,7 @@ export default function ApiTestModal() {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-[#191133]/60">
               <span className="text-[11px] text-slate-400">
-                Plottrix AI Engine v2.0 • Real Gemini Integration
+                Plottrix AI Engine v2.1 • Astracode Gateway
               </span>
               <button
                 type="button"

@@ -85,7 +85,7 @@ export default function SmartImportModal() {
     }
   }, [isOpen, activeNovelId, novels])
 
-  if (!isOpen) return null
+  if (!isOpen || !user) return null
 
   // Target Novel object
   const selectedTargetNovel = novels.find(n => n.id === targetNovelId) || activeNovel || novels[0] || null

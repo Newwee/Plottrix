@@ -38,13 +38,14 @@ const DEFAULT_SKILLS = [
 ]
 
 export function AppProvider({ children }) {
-  const { user, profile, session } = useAuth()
+  const { user, profile, session, loading: authLoading, oauthError, clearOAuthError } = useAuth()
 
   // Navigation / Views: 'home' | 'workspace_home' | 'studio'
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase()
       if (path === '/test-ai' || path === '/test') return 'test_ai'
+      if (path.startsWith('/story/')) return 'story_detail'
       if (path.startsWith('/read/')) return 'reader'
       if (path === '/read') return 'read'
       if (path === '/workspace' || path === '/studio') return 'studio'
@@ -57,7 +58,7 @@ export function AppProvider({ children }) {
   // Public Reader Active Story ID & Target Chapter
   const [activeReadStoryId, setActiveReadStoryId] = useState(() => {
     if (typeof window !== 'undefined') {
-      const match = window.location.pathname.match(/\/read\/([^\/]+)/i)
+      const match = window.location.pathname.match(/\/(?:story|read)\/([^\/]+)/i)
       if (match) return match[1]
     }
     return ''
@@ -65,7 +66,34 @@ export function AppProvider({ children }) {
   const [activeReadChapterIdx, setActiveReadChapterIdx] = useState(null)
 
   // Modals & Drawers
-  const [activeModal, setActiveModal] = useState(null)
+  const [activeModal, setRawActiveModal] = useState(null)
+
+  const addToastRef = useRef(null)
+
+  const setActiveModal = useCallback((modalName) => {
+    const AUTH_ONLY_MODALS = new Set([
+      'settings',
+      'publish',
+      'import',
+      'apiTest',
+      'characterBible',
+      'stylePersona',
+      'dictionary',
+      'history',
+      'skills',
+      'export'
+    ])
+    if (modalName && AUTH_ONLY_MODALS.has(modalName) && !user?.id) {
+      setRawActiveModal('auth')
+      addToastRef.current?.({
+        title: 'ต้องเข้าสู่ระบบก่อนใช้งาน 🔒',
+        description: 'กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนจึงจะใช้งานฟีเจอร์นี้ได้',
+        fuseColor: '#ff7fa0'
+      })
+      return
+    }
+    setRawActiveModal(modalName)
+  }, [user?.id])
 
   // AI Drawer State
   const [aiDrawer, setAiDrawer] = useState({
@@ -174,33 +202,22 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  // Novels List & Active Novel (supports deleting down to 0)
-  const [novels, setNovels] = useState(() => {
-    try {
-      const saved = safeLocalStorageGetJSON('plottrix_novels', null)
-      if (saved !== null) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) return parsed
-      }
-      return []
-    } catch {
-      return []
-    }
-  })
-  const [activeNovelId, setActiveNovelId] = useState(() => novels[0]?.id || '')
+  // Novels List & Active Novel (only populated when user is authenticated)
+  const [novels, setNovels] = useState([])
+  const [activeNovelId, setActiveNovelId] = useState('')
   const activeNovel = useMemo(() => {
     if (!novels || novels.length === 0) return null
     return novels.find(n => n.id === activeNovelId) || novels[0] || null
   }, [novels, activeNovelId])
 
   // Novel Metadata
-  const [novelTitle, setNovelTitle] = useState(() => activeNovel?.title || '')
-  const [genre, setGenre] = useState(() => activeNovel?.genre || 'แฟนตาซี / กำลังภายใน')
-  const [pov, setPov] = useState(() => activeNovel?.pov || 'บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)')
+  const [novelTitle, setNovelTitle] = useState('')
+  const [genre, setGenre] = useState('แฟนตาซี / กำลังภายใน')
+  const [pov, setPov] = useState('บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)')
 
-  // Chapters & Content for current active novel (supports deleting down to 0)
-  const [chapters, setChapters] = useState(() => activeNovel?.chapters || [])
-  const [activeChapterId, setActiveChapterId] = useState(() => chapters[0]?.id || '')
+  // Chapters & Content for current active novel
+  const [chapters, setChapters] = useState([])
+  const [activeChapterId, setActiveChapterId] = useState('')
   const [activePageIdx, setActivePageIdx] = useState(0)
 
   // Current Chapter helper
@@ -258,41 +275,21 @@ export function AppProvider({ children }) {
   const [editorialCheckOpen, setEditorialCheckOpen] = useState(false)
   const [selection, setSelection] = useState({ text: '', start: 0, end: 0 })
 
-  // Trix Economy & Plans
-  const [trixBalance, setTrixBalance] = useState(() => {
-    const saved = localStorage.getItem('plottrix_trix')
-    return saved ? parseInt(saved, 10) : 30
-  })
-  const [plan, setPlan] = useState(() => localStorage.getItem('plottrix_plan') || 'Free Plan')
-  const [planTier, setPlanTier] = useState(() => localStorage.getItem('plottrix_plan_tier') || 'free')
-  const [trialUsed, setTrialUsed] = useState(() => localStorage.getItem('plottrix_trial_used') === 'true')
-  const [trialStartedAt, setTrialStartedAt] = useState(() => localStorage.getItem('plottrix_trial_started_at') || null)
-  const [trialEndsAt, setTrialEndsAt] = useState(() => localStorage.getItem('plottrix_trial_ends_at') || null)
-  const [trialCountdown, setTrialCountdown] = useState(() => {
-    const ends = localStorage.getItem('plottrix_trial_ends_at')
-    return ends ? getTrialCountdown(ends).formatted : ''
-  })
-  const [lastDailyClaim, setLastDailyClaim] = useState(() => localStorage.getItem('plottrix_last_claim') || '')
+  // Trix Economy & Plans (reset cleanly when unauthenticated)
+  const [trixBalance, setTrixBalance] = useState(0)
+  const [plan, setPlan] = useState('Free Plan')
+  const [planTier, setPlanTier] = useState('free')
+  const [trialUsed, setTrialUsed] = useState(false)
+  const [trialStartedAt, setTrialStartedAt] = useState(null)
+  const [trialEndsAt, setTrialEndsAt] = useState(null)
+  const [trialCountdown, setTrialCountdown] = useState('')
+  const [lastDailyClaim, setLastDailyClaim] = useState('')
 
   // Characters & Story Bible
-  const [characters, setCharacters] = useState(() => {
-    try {
-      const saved = localStorage.getItem('plottrix_characters')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [characters, setCharacters] = useState([])
 
   // Custom Dictionary
-  const [customDictionary, setCustomDictionary] = useState(() => {
-    try {
-      const saved = localStorage.getItem('plottrix_dictionary')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [customDictionary, setCustomDictionary] = useState([])
 
   const [personas, setPersonas] = useState(DEFAULT_PERSONAS)
   const [activePersonaId, setActivePersonaId] = useState('persona-1')
@@ -333,14 +330,7 @@ export function AppProvider({ children }) {
   const abortControllerRef = useRef(null)
 
   // Snapshots (Version History)
-  const [snapshots, setSnapshots] = useState(() => {
-    try {
-      const saved = localStorage.getItem('plottrix_snapshots')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [snapshots, setSnapshots] = useState([])
 
   // Debounced Auto-Save
   const [saveStatus, setSaveStatus] = useState('saved') // 'saving', 'saved', 'unsaved'
@@ -353,6 +343,31 @@ export function AppProvider({ children }) {
     const id = Date.now() + Math.random()
     setToasts(prev => [...prev, { id, title, description, icon, actionLabel, onAction, duration, fuseColor, background, color }])
   }, [])
+  addToastRef.current = addToast
+
+  const requireAuth = useCallback((actionDesc = 'เข้าถึงและใช้งานระบบนี้') => {
+    if (user?.id) return true
+    setRawActiveModal('auth')
+    addToast({
+      title: 'ต้องเข้าสู่ระบบก่อนใช้งาน 🔒',
+      description: `กรุณาเข้าสู่ระบบหรือสมัครสมาชิกก่อนจึงจะ${actionDesc}ได้`,
+      fuseColor: '#ff7fa0'
+    })
+    return false
+  }, [user?.id, addToast])
+
+  // Surface OAuth callback errors from redirect URL
+  useEffect(() => {
+    if (oauthError) {
+      addToast({
+        title: 'เข้าสู่ระบบไม่สำเร็จ',
+        description: oauthError,
+        fuseColor: '#ff7fa0',
+        duration: 6000
+      })
+      clearOAuthError()
+    }
+  }, [oauthError, clearOAuthError, addToast])
 
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id))
@@ -384,8 +399,9 @@ export function AppProvider({ children }) {
     safeLocalStorageSet('plottrix_tour_completed', 'true')
   }, [])
 
-  // First time tour trigger
+  // First time tour trigger (only when authenticated inside Workspace Home)
   useEffect(() => {
+    if (!user?.id) return
     const done = localStorage.getItem('plottrix_tour_completed')
     if (!done && currentView === 'workspace_home') {
       const timer = setTimeout(() => {
@@ -393,10 +409,38 @@ export function AppProvider({ children }) {
       }, 700)
       return () => clearTimeout(timer)
     }
-  }, [currentView])
+  }, [currentView, user?.id])
 
-  // Persist important data to localStorage as offline fallback (with quota protection & sanitization)
+  // Wipe private user state cleanly whenever user is logged out
   useEffect(() => {
+    if (authLoading) return
+    if (!user?.id) {
+      setNovels([])
+      setActiveNovelId('')
+      setNovelTitle('')
+      setGenre('แฟนตาซี / กำลังภายใน')
+      setPov('บุรุษที่ 3 (เขา/เธอ/ชื่อตัวละคร)')
+      setChapters([])
+      setActiveChapterId('')
+      setActivePageIdx(0)
+      setCharacters([])
+      setCustomDictionary([])
+      setSnapshots([])
+      setTrixBalance(0)
+      setPlan('Free Plan')
+      setPlanTier('free')
+      setTrialUsed(false)
+      setTrialStartedAt(null)
+      setTrialEndsAt(null)
+      setTrialCountdown('')
+      setLastDailyClaim('')
+      setIsTourOpen(false)
+    }
+  }, [authLoading, user?.id])
+
+  // Persist private data to localStorage ONLY for authenticated sessions
+  useEffect(() => {
+    if (!user?.id) return
     try {
       // Create lightweight copy to protect localStorage 5MB origin quota
       const sanitized = novels.map(n => {
@@ -437,45 +481,54 @@ export function AppProvider({ children }) {
       }))
       safeLocalStorageSet('plottrix_novels', miniNovels)
     }
-  }, [novels])
+  }, [novels, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_characters', characters)
-  }, [characters])
+  }, [characters, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_dictionary', customDictionary)
-  }, [customDictionary])
+  }, [customDictionary, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_snapshots', snapshots)
-  }, [snapshots])
+  }, [snapshots, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_trix', trixBalance.toString())
-  }, [trixBalance])
+  }, [trixBalance, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_plan', plan)
-  }, [plan])
+  }, [plan, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_plan_tier', planTier)
-  }, [planTier])
+  }, [planTier, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     safeLocalStorageSet('plottrix_trial_used', String(trialUsed))
-  }, [trialUsed])
+  }, [trialUsed, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     if (trialStartedAt) safeLocalStorageSet('plottrix_trial_started_at', trialStartedAt)
     else { try { localStorage.removeItem('plottrix_trial_started_at') } catch {} }
-  }, [trialStartedAt])
+  }, [trialStartedAt, user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
     if (trialEndsAt) safeLocalStorageSet('plottrix_trial_ends_at', trialEndsAt)
     else { try { localStorage.removeItem('plottrix_trial_ends_at') } catch {} }
-  }, [trialEndsAt])
+  }, [trialEndsAt, user?.id])
 
   useEffect(() => {
     safeLocalStorageSet('plottrix_settings', settings)
@@ -704,6 +757,7 @@ export function AppProvider({ children }) {
 
   // Open novel handler & fetch its chapters, characters, and history from DB
   const openNovel = useCallback(async (id) => {
+    if (!requireAuth('เปิดดูหรือแก้ไขนิยาย')) return
     const target = novels.find(n => n.id === id)
     if (target) {
       setActiveNovelId(target.id)
@@ -777,10 +831,11 @@ export function AppProvider({ children }) {
       }
     }
     navigateTo('studio')
-  }, [novels, user?.id, navigateTo])
+  }, [novels, user?.id, navigateTo, requireAuth])
 
   // Save chapters with 1.8s debounce and update saveStatus
   const updateCurrentPageText = useCallback((newText) => {
+    if (!user?.id) return
     setSaveStatus('saving')
 
     let updatedPages = []
@@ -865,6 +920,7 @@ export function AppProvider({ children }) {
   const FREE_PLAN_LIMIT = 3
 
   const createNovel = useCallback(async ({ title, genre: g, pov: p, synopsis, cover }) => {
+    if (!requireAuth('สร้างนิยายเรื่องใหม่')) return false
     if (plan === 'Free Plan' && novels.length >= FREE_PLAN_LIMIT) {
       addToast({
         title: `โควต้า Free Plan จำกัด ${FREE_PLAN_LIMIT} เรื่อง`,
@@ -969,10 +1025,11 @@ export function AppProvider({ children }) {
       fuseColor: '#74d9b4'
     })
     return true
-  }, [user?.id, plan, novels.length, navigateTo, addToast])
+  }, [user?.id, plan, novels.length, navigateTo, addToast, requireAuth])
 
   // Delete novel handler (supports deleting all novels down to 0)
   const deleteNovel = useCallback(async (id) => {
+    if (!requireAuth('ลบนิยาย')) return
     if (user?.id && isUuid(id)) {
       supabase.from('novels').delete().eq('id', id).then(({ error }) => {
         if (error) console.warn('Error deleting novel from Supabase:', error.message)
@@ -996,10 +1053,11 @@ export function AppProvider({ children }) {
       return remaining
     })
     addToast({ title: 'ลบนิยายออกจากคลังแล้ว', duration: 2500 })
-  }, [user?.id, activeNovelId, openNovel, addToast])
+  }, [user?.id, activeNovelId, openNovel, addToast, requireAuth])
 
   // Update novel metadata (title, genre, synopsis, cover)
   const updateNovel = useCallback(async (id, updates) => {
+    if (!requireAuth('แก้ไขข้อมูลนิยาย')) return
     if (user?.id) {
       const dbPayload = {}
       if (updates.title) dbPayload.title = updates.title
@@ -1036,7 +1094,7 @@ export function AppProvider({ children }) {
       if (updates.pov) setPov(updates.pov)
     }
     addToast({ title: 'บันทึกการตั้งค่านิยายสำเร็จ!', duration: 2000, fuseColor: '#a855f7' })
-  }, [user?.id, activeNovelId, addToast])
+  }, [user?.id, activeNovelId, addToast, requireAuth])
 
   // Real-time 3-Day Pro Trial Countdown & Auto-Expiration
   useEffect(() => {
@@ -1083,6 +1141,7 @@ export function AppProvider({ children }) {
 
   // Activate One-Time 3-Day Free Trial of Pro Plan
   const activateProTrial = useCallback(async () => {
+    if (!requireAuth('รับสิทธิ์ทดลองใช้ Pro ฟรี 3 วัน')) return false
     if (trialUsed) {
       addToast({
         title: 'คุณเคยใช้สิทธิ์ทดลองใช้ Pro 3 วันไปแล้ว',
@@ -1160,10 +1219,11 @@ export function AppProvider({ children }) {
     })
 
     return true
-  }, [trialUsed, planTier, plan, user?.id, addToast])
+  }, [trialUsed, planTier, plan, user?.id, addToast, requireAuth])
 
   // Change Plan Handler with Strict No-Downgrade & Paid Plan Protection
   const changePlan = useCallback(async (targetPlanNameOrTier) => {
+    if (!requireAuth('เลือกแพ็กเกจสมาชิก')) return false
     const targetTier = getTierInfo(targetPlanNameOrTier)
     const currentTier = getTierInfo(planTier || plan)
 
@@ -1191,23 +1251,25 @@ export function AppProvider({ children }) {
     }
 
     return false
-  }, [planTier, plan, addToast])
+  }, [planTier, plan, addToast, requireAuth])
 
   // Backward-compatible alias
   const upgradePlanPrototype = changePlan
 
   // Temporarily Disabled Trix Top-Up Handler
   const topupTrix = useCallback(() => {
+    if (!requireAuth('เติมเหรียญ Trix')) return
     addToast({
       title: 'ปิดให้บริการเติมเหรียญชั่วคราว (เร็วๆ นี้)',
       description: 'ระบบเติมเหรียญ Trix อยู่ระหว่างเตรียมเชื่อมต่อกับ Payment Gateway ขออภัยในความไม่สะดวก',
       fuseColor: '#f59e0b',
       duration: 4000
     })
-  }, [addToast])
+  }, [addToast, requireAuth])
 
   // Daily Trix Claim with Supabase Persistence
   const claimDailyTrix = useCallback(async () => {
+    if (!requireAuth('รับเหรียญ Trix ประจำวัน')) return
     const today = new Date().toISOString().slice(0, 10)
     if (lastDailyClaim === today) {
       addToast({
@@ -1257,10 +1319,11 @@ export function AppProvider({ children }) {
       description: 'ยอดเหรียญ Trix ปัจจุบันของคุณพร้อมใช้งานสร้างสรรค์นิยาย',
       fuseColor: '#74d9b4'
     })
-  }, [lastDailyClaim, trixBalance, user?.id, addToast])
+  }, [lastDailyClaim, trixBalance, user?.id, addToast, requireAuth])
 
   // Deduct Trix helper with Supabase Persistence
   const deductTrix = useCallback(async (cost, reason) => {
+    if (!user?.id) return false
     if (trixBalance < cost) return false
     const newBal = trixBalance - cost
     setTrixBalance(newBal)
@@ -1351,6 +1414,7 @@ export function AppProvider({ children }) {
 
   // Add Chapter with DB persistence
   const addChapter = useCallback(async () => {
+    if (!requireAuth('เพิ่มตอนใหม่')) return
     const newNumber = chapters.length + 1
     let newId = `ch-${Date.now()}`
     const chapterTitle = `บทที่ ${newNumber} — ตอนใหม่`
@@ -1401,6 +1465,7 @@ export function AppProvider({ children }) {
 
   // Reorder Chapters with DB persistence
   const reorderChapters = useCallback(async (fromIdx, toIdx) => {
+    if (!requireAuth('เรียงลำดับตอน')) return
     if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0) return
     setChapters(prev => {
       const next = [...prev]
@@ -1434,6 +1499,7 @@ export function AppProvider({ children }) {
 
   // Delete Chapter (Supports true 0-item state down to 0 chapters)
   const deleteChapter = useCallback(async (chId) => {
+    if (!requireAuth('ลบตอน')) return
     if (user?.id && isUuid(chId)) {
       supabase.from('chapters').delete().eq('id', chId).then(({ error }) => {
         if (error) console.warn('Error deleting chapter from Supabase:', error.message)
@@ -1463,6 +1529,7 @@ export function AppProvider({ children }) {
 
   // Rename Chapter with DB persistence
   const renameChapter = useCallback(async (chId, newTitle) => {
+    if (!requireAuth('เปลี่ยนชื่อตอน')) return
     if (!newTitle?.trim()) return
     const trimmed = newTitle.trim()
 
@@ -1486,6 +1553,7 @@ export function AppProvider({ children }) {
 
   // Add Page to current Chapter
   const addPage = useCallback(() => {
+    if (!requireAuth('เพิ่มหน้ากระดาษ')) return
     setChapters(prev => prev.map(ch => {
       if (ch.id === activeChapterId) {
         return { ...ch, pages: [...ch.pages, ''] }
@@ -1502,6 +1570,7 @@ export function AppProvider({ children }) {
 
   // Delete Page
   const deletePage = useCallback((idx) => {
+    if (!requireAuth('ลบหน้ากระดาษ')) return
     if (currentChapter.pages.length <= 1) {
       addToast({
         title: 'ไม่สามารถลบหน้านี้ได้',
@@ -1523,6 +1592,7 @@ export function AppProvider({ children }) {
 
   // Story Bible: Character CRUD with Supabase persistence
   const saveCharacter = useCallback(async (charData) => {
+    if (!requireAuth('บันทึกข้อมูลตัวละคร')) return
     if (!charData?.name?.trim()) return
 
     const charToSave = {
@@ -1584,6 +1654,7 @@ export function AppProvider({ children }) {
   }, [user?.id, activeNovelId])
 
   const deleteCharacterFromDb = useCallback(async (charId) => {
+    if (!requireAuth('ลบตัวละคร')) return
     if (user?.id && charId && !charId.startsWith('char-')) {
       supabase
         .from('characters')
@@ -1598,6 +1669,7 @@ export function AppProvider({ children }) {
 
   // Custom Dictionary CRUD with Supabase persistence
   const addCustomWord = useCallback(async (word, description = '') => {
+    if (!requireAuth('เพิ่มคำศัพท์ในคลัง')) return
     if (!word?.trim()) return
     const trimmed = word.trim()
 
@@ -1617,6 +1689,7 @@ export function AppProvider({ children }) {
   }, [user?.id])
 
   const deleteCustomWord = useCallback(async (word) => {
+    if (!requireAuth('ลบคำศัพท์')) return
     if (user?.id) {
       supabase
         .from('custom_dictionary')
@@ -1632,6 +1705,7 @@ export function AppProvider({ children }) {
 
   // Version History Snapshot with Supabase persistence
   const saveSnapshot = useCallback(async (label, customPreview = null) => {
+    if (!user?.id) return
     const preview = customPreview !== null ? customPreview : (currentPageText || 'ว่างเปล่า')
     const snapId = `snap-${Date.now()}`
     const timestamp = new Date().toLocaleString('th-TH')
@@ -1666,6 +1740,7 @@ export function AppProvider({ children }) {
   // =========================================================================
 
   const triggerAiTask = async (actionType, textToProcess = null) => {
+    if (!requireAuth('เรียกใช้ผู้ช่วย AI')) return
     const targetText = textToProcess !== null ? textToProcess : (selection.text || currentPageText)
     if (!targetText || targetText.trim().length === 0) {
       addToast({

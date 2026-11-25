@@ -6,6 +6,7 @@ import AeroShardsCanvas from './AeroShardsCanvas'
 import NovelCoverCarousel from '../common/NovelCoverCarousel'
 import CoverGalleryInput from '../common/CoverGalleryInput'
 import TagInput from '../common/TagInput'
+import AuthRequiredView from '../common/AuthRequiredView'
 
 // Genre definitions with iconography
 const GENRES = [
@@ -135,7 +136,7 @@ export default function WorkspaceHome() {
     startTour,
     addToast
   } = useApp()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   // Creation State
   const [isCreating, setIsCreating] = useState(false)
@@ -275,6 +276,9 @@ export default function WorkspaceHome() {
       setIsCreating(false)
     }
   }
+
+  if (authLoading) return <AuthRequiredView isLoading />
+  if (!user) return <AuthRequiredView />
 
   return (
     <div className="min-h-[100dvh] w-full bg-transparent text-slate-100 flex flex-col font-sans relative overflow-x-hidden overflow-y-auto">

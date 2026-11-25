@@ -1,11 +1,29 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import https from 'https'
-import { processAiRequest } from './api/aiEngine.js'
+import aiHandler from './api/ai.js'
+import statusHandler from './api/status.js'
 import subscriptionHandler from './api/subscription.js'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+
+  // Populate server-only env vars into process.env for local Vercel handler parity
+  const serverEnvKeys = [
+    'ASTRACODE_API_KEY',
+    'ASTRACODE_BASE_URL',
+    'ASTRACODE_FAST_MODEL',
+    'ASTRACODE_HARD_MODEL',
+    'GEMINI_API_KEY',
+    'VITE_SUPABASE_URL',
+    'VITE_SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY'
+  ]
+  for (const k of serverEnvKeys) {
+    if (env[k] && !process.env[k]) {
+      process.env[k] = env[k]
+    }
+  }
 
   return {
     plugins: [
@@ -18,28 +36,22 @@ export default defineConfig(({ mode }) => {
             if (req.url?.startsWith('/api/')) {
               const pathname = req.url.split('?')[0]
 
+              const attachExpressHelpers = () => {
+                res.status = (code) => {
+                  res.statusCode = code
+                  return res
+                }
+                res.json = (data) => {
+                  res.writeHead(res.statusCode || 200, { 'Content-Type': 'application/json; charset=utf-8' })
+                  res.end(JSON.stringify(data))
+                  return res
+                }
+              }
+
               // Handle /api/status
-              if (pathname === '/api/status' && req.method === 'GET') {
-                const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''
-                const hasKey = Boolean(key)
-                const masked = hasKey ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : null
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({
-                  status: 'ok',
-                  version: '2.0.0-production',
-                  service: 'Plottrix Studio API (Local & Vercel)',
-                  timestamp: new Date().toISOString(),
-                  config: {
-                    geminiKeyConfigured: hasKey,
-                    geminiKeyMasked: masked,
-                    supabaseConfigured: Boolean(env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL),
-                    models: {
-                      primary: 'gemini-3.5-flash-lite (Speed: ~0.89s)',
-                      backup: 'gemini-3.1-flash-lite',
-                      heavy: 'gemini-3.8-flash'
-                    }
-                  }
-                }))
+              if (pathname === '/api/status') {
+                attachExpressHelpers()
+                await statusHandler(req, res)
                 return
               }
 
@@ -50,15 +62,7 @@ export default defineConfig(({ mode }) => {
                 req.on('end', async () => {
                   try {
                     req.body = body ? JSON.parse(body) : {}
-                    res.status = (code) => {
-                      res.statusCode = code
-                      return res
-                    }
-                    res.json = (data) => {
-                      res.writeHead(res.statusCode || 200, { 'Content-Type': 'application/json; charset=utf-8' })
-                      res.end(JSON.stringify(data))
-                      return res
-                    }
+                    attachExpressHelpers()
                     await subscriptionHandler(req, res)
                   } catch (e) {
                     res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -89,7 +93,7 @@ export default defineConfig(({ mode }) => {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey || ''}`,
+                        'Authorization': `Bearer ${apiKey || env.ASTRACODE_API_KEY || ''}`,
                         'Content-Length': Buffer.byteLength(postData)
                       },
                       timeout: 60000
@@ -130,18 +134,15 @@ export default defineConfig(({ mode }) => {
                 return
               }
 
-              // Handle /api/ai, /api/ai/execute, or /api/gemini
-              if ((pathname === '/api/ai' || pathname === '/api/ai/execute' || pathname === '/api/gemini') && req.method === 'POST') {
+              // Handle /api/ai, /api/ai/execute, or /api/gemini cleanly through unified handler
+              if (pathname === '/api/ai' || pathname === '/api/ai/execute' || pathname === '/api/gemini') {
                 let body = ''
                 req.on('data', chunk => { body += chunk })
                 req.on('end', async () => {
                   try {
-                    const parsed = body ? JSON.parse(body) : {}
-                    const defaultKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''
-                    const resp = await processAiRequest(parsed, defaultKey)
-
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify(resp))
+                    req.body = body ? JSON.parse(body) : {}
+                    attachExpressHelpers()
+                    await aiHandler(req, res)
                   } catch (e) {
                     res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
                     res.end(JSON.stringify({ error: { message: e.message || 'AI processing error' } }))

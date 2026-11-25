@@ -1,8 +1,10 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 
 export default function FinalCtaSection() {
-  const { navigateTo } = useApp()
+  const { navigateTo, setActiveModal } = useApp()
+  const { user } = useAuth()
 
   return (
     <section className="final-cta">
@@ -17,9 +19,9 @@ export default function FinalCtaSection() {
         </p>
         <button
           className="btn btn-primary btn-hero-glow"
-          onClick={() => navigateTo('workspace')}
+          onClick={() => (user ? navigateTo('workspace_home') : setActiveModal('auth'))}
         >
-          ✦ เริ่มต้นใช้งานฟรี 30 Trix <span>→</span>
+          ✦ {user ? 'เข้าสู่สตูดิโองานเขียน' : 'เข้าสู่ระบบ / สมัครรับฟรี 30 Trix'} <span>→</span>
         </button>
       </div>
     </section>

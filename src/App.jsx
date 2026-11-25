@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppProvider, useApp } from './context/AppContext'
 import HomePage from './components/home/HomePage'
 import SwipeToastContainer from './components/workspace/SwipeToastContainer'
+import AuthRequiredView from './components/common/AuthRequiredView'
 import { pageVariants } from './lib/animations'
 
 // Lazy load heavy views
@@ -22,6 +23,7 @@ const OnboardingTour = lazy(() => import('./components/workspace/OnboardingTour'
 
 function ViewRouter() {
   const { currentView } = useApp()
+  const { user, loading: authLoading } = useAuth()
 
   return (
     <Suspense
@@ -46,10 +48,10 @@ function ViewRouter() {
           ) : currentView === 'workspace_home' ? (
             <>
               <WorkspaceHome />
-              <OnboardingTour />
+              {user && <OnboardingTour />}
             </>
           ) : currentView === 'test_ai' ? (
-            <TestAiPlayground />
+            authLoading ? <AuthRequiredView isLoading /> : !user ? <AuthRequiredView /> : <TestAiPlayground />
           ) : currentView === 'story_detail' ? (
             <StoryDetailsView />
           ) : currentView === 'reader' ? (

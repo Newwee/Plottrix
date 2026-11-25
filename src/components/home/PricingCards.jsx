@@ -2,6 +2,7 @@ import React from 'react'
 import PixelCard from '../react-bits/PixelCard'
 import CountUp from '../react-bits/CountUp'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import { getTierInfo } from '../../lib/subscription'
 
 export const PRICING_PLANS = [
@@ -79,13 +80,15 @@ export const PRICING_PLANS = [
 ]
 
 export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
+  const { user } = useAuth()
   const {
     plan: contextPlan,
     planTier: contextPlanTier,
     trialUsed,
     trialCountdown,
     activateProTrial,
-    changePlan
+    changePlan,
+    setActiveModal
   } = useApp()
 
   const activePlan = propPlan || contextPlan || 'Free Plan'
@@ -198,8 +201,8 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
             <div className="mt-auto pt-4 space-y-1.5">
               {/* Card Action Buttons with Production Business Logic */}
               {(() => {
-                // Case 1: Currently active plan
-                if (isCurrentActive) {
+                // Case 1: Currently active plan (only when user is logged in)
+                if (user && isCurrentActive) {
                   if (isProTrial) {
                     return (
                       <button
@@ -241,18 +244,18 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
                   )
                 }
 
-                // Case 3: Pro Plan for Free-tier users
-                if (planItem.tierId === 'pro' && activeTier.id === 'free') {
+                // Case 3: Pro Plan for Free-tier users or guests
+                if (planItem.tierId === 'pro' && (!user || activeTier.id === 'free')) {
                   if (!trialUsed) {
                     return (
                       <div>
                         <button
                           type="button"
-                          onClick={() => activateProTrial()}
+                          onClick={() => (user ? activateProTrial() : setActiveModal('auth'))}
                           className="w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-purple-500 via-indigo-500 to-fuchsia-500 hover:brightness-110 text-white shadow-lg shadow-purple-600/40 border border-purple-300/50 transition cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          <span>⚡</span>
-                          <span>ทดลองใช้ Pro ฟรี 3 วัน</span>
+                          <span>{user ? '⚡' : '🔒'}</span>
+                          <span>{user ? 'ทดลองใช้ Pro ฟรี 3 วัน' : 'เข้าสู่ระบบเพื่อทดลอง Pro ฟรี 3 วัน'}</span>
                         </button>
                         <div className="text-[10px] text-center text-purple-300 mt-1.5 font-medium">
                           ✦ สิทธิ์ทดลองใช้ 72 ชม. (1 บัญชี / 1 ครั้ง ไม่ต้องใส่บัตร)
@@ -298,14 +301,20 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
                   )
                 }
 
-                // Fallback
+                // Fallback (Free Plan button when logged out -> opens Auth Modal)
                 return (
                   <button
                     type="button"
-                    onClick={() => onSelectPlan ? onSelectPlan(planItem.name) : changePlan(planItem.name)}
-                    className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 hover:bg-purple-600/20 text-white border border-white/15"
+                    onClick={() => {
+                      if (!user) {
+                        setActiveModal('auth')
+                        return
+                      }
+                      onSelectPlan ? onSelectPlan(planItem.name) : changePlan(planItem.name)
+                    }}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 hover:bg-purple-600/20 text-white border border-white/15 cursor-pointer"
                   >
-                    {planItem.buttonText}
+                    {!user && planItem.tierId === 'free' ? '🔒 เข้าสู่ระบบเพื่อเริ่มต้นฟรี' : planItem.buttonText}
                   </button>
                 )
               })()}

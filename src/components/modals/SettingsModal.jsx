@@ -53,12 +53,7 @@ export default function SettingsModal() {
   const [pendingAvatarPreview, setPendingAvatarPreview] = useState(null)
 
   if (activeModal !== 'settings') return null
-
-  // Auth-gated protection: If not logged in, prompt to log in and close settings
-  if (!user) {
-    setActiveModal('auth')
-    return null
-  }
+  if (!user) return null
 
   const updateSetting = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }))

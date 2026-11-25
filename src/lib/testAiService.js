@@ -5,19 +5,14 @@
  */
 
 export const DEFAULT_ASTRACODE_CONFIG = {
-  baseURL: import.meta.env.VITE_ASTRACODE_BASE_URL || 'https://astracode.panderx.xyz/v1',
-  apiKey: import.meta.env.VITE_ASTRACODE_API_KEY || '',
-  model: import.meta.env.VITE_ASTRACODE_MODEL || 'gemini-3.8-flash'
+  baseURL: 'https://astracode.panderx.xyz/v1',
+  apiKey: '',
+  model: 'claude-haiku-5.5-eco'
 }
 
 export const PRESET_MODELS = [
-  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Astracode Recommended)', provider: 'Astracode' },
-  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Fast & Cheap)', provider: 'Google / Astracode' },
-  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', provider: 'Google / Astracode' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google / Astracode' },
-  { id: 'gpt-4o', name: 'GPT-4o (Omni)', provider: 'OpenAI' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Fast)', provider: 'OpenAI' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' }
+  { id: 'claude-haiku-5.5-eco', name: 'Claude Haiku 5.5 Eco (Fast / General)', provider: 'Astracode' },
+  { id: 'chatgpt-6-luna', name: 'ChatGPT 6 Luna (Deep Reasoning)', provider: 'Astracode' }
 ]
 
 /**

@@ -1,18 +1,47 @@
 /**
  * Plottrix Production AI Engine
- * Communicates directly with Gemini API (generativelanguage.googleapis.com)
- * Enforces strict system instructions, zero hallucination, and structured JSON output
+ * Routes through Astracode OpenAI-Compatible Gateway with complexity-based model selection:
+ *   - Easy / Fast tasks  -> claude-haiku-5.5-eco (backup: chatgpt-6-luna)
+ *   - Hard / Deep tasks  -> chatgpt-6-luna (backup: claude-haiku-5.5-eco)
+ * Falls back to direct Google Gemini API only when a Google AIza key is provided.
  */
 
 import https from 'https'
 
-const MODEL_CHAIN = [
+const DEFAULT_ASTRACODE_BASE_URL = 'https://astracode.panderx.xyz/v1'
+const DEFAULT_FAST_MODEL = 'claude-haiku-5.5-eco'
+const DEFAULT_HARD_MODEL = 'chatgpt-6-luna'
+
+const GEMINI_FALLBACK_CHAIN = [
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
-  'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
   'gemini-3.8-flash'
 ]
+
+/**
+ * Determine model priority chain based on task difficulty and input length.
+ */
+export function selectAstracodeModelChain(actionType, text = '', customSkillPrompt = '') {
+  const fastModel = process.env.ASTRACODE_FAST_MODEL || DEFAULT_FAST_MODEL
+  const hardModel = process.env.ASTRACODE_HARD_MODEL || DEFAULT_HARD_MODEL
+  const cleanText = (text || '').trim()
+  const cleanPrompt = (customSkillPrompt || '').trim()
+
+  const hardActions = new Set(['polish', 'continuity', 'plotBranch', 'fullBook'])
+  const isLongPayload = cleanText.length > 2500
+  const hasComplexInstruction =
+    actionType === 'custom' &&
+    (cleanText.length > 1500 ||
+      /วิเคราะห์|โครงเรื่อง|พล็อต|continuity|plot|chapter|บททั้งหมด/i.test(cleanPrompt))
+
+  const isHardTask = hardActions.has(actionType) || isLongPayload || hasComplexInstruction
+
+  // Always include the counterpart as automatic fallback in case of transient upstream 502/429
+  if (isHardTask) {
+    return fastModel !== hardModel ? [hardModel, fastModel] : [hardModel]
+  }
+  return fastModel !== hardModel ? [fastModel, hardModel] : [fastModel]
+}
 
 function callGemini(model, apiKey, payload) {
   return new Promise((resolve, reject) => {
@@ -26,7 +55,7 @@ function callGemini(model, apiKey, payload) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData)
       },
-      timeout: 8000
+      timeout: 15000
     }
 
     const req = https.request(options, (res) => {
@@ -37,7 +66,7 @@ function callGemini(model, apiKey, payload) {
         try {
           const parsed = JSON.parse(rawData)
           resolve({ statusCode: res.statusCode, data: parsed, raw: rawData })
-        } catch (err) {
+        } catch {
           resolve({ statusCode: res.statusCode, data: null, raw: rawData, error: 'JSON parse error' })
         }
       })
@@ -46,7 +75,7 @@ function callGemini(model, apiKey, payload) {
     req.on('error', err => reject(err))
     req.on('timeout', () => {
       req.destroy()
-      reject(new Error('Google Gemini API request timed out (45s)'))
+      reject(new Error('Google Gemini API request timed out (15s)'))
     })
 
     req.write(postData)
@@ -54,10 +83,10 @@ function callGemini(model, apiKey, payload) {
   })
 }
 
-function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, temperature = 0.3) {
+function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, temperature = 0.3, timeoutMs = 40000) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify({
-      model: model || 'gemini-3.8-flash',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -66,10 +95,10 @@ function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, 
     })
 
     try {
-      const cleanBase = (baseURL || 'https://astracode.panderx.xyz/v1').replace(/\/+$/, '')
+      const cleanBase = (baseURL || DEFAULT_ASTRACODE_BASE_URL).replace(/\/+$/, '')
       const fullUrl = cleanBase.endsWith('/chat/completions') ? cleanBase : `${cleanBase}/chat/completions`
       const parsedUrl = new URL(fullUrl)
-      
+
       const options = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
@@ -77,10 +106,10 @@ function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${apiKey.trim()}`,
           'Content-Length': Buffer.byteLength(postData)
         },
-        timeout: 25000
+        timeout: timeoutMs
       }
 
       const req = https.request(options, (res) => {
@@ -91,7 +120,7 @@ function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, 
           try {
             const parsed = JSON.parse(rawData)
             resolve({ statusCode: res.statusCode, data: parsed, raw: rawData })
-          } catch (err) {
+          } catch {
             resolve({ statusCode: res.statusCode, data: null, raw: rawData, error: 'JSON parse error' })
           }
         })
@@ -100,7 +129,7 @@ function callOpenAiCompatible(baseURL, apiKey, model, systemPrompt, userPrompt, 
       req.on('error', err => reject(err))
       req.on('timeout', () => {
         req.destroy()
-        reject(new Error('OpenAI API request timed out (25s)'))
+        reject(new Error(`Astracode API (${model}) timed out (${Math.round(timeoutMs / 1000)}s)`))
       })
 
       req.write(postData)
@@ -119,14 +148,14 @@ function extractJson(rawText) {
   } catch (_) {}
 
   // Strip ```json ... ``` markdown fences
-  const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
   if (match) {
     try {
       return JSON.parse(match[1].trim())
     } catch (_) {}
   }
 
-  // Find first { and last }
+  // Find outermost { ... }
   const firstBrace = trimmed.indexOf('{')
   const lastBrace = trimmed.lastIndexOf('}')
   if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -163,9 +192,20 @@ export async function processAiRequest(body, defaultKey = '') {
   const customSkillPrompt = payload.customSkillPrompt || directSkill || payload.prompt || directPrompt || ''
   const language = payload.language || directLang || 'en'
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || clientApiKey || defaultKey
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured on server.')
+  // Resolve Astracode key first, then Google Gemini key
+  const candidates = [
+    clientApiKey,
+    process.env.ASTRACODE_API_KEY,
+    defaultKey,
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_API_KEY
+  ].filter(Boolean)
+
+  const astraKey = candidates.find(k => typeof k === 'string' && k.trim().startsWith('sk-'))?.trim() || null
+  const geminiKey = candidates.find(k => typeof k === 'string' && !k.trim().startsWith('sk-'))?.trim() || null
+
+  if (!astraKey && !geminiKey) {
+    throw new Error('ASTRACODE_API_KEY is not configured on server.')
   }
 
   if (!text || !text.trim()) {
@@ -199,7 +239,7 @@ CRITICAL RULES:
 3. If the input is a short phrase or single sentence, translate ONLY that exact phrase or sentence.
 4. Maintain the literary tone, mood, and nuanced metaphors of the original text faithfully in ${targetLang}.
 5. If character names or terms from the Story Bible appear in the input, translate or transliterate them consistently.
-6. Return ONLY a valid JSON object matching this schema:
+6. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "translatedText": "<exact translation of user text in target language>",
   "notes": "<brief 1-sentence note in Thai explaining the literary tone or word choices>"
@@ -220,7 +260,7 @@ CRITICAL RULES:
 2. Identify actual misspelled words, typos, incorrect spacing, and punctuation errors according to standard Thai orthography and Royal Society of Thailand guidelines, or English grammar.
 3. Respect all specialized terms inside <custom_dictionary> — NEVER mark words in the custom dictionary as errors.
 4. Preserve the author's intentional literary style, character voices, and colloquial idioms.
-5. Return ONLY a valid JSON object matching this schema:
+5. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "explanation": "<summary in Thai of typos and grammar issues found (1-2 sentences)>",
   "corrections": [
@@ -247,7 +287,7 @@ CRITICAL RULES:
 2. Strictly align with the specified Genre (<genre>), POV (<pov>), and Style Persona (<persona>).
 3. If <custom_instruction> is provided, integrate and obey it fully.
 4. Do NOT change plot facts, character names, or invent unrelated narrative developments. Keep the core scene intact.
-5. Return ONLY a valid JSON object matching this schema:
+5. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "changesSummary": "<concise summary in Thai of polish improvements made, e.g., enhanced sensory details, refined cadence, removed redundancies>",
   "polishedText": "<fully polished and rewritten version of the input text>",
@@ -276,7 +316,7 @@ CRITICAL RULES:
    Direction 2: Unexpected complication, external danger, or mystery twist.
    Direction 3: Strategic dilemma, thematic crossroads, or moral choice.
 4. For each direction, write a short opening paragraph (previewText) of 2-3 sentences that the author can directly insert and continue writing from.
-5. Return ONLY a valid JSON object matching this schema:
+5. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "branches": [
     {
@@ -312,7 +352,7 @@ ${text}
 CRITICAL RULES:
 1. Audit the text inside <user_text>...</user_text> against the provided <characters_bible>, <lore>, and <custom_dictionary>.
 2. Check for character trait inconsistencies, timeline discrepancies, physical logic issues, and tone violations.
-3. Return ONLY a valid JSON object matching this schema:
+3. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "consistencyScore": <integer between 0 and 100 representing logical coherence>,
   "timelineCheck": "<สรุปการตรวจลำดับเวลาและเหตุการณ์ในฉากเป็นภาษาไทย>",
@@ -337,7 +377,7 @@ ${text}
     systemInstructionText = `You are an executive book editor.
 CRITICAL RULES:
 1. Analyze the chapters, pacing, and overall story arc provided inside <user_text>.
-2. Return ONLY a valid JSON object matching this schema:
+2. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "plotArcScore": <integer between 0 and 100>,
   "majorPacingIssues": ["<ปัญหาจังหวะเล่าเรื่อง 1 เป็นภาษาไทย>"],
@@ -356,7 +396,7 @@ ${text}
     systemInstructionText = `You are Plottrix AI writing assistant.
 CRITICAL RULES:
 1. Execute the user's instruction faithfully on the text inside <user_text>...</user_text>.
-2. Return ONLY a valid JSON object matching this schema:
+2. Return ONLY a valid JSON object matching this schema (no extra commentary):
 {
   "changesSummary": "<สรุปผลการปฏิบัติตามคำสั่งเป็นภาษาไทย 1 ประโยค>",
   "polishedText": "<เนื้อหาผลลัพธ์ที่นำไปใช้ได้ทันที>",
@@ -373,6 +413,64 @@ ${text}
 </user_text>`
   }
 
+  const temperature = actionType === 'translate' || actionType === 'proofread' ? 0.2 : 0.7
+
+  // 1. Astracode OpenAI-Compatible Gateway with complexity routing + automatic failover
+  if (astraKey) {
+    const astraBase = process.env.ASTRACODE_BASE_URL || DEFAULT_ASTRACODE_BASE_URL
+    const modelChain = selectAstracodeModelChain(actionType, text, customSkillPrompt)
+    let astraLastError = null
+
+    const engineStart = Date.now()
+
+    for (const model of modelChain) {
+      const elapsedMs = Date.now() - engineStart
+      const remainingBudget = 55000 - elapsedMs
+      if (remainingBudget < 3000) break
+
+      // Give fast Haiku up to 15s and reasoning 6 Luna up to remaining budget (capped at 42s)
+      const perModelTimeout = model.includes('haiku')
+        ? Math.min(15000, remainingBudget)
+        : Math.min(42000, remainingBudget)
+
+      try {
+        const resp = await callOpenAiCompatible(
+          astraBase,
+          astraKey,
+          model,
+          systemInstructionText,
+          userPromptText,
+          temperature,
+          perModelTimeout
+        )
+
+        if (resp.statusCode === 200 && resp.data?.choices?.[0]?.message?.content) {
+          const rawContent = resp.data.choices[0].message.content
+          const parsed = extractJson(rawContent)
+          if (parsed) {
+            return {
+              success: true,
+              model: resp.data.model || model,
+              result: parsed
+            }
+          }
+        }
+
+        const errMsg = resp.data?.error?.message_th || resp.data?.error?.message || `HTTP ${resp.statusCode}`
+        astraLastError = new Error(`[Astracode / ${model}] ${errMsg}`)
+        console.warn(`[aiEngine] Model ${model} failed (${errMsg}), switching to fallback model if available.`)
+      } catch (err) {
+        astraLastError = err
+        console.warn(`[aiEngine] Model ${model} exception:`, err.message)
+      }
+    }
+
+    if (!geminiKey) {
+      throw astraLastError || new Error('Failed to generate response from Astracode API.')
+    }
+  }
+
+  // 2. Legacy Google Gemini API fallback (only if an AIza key is explicitly configured)
   const geminiPayload = {
     contents: [
       {
@@ -385,55 +483,15 @@ ${text}
     },
     generationConfig: {
       responseMimeType: 'application/json',
-      temperature: actionType === 'translate' || actionType === 'proofread' ? 0.2 : 0.7
+      temperature
     }
   }
 
-  // 1. OpenAI-Compatible Gateway (Astracode / Gemini 3.8 Flash)
-  const astraKey = (clientApiKey && clientApiKey.startsWith('sk-'))
-    ? clientApiKey
-    : (process.env.ASTRACODE_API_KEY || process.env.VITE_ASTRACODE_API_KEY || (apiKey.startsWith('sk-') ? apiKey : null))
-  const astraBase = process.env.ASTRACODE_BASE_URL || process.env.VITE_ASTRACODE_BASE_URL || 'https://astracode.panderx.xyz/v1'
-  const targetModel = process.env.ASTRACODE_MODEL || process.env.VITE_ASTRACODE_MODEL || 'gemini-3.8-flash'
-
-  if (astraKey && astraKey.startsWith('sk-')) {
-    try {
-      const resp = await callOpenAiCompatible(
-        astraBase,
-        astraKey,
-        targetModel,
-        systemInstructionText,
-        userPromptText,
-        actionType === 'translate' || actionType === 'proofread' ? 0.2 : 0.7
-      )
-
-      if (resp.statusCode === 200 && resp.data?.choices?.[0]?.message?.content) {
-        const rawContent = resp.data.choices[0].message.content
-        const parsed = extractJson(rawContent)
-        if (parsed) {
-          return {
-            success: true,
-            model: targetModel,
-            result: parsed
-          }
-        }
-      }
-
-      const errMsg = resp.data?.error?.message || `HTTP ${resp.statusCode}`
-      throw new Error(`[Astracode / ${targetModel}] ${errMsg}`)
-    } catch (err) {
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.startsWith('sk-')) {
-        throw err
-      }
-    }
-  }
-
-  // 2. Google Gemini API Model Cascade Execution
   let lastError = null
 
-  for (const model of MODEL_CHAIN) {
+  for (const model of GEMINI_FALLBACK_CHAIN) {
     try {
-      const resp = await callGemini(model, apiKey, geminiPayload)
+      const resp = await callGemini(model, geminiKey, geminiPayload)
       if (resp.statusCode === 200 && resp.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
         const rawReply = resp.data.candidates[0].content.parts[0].text
         const parsed = extractJson(rawReply)
@@ -449,7 +507,6 @@ ${text}
       const errMsg = resp.data?.error?.message || `HTTP ${resp.statusCode}`
       lastError = new Error(`[Model ${model}] ${errMsg}`)
 
-      // If error is 400 (bad request), do not retry other models with identical bad payload
       if (resp.statusCode === 400) {
         break
       }
@@ -458,5 +515,5 @@ ${text}
     }
   }
 
-  throw lastError || new Error('Failed to generate response from Gemini API.')
+  throw lastError || new Error('Failed to generate response from AI Engine.')
 }

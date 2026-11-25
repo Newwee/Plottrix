@@ -1,5 +1,6 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 
 const TRIX_ACTIONS = [
   {
@@ -45,7 +46,21 @@ const TRIX_ACTIONS = [
 ]
 
 export default function TrixCoinSection() {
-  const { navigateTo, setActiveModal } = useApp()
+  const { navigateTo, setActiveModal, addToast } = useApp()
+  const { user } = useAuth()
+
+  const handleGetStartedOrWorkspace = () => {
+    if (!user) {
+      setActiveModal('auth')
+      addToast({
+        title: 'ต้องเข้าสู่ระบบก่อนรับ 30 Trix 🔒',
+        description: 'กรุณาสมัครสมาชิกหรือเข้าสู่ระบบเพื่อรับเหรียญฟรีและเข้าใช้งาน Workspace',
+        fuseColor: '#ff7fa0'
+      })
+      return
+    }
+    navigateTo('workspace_home')
+  }
 
   return (
     <section className="section relative z-10 bg-transparent py-20" id="coin-trix">
@@ -108,11 +123,11 @@ export default function TrixCoinSection() {
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
               <button
                 type="button"
-                onClick={() => navigateTo('workspace_home')}
+                onClick={handleGetStartedOrWorkspace}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:brightness-110 text-slate-950 font-black text-sm shadow-[0_10px_25px_rgba(245,158,11,0.35)] transition cursor-pointer flex items-center justify-center gap-2"
               >
                 <img src="/Logo/TrixCoinLogo.png" alt="Coin" className="w-5 h-5 object-contain" />
-                <span>รับ 30 Trix แล้วเริ่มเขียน</span>
+                <span>{user ? 'เข้าสู่ Workspace พร้อม 30 Trix' : '🔒 สมัครรับ 30 Trix แล้วเริ่มเขียน'}</span>
                 <span>→</span>
               </button>
 

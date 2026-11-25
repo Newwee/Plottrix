@@ -1,8 +1,10 @@
 import React from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 
 export default function HomeFooter() {
-  const { navigateTo } = useApp()
+  const { navigateTo, setActiveModal } = useApp()
+  const { user } = useAuth()
 
   return (
     <footer className="footer">
@@ -53,7 +55,7 @@ export default function HomeFooter() {
               href="#top"
               onClick={(e) => {
                 e.preventDefault()
-                navigateTo('workspace')
+                user ? navigateTo('workspace_home') : setActiveModal('auth')
               }}
             >
               Get Started
