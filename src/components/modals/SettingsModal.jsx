@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useDevicePerformance } from '../../hooks/useDevicePerformance'
 import AvatarCropperModal from './AvatarCropperModal'
 import { modalBackdropVariants, modalContentVariants, tabContentVariants } from '../../lib/animations'
+import { formatExpiryDateTime } from '../../lib/subscription'
 
 export default function SettingsModal() {
   const {
@@ -26,7 +27,9 @@ export default function SettingsModal() {
     trixBalance,
     plan,
     planTier,
-    trialCountdown
+    trialCountdown,
+    activeSubscription,
+    isAdmin
   } = useApp()
 
   const {
@@ -429,15 +432,34 @@ export default function SettingsModal() {
                             เหลือ {trialCountdown || '3 วัน'}
                           </span>
                         )}
+                        {(planTier === 'pro' || planTier === 'ultra') && activeSubscription?.expires_at && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 whitespace-nowrap">
+                            หมดอายุ {formatExpiryDateTime(activeSubscription.expires_at)}
+                          </span>
+                        )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveModal('pricing')}
-                        className="text-xs text-purple-300 hover:text-purple-200 underline font-bold mt-1.5 inline-block cursor-pointer"
-                      >
-                        จัดการแพ็กเกจและเติมเหรียญ ↗
-                      </button>
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setActiveModal('pricing')}
+                          className="text-xs text-purple-300 hover:text-purple-200 underline font-bold inline-block cursor-pointer"
+                        >
+                          จัดการแพ็กเกจสมาชิก ↗
+                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveModal(null)
+                              navigateTo('admin_payments')
+                            }}
+                            className="text-xs text-amber-300 hover:text-amber-200 underline font-bold inline-block cursor-pointer"
+                          >
+                            แผงควบคุม Admin Payments ↗
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

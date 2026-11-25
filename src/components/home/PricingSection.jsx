@@ -23,7 +23,7 @@ export default function PricingSection() {
         <PricingCards currentPlan={plan} />
 
         <div className="pricing-footnote text-center text-xs text-plottrix-muted mt-10">
-          🔒 ระบบเติมเหรียญ Trix Top-Up และชำระเงินปิดปรับปรุงชั่วคราว เพื่อเตรียมเชื่อมต่อกับ Payment Gateway เร็วๆ นี้
+          💳 รองรับการชำระเงินอัตโนมัติผ่าน PromptPay QR Code และโอนเงินผ่านบัญชีธนาคาร (ยืนยันสลิปภายในไม่กี่วินาที) — ส่วนการเติมเหรียญ Trix แยกแบบ Pay-As-You-Go อยู่ระหว่างพัฒนาเพิ่มเติม
         </div>
       </div>
     </section>

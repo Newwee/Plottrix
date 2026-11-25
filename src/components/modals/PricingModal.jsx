@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useApp } from '../../context/AppContext'
 import PricingCards from '../home/PricingCards'
 import { modalBackdropVariants, modalContentVariants } from '../../lib/animations'
+import { formatExpiryDateTime } from '../../lib/subscription'
 
 export default function PricingModal() {
   const {
@@ -11,11 +12,14 @@ export default function PricingModal() {
     plan,
     planTier,
     trialCountdown,
+    activeSubscription,
+    recentOrders,
     topupTrix
   } = useApp()
 
   const isOpen = activeModal === 'pricing'
   const isProTrial = planTier === 'pro_trial'
+  const isPaidActive = planTier === 'pro' || planTier === 'ultra'
 
   return (
     <AnimatePresence>
@@ -99,6 +103,22 @@ export default function PricingModal() {
               </div>
             )}
 
+            {isPaidActive && activeSubscription?.expires_at && (
+              <div className="mx-6 mt-4 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-emerald-300">
+                    ✓ แพ็กเกจ {plan} กำลังใช้งานอยู่
+                  </div>
+                  <div className="text-[11px] text-slate-300 mt-0.5">
+                    ใช้งานได้ต่อเนื่องถึง {formatExpiryDateTime(activeSubscription.expires_at)}
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/40">
+                  Active Membership
+                </span>
+              </div>
+            )}
+
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-1 space-y-8">
               {/* Membership Pricing Cards */}
@@ -111,6 +131,42 @@ export default function PricingModal() {
                 </div>
                 <PricingCards currentPlan={plan} />
               </div>
+
+              {Array.isArray(recentOrders) && recentOrders.length > 0 && (
+                <div className="pt-4 border-t border-plottrix-line/30">
+                  <div className="text-xs uppercase tracking-wider text-purple-300 font-bold mb-3">
+                    ประวัติคำสั่งซื้อล่าสุดของคุณ
+                  </div>
+                  <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                    {recentOrders.slice(0, 5).map((ord) => (
+                      <div
+                        key={ord.id}
+                        className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-white">{ord.order_code}</span>
+                          <span className="text-slate-400 ml-2">
+                            {ord.plan_snapshot?.name || 'Membership'} • ฿{Number(ord.amount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            ord.status === 'PAID'
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                              : ord.status === 'MANUAL_REVIEW' || ord.status === 'VERIFYING'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+                              : ord.status === 'REJECTED' || ord.status === 'EXPIRED'
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-400/30'
+                              : 'bg-white/10 text-slate-300 border-white/20'
+                          }`}
+                        >
+                          {ord.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Trix Coin Top-up Packages (Temporarily Disabled for Real Payment Gateway) */}
               <div className="pt-6 border-t border-plottrix-line/30">
@@ -134,10 +190,10 @@ export default function PricingModal() {
                   <span className="text-xl">🔒</span>
                   <div className="text-xs">
                     <span className="font-bold text-amber-300">
-                      ปิดให้บริการเติมเหรียญชั่วคราว (เร็วๆ นี้)
+                      ระบบเติมเหรียญ Trix แบบ Pay-As-You-Go อยู่ระหว่างพัฒนาเพิ่มเติม
                     </span>
                     <p className="text-slate-300 text-[11px] mt-0.5">
-                      ระบบเติมเหรียญ Trix กำลังอยู่ระหว่างเตรียมเชื่อมต่อกับระบบ Payment Gateway อย่างเป็นทางการ ขออภัยในความไม่สะดวก
+                      คุณสามารถสมัครแพ็กเกจ Pro Plan++ หรือ Ultra Plan เพื่อรับเหรียญ Trix ประจำเดือนและสิทธิ์สมาชิกผ่านระบบชำระเงินอัตโนมัติได้ทันทีด้านบน
                     </p>
                   </div>
                 </div>

@@ -12,9 +12,9 @@ export const PLAN_TIERS = {
     rank: 0,
     name: 'Free Plan',
     displayName: 'Free Plan',
-    maxNovels: 1,
+    maxNovels: 3,
     maxChaptersPerNovel: 5,
-    cooldownMs: 8000
+    cooldownMs: 4000
   },
   pro_trial: {
     id: 'pro_trial',
@@ -142,4 +142,25 @@ export function getTrialCountdown(trialEndsAt) {
     formatted,
     totalSeconds
   }
+}
+
+export function formatExpiryDateTime(isoOrDate) {
+  if (!isoOrDate) return '-'
+  const d = new Date(isoOrDate)
+  if (Number.isNaN(d.getTime())) return '-'
+  try {
+    return new Intl.DateTimeFormat('th-TH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Bangkok'
+    }).format(d)
+  } catch {
+    return d.toLocaleString('th-TH')
+  }
+}
+
+export function getEntitlementValue(entitlements, key, fallback = null) {
+  if (!Array.isArray(entitlements)) return fallback
+  const found = entitlements.find(item => item && item.entitlement_key === key && item.is_active !== false)
+  return found ? found.entitlement_value : fallback
 }

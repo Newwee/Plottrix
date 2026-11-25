@@ -6,6 +6,7 @@
  * 3. Paid plan gate (Pro/Ultra paid activations blocked until Payment Gateway is integrated)
  */
 
+import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 
 const TIER_RANKS = {
@@ -14,6 +15,8 @@ const TIER_RANKS = {
   pro: 2,
   ultra: 3
 }
+
+const CURRENT_TRIAL_TERMS_VERSION = '2026-11-v1'
 
 export default async function handler(req, res) {
   const origin = req.headers.origin || ''
@@ -34,7 +37,15 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://jqgbgqlhztixhkrqdwtf.supabase.co'
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!serviceRoleKey) {
+    return res.status(503).json({
+      error: {
+        code: 'SERVICE_ROLE_REQUIRED',
+        message: 'Subscription RPC delegation requires SUPABASE_SERVICE_ROLE_KEY configuration.'
+      }
+    })
+  }
 
   const authHeader = req.headers.authorization || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
@@ -44,80 +55,105 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, serviceRoleKey || anonKey)
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
     const { data: { user }, error: userError } = await supabase.auth.getUser(token)
 
     if (userError || !user) {
       return res.status(401).json({ error: { message: 'Invalid or expired user session' } })
     }
 
-    const { action, targetTier } = req.body || {}
+    await supabase.rpc('process_expiring_and_expired_memberships', { p_user_id: user.id })
 
-    // Fetch current user profile from DB
     const { data: profile, error: profError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, plan, plan_tier, trial_used, trial_started_at, trial_ends_at, trix_balance')
       .eq('id', user.id)
       .single()
 
-    const currentTier = profile?.plan_tier || 'free'
-    const trialUsed = Boolean(profile?.trial_used)
+    if (profError || !profile) {
+      return res.status(404).json({ error: { message: 'ไม่พบข้อมูลโปรไฟล์ผู้ใช้' } })
+    }
 
-    // Handle GET status
+    const { data: activeSubscription } = await supabase
+      .from('user_subscriptions')
+      .select('id, plan_id, starts_at, expires_at, status, membership_plans(id, slug, name, price, duration_days, tier_rank)')
+      .eq('user_id', user.id)
+      .eq('status', 'ACTIVE')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const currentTier = profile.plan_tier || 'free'
+
     if (req.method === 'GET') {
       return res.status(200).json({
         plan_tier: currentTier,
-        plan: profile?.plan || 'Free Plan',
-        trial_used: trialUsed,
-        trial_started_at: profile?.trial_started_at || null,
-        trial_ends_at: profile?.trial_ends_at || null
+        plan: profile.plan || 'Free Plan',
+        trial_used: Boolean(profile.trial_used),
+        trial_started_at: profile.trial_started_at || null,
+        trial_ends_at: profile.trial_ends_at || null,
+        trix_balance: profile.trix_balance ?? 0,
+        active_subscription: activeSubscription || null
       })
     }
 
-    // 1. ACTIVATE 3-DAY PRO TRIAL
+    const body = req.body || {}
+    const { action, targetTier } = body
+
     if (action === 'activate_trial') {
-      if (trialUsed) {
+      const accepted = body.accepted === true || body.termsAccepted === true
+      const termsVersion = String(body.termsVersion || '').trim()
+      if (!accepted || termsVersion !== CURRENT_TRIAL_TERMS_VERSION) {
         return res.status(400).json({
-          error: { message: 'คุณเคยใช้สิทธิ์ทดลองใช้ Pro 3 วันไปแล้ว ไม่สามารถเปิดใช้งานซ้ำได้' }
+          error: {
+            code: 'TERMS_NOT_ACCEPTED',
+            message: 'กรุณายอมรับเงื่อนไขการทดลองใช้งานฟรีก่อนเปิดใช้งานสิทธิ์'
+          }
         })
       }
 
-      const currentRank = TIER_RANKS[currentTier] ?? 0
-      if (currentRank >= TIER_RANKS.pro) {
-        return res.status(400).json({
-          error: { message: 'บัญชีของคุณอยู่ในระดับ Pro หรือสูงกว่าอยู่แล้ว' }
-        })
+      const forwardedIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      const ipHash = forwardedIp ? createHash('sha256').update(forwardedIp).digest('hex') : ''
+      const userAgent = String(req.headers['user-agent'] || '').slice(0, 500)
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('activate_pro_trial_safely', {
+        p_user_id: user.id,
+        p_terms_version: CURRENT_TRIAL_TERMS_VERSION,
+        p_accepted: true,
+        p_terms_summary: { version: CURRENT_TRIAL_TERMS_VERSION, duration_hours: 72, source: 'api_subscription_adapter' },
+        p_user_agent: userAgent,
+        p_ip_hash: ipHash
+      })
+
+      if (rpcError) {
+        return res.status(400).json({ error: { message: rpcError.message } })
       }
 
-      const now = new Date()
-      const endsAt = new Date(now.getTime() + 72 * 60 * 60 * 1000) // 72 hours
-
-      const { data: updated, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          plan_tier: 'pro_trial',
-          plan: 'Pro Plan++',
-          trial_used: true,
-          trial_started_at: now.toISOString(),
-          trial_ends_at: endsAt.toISOString(),
-          updated_at: now.toISOString()
+      if (!rpcResult || rpcResult.success !== true) {
+        return res.status(400).json({
+          error: {
+            code: rpcResult?.code || 'TRIAL_ACTIVATION_REJECTED',
+            message: rpcResult?.error || 'ไม่สามารถเปิดใช้งานสิทธิ์ทดลองใช้ได้'
+          }
         })
-        .eq('id', user.id)
-        .select()
-        .single()
-
-      if (updateError) {
-        return res.status(500).json({ error: { message: updateError.message } })
       }
 
       return res.status(200).json({
         success: true,
         message: 'เปิดใช้งาน Pro Plan ฟรี 3 วันสำเร็จ!',
-        profile: updated
+        profile: {
+          plan: rpcResult.plan,
+          plan_tier: rpcResult.plan_tier,
+          trial_used: rpcResult.trial_used,
+          trial_started_at: rpcResult.trial_started_at,
+          trial_ends_at: rpcResult.trial_ends_at,
+          trix_balance: rpcResult.trix_balance
+        }
       })
     }
 
-    // 2. CHANGE PLAN / STRICT NO-DOWNGRADE ENFORCEMENT
     if (action === 'change_plan') {
       const normalizedTarget = (targetTier || '').toLowerCase().trim()
       const targetRank = TIER_RANKS[normalizedTarget]
@@ -128,24 +164,20 @@ export default async function handler(req, res) {
 
       const currentRank = TIER_RANKS[currentTier] ?? 0
 
-      // Enforce Strict No-Downgrade
       if (targetRank < currentRank) {
         return res.status(403).json({
           error: {
+            code: 'NO_DOWNGRADE_ALLOWED',
             message: `ไม่สามารถลดระดับแพลนจาก ${currentTier} เป็น ${normalizedTarget} ได้ตามนโยบายระบบ (Strict No-Downgrade Policy)`
           }
         })
       }
 
-      if (targetRank === currentRank) {
-        return res.status(400).json({ error: { message: 'คุณกำลังใช้งานแพลนนี้อยู่แล้ว' } })
-      }
-
-      // Paid plans cannot be activated instantly for free
       if (normalizedTarget === 'pro' || normalizedTarget === 'ultra') {
         return res.status(402).json({
           error: {
-            message: 'ระบบชำระเงินกำลังเปิดให้บริการเร็วๆ นี้ ไม่สามารถเปิดใช้งานแพลนเสียเงินได้โดยไม่มีใบเสร็จการชำระเงิน'
+            code: 'PAYMENT_CHECKOUT_REQUIRED',
+            message: 'กรุณาสร้างคำสั่งซื้อและชำระเงินพร้อมอัปโหลดสลิปผ่านระบบ Checkout เพื่อเปิดใช้งานแพ็กเกจสมาชิก'
           }
         })
       }

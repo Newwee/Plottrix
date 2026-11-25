@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import WarmTooltip, { WarmTooltipGroup } from '../WarmTooltip'
 import StatusMark from '../react-bits/StatusMark'
+import NotificationBell from './NotificationBell'
 
 const GENRES = [
   'แฟนตาซี / กำลังภายใน',
@@ -252,7 +253,7 @@ function TopNavbar({ onOpenCommandPalette }) {
 
         {/* Trix Wallet with Daily Claim */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1a142e] border border-amber-500/30">
-          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI (ระบบเติมเหรียญปิดชั่วคราว - รอเปิดตัว Payment Gateway)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
+          <WarmTooltip content="เหรียญ Trix คงเหลือสำหรับใช้งาน AI (รับเพิ่มได้จากแพ็กเกจสมาชิกและการรับฟรีรายวัน)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
@@ -274,6 +275,8 @@ function TopNavbar({ onOpenCommandPalette }) {
             </button>
           </WarmTooltip>
         </div>
+
+        <NotificationBell />
 
         {/* Free Novel Vocab Bank Button */}
         <WarmTooltip content="คลังคำศัพท์เฉพาะทางสำหรับนักเขียนนิยาย (เปิดใช้ฟรี)" side="bottom" surfaceColor="#1e1b2e" inkColor="#f4f4f5">

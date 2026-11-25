@@ -7,6 +7,8 @@ import NovelCoverCarousel from '../common/NovelCoverCarousel'
 import CoverGalleryInput from '../common/CoverGalleryInput'
 import TagInput from '../common/TagInput'
 import AuthRequiredView from '../common/AuthRequiredView'
+import NotificationBell from './NotificationBell'
+import { formatExpiryDateTime } from '../../lib/subscription'
 
 // Genre definitions with iconography
 const GENRES = [
@@ -127,6 +129,8 @@ export default function WorkspaceHome() {
     planTier,
     trialUsed,
     trialCountdown,
+    activeSubscription,
+    isAdmin,
     activateProTrial,
     trixBalance,
     claimDailyTrix,
@@ -340,7 +344,7 @@ export default function WorkspaceHome() {
           </WarmTooltip>
 
           {/* Plan Badge with Live Trial Countdown */}
-          <WarmTooltip content={isProTrial ? `สิทธิ์ทดลองใช้ Pro ฟรี 72 ชั่วโมง (เหลือเวลา ${trialCountdown || '3 วัน'}) - คลิกเพื่อดูรายละเอียด` : "คลิกเพื่อดูแพ็กเกจสมาชิก"} side="bottom">
+          <WarmTooltip content={isProTrial ? `สิทธิ์ทดลองใช้ Pro ฟรี 72 ชั่วโมง (เหลือเวลา ${trialCountdown || '3 วัน'}) - คลิกเพื่อดูรายละเอียด` : activeSubscription?.expires_at ? `ใช้งานได้ถึง ${formatExpiryDateTime(activeSubscription.expires_at)} - คลิกเพื่อจัดการแพ็กเกจ` : "คลิกเพื่อดูแพ็กเกจสมาชิก"} side="bottom">
             <button
               type="button"
               onClick={() => setActiveModal('pricing')}
@@ -354,6 +358,20 @@ export default function WorkspaceHome() {
               <span>{isProTrial ? `Pro Trial (${trialCountdown || '3 วัน'})` : plan}</span>
             </button>
           </WarmTooltip>
+
+          <NotificationBell />
+
+          {isAdmin && (
+            <WarmTooltip content="แดชบอร์ดจัดการคำสั่งซื้อและการยืนยันสลิป (Admin)" side="bottom">
+              <button
+                type="button"
+                onClick={() => navigateTo('admin_payments')}
+                className="px-3 py-1.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/35 text-xs font-bold text-amber-200 transition cursor-pointer"
+              >
+                Admin Payments
+              </button>
+            </WarmTooltip>
+          )}
 
           {/* Help / Tour */}
           <WarmTooltip content="เปิดคู่มือแนะนำการใช้งาน (Tour)" side="bottom">

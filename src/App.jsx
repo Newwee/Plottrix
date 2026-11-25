@@ -14,7 +14,10 @@ const PublicReaderHub = lazy(() => import('./components/reader/PublicReaderHub')
 const StoryDetailsView = lazy(() => import('./components/reader/StoryDetailsView'))
 const ReaderView = lazy(() => import('./components/reader/ReaderView'))
 const TestAiPlayground = lazy(() => import('./components/test-ai/TestAiPlayground'))
+const AdminPaymentsView = lazy(() => import('./components/admin/AdminPaymentsView'))
 const PricingModal = lazy(() => import('./components/modals/PricingModal'))
+const TrialTermsModal = lazy(() => import('./components/modals/TrialTermsModal'))
+const MembershipCheckoutModal = lazy(() => import('./components/modals/MembershipCheckoutModal'))
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'))
 const AuthModal = lazy(() => import('./components/modals/AuthModal'))
 const PublishModal = lazy(() => import('./components/modals/PublishModal'))
@@ -52,6 +55,8 @@ function ViewRouter() {
             </>
           ) : currentView === 'test_ai' ? (
             authLoading ? <AuthRequiredView isLoading /> : !user ? <AuthRequiredView /> : <TestAiPlayground />
+          ) : currentView === 'admin_payments' ? (
+            <AdminPaymentsView />
           ) : currentView === 'story_detail' ? (
             <StoryDetailsView />
           ) : currentView === 'reader' ? (
@@ -66,6 +71,8 @@ function ViewRouter() {
 
       {/* Global Modals & Notifications accessible anywhere */}
       <PricingModal />
+      <TrialTermsModal />
+      <MembershipCheckoutModal />
       <SettingsModal />
       <AuthModal />
       <PublishModal />

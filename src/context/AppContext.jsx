@@ -5,6 +5,13 @@ import { useAuth } from './AuthContext'
 import { getTierInfo, checkPlanTransition, getTrialCountdown, PLAN_TIERS } from '../lib/subscription'
 import { safeLocalStorageSet, safeLocalStorageGet, safeLocalStorageGetJSON } from '../lib/safeStorage'
 import { selectModelRoute, getModelDisplayInfo, estimateAiDuration, ACTION_LABELS } from '../lib/aiRouting'
+import {
+  CURRENT_TRIAL_TERMS_VERSION,
+  activateProTrialWithConsent,
+  fetchMembershipStatus,
+  markAllNotificationsRead,
+  markNotificationRead
+} from '../lib/membershipService'
 
 const AppContext = createContext(null)
 
@@ -45,6 +52,7 @@ export function AppProvider({ children }) {
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase()
+      if (path === '/admin/payments' || path === '/admin') return 'admin_payments'
       if (path === '/test-ai' || path === '/test') return 'test_ai'
       if (path.startsWith('/story/')) return 'story_detail'
       if (path.startsWith('/read/')) return 'reader'
@@ -82,7 +90,9 @@ export function AppProvider({ children }) {
       'dictionary',
       'history',
       'skills',
-      'export'
+      'export',
+      'trialTerms',
+      'checkout'
     ])
     if (modalName && AUTH_ONLY_MODALS.has(modalName) && !user?.id) {
       setRawActiveModal('auth')
@@ -160,6 +170,9 @@ export function AppProvider({ children }) {
     } else if (view === 'test_ai' || view === 'test') {
       targetView = 'test_ai'
       targetPath = '/test-ai'
+    } else if (view === 'admin_payments') {
+      targetView = 'admin_payments'
+      targetPath = '/admin/payments'
     } else if (view === 'read') {
       targetView = 'read'
       targetPath = '/read'
@@ -197,6 +210,8 @@ export function AppProvider({ children }) {
         const sid = window.location.pathname.split('/read/')[1]?.split('/')[0]
         if (sid) setActiveReadStoryId(sid)
         setCurrentView('reader')
+      } else if (path === '/admin/payments' || path === '/admin') {
+        setCurrentView('admin_payments')
       } else if (path === '/test-ai' || path === '/test') {
         setCurrentView('test_ai')
       } else if (path === '/read') {
@@ -295,6 +310,14 @@ export function AppProvider({ children }) {
   const [trialEndsAt, setTrialEndsAt] = useState(null)
   const [trialCountdown, setTrialCountdown] = useState('')
   const [lastDailyClaim, setLastDailyClaim] = useState('')
+  const [membershipPlans, setMembershipPlans] = useState([])
+  const [membershipPlansLoading, setMembershipPlansLoading] = useState(true)
+  const [activeSubscription, setActiveSubscription] = useState(null)
+  const [entitlements, setEntitlements] = useState([])
+  const [recentOrders, setRecentOrders] = useState([])
+  const [notifications, setNotifications] = useState([])
+  const [adminRole, setAdminRole] = useState(null)
+  const [checkoutTargetSlug, setCheckoutTargetSlug] = useState('pro')
 
   // Characters & Story Bible
   const [characters, setCharacters] = useState([])
@@ -445,9 +468,109 @@ export function AppProvider({ children }) {
       setTrialEndsAt(null)
       setTrialCountdown('')
       setLastDailyClaim('')
+      setActiveSubscription(null)
+      setEntitlements([])
+      setRecentOrders([])
+      setNotifications([])
+      setAdminRole(null)
+      setCheckoutTargetSlug('pro')
       setIsTourOpen(false)
     }
   }, [authLoading, user?.id])
+
+  const loadPublicMembershipPlans = useCallback(async () => {
+    setMembershipPlansLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('id, slug, name, description, price, currency, duration_days, trix_grant, tier_rank, features, entitlements_config, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setMembershipPlans(data)
+      }
+    } catch {
+    } finally {
+      setMembershipPlansLoading(false)
+    }
+  }, [])
+
+  const refreshMembershipStatus = useCallback(async () => {
+    if (!user?.id) {
+      await loadPublicMembershipPlans()
+      return null
+    }
+    try {
+      const data = await fetchMembershipStatus()
+      if (Array.isArray(data?.plans) && data.plans.length > 0) {
+        setMembershipPlans(data.plans)
+        setMembershipPlansLoading(false)
+      }
+      setActiveSubscription(data?.activeSubscription || null)
+      setEntitlements(Array.isArray(data?.entitlements) ? data.entitlements : [])
+      setRecentOrders(Array.isArray(data?.recentOrders) ? data.recentOrders : [])
+      setNotifications(Array.isArray(data?.notifications) ? data.notifications : [])
+      setAdminRole(data?.adminRole || null)
+      if (data?.profile) {
+        if (typeof data.profile.trix_balance === 'number') {
+          setTrixBalance(data.profile.trix_balance)
+        }
+        if (data.profile.plan_tier) {
+          setPlanTier(data.profile.plan_tier)
+        }
+        if (data.profile.plan) {
+          setPlan(data.profile.plan)
+        }
+        if (data.profile.trial_used !== undefined && data.profile.trial_used !== null) {
+          setTrialUsed(Boolean(data.profile.trial_used))
+        }
+        setTrialStartedAt(data.profile.trial_started_at || null)
+        setTrialEndsAt(data.profile.trial_ends_at || null)
+        if (data.profile.last_claim_date) {
+          setLastDailyClaim(data.profile.last_claim_date)
+        }
+      }
+      return data
+    } catch {
+      await loadPublicMembershipPlans()
+      return null
+    }
+  }, [user?.id, loadPublicMembershipPlans])
+
+  useEffect(() => {
+    loadPublicMembershipPlans()
+  }, [loadPublicMembershipPlans])
+
+  useEffect(() => {
+    if (!authLoading && user?.id) {
+      refreshMembershipStatus()
+    }
+  }, [authLoading, user?.id, refreshMembershipStatus])
+
+  const isAdmin = adminRole === 'owner' || adminRole === 'admin'
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter(n => !n.is_read).length,
+    [notifications]
+  )
+
+  const markOneNotificationRead = useCallback(async (notificationId) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === notificationId ? { ...n, is_read: true, read_at: new Date().toISOString() } : n))
+    )
+    try {
+      await markNotificationRead(notificationId)
+    } catch {
+    }
+  }, [])
+
+  const markAllRead = useCallback(async () => {
+    const nowIso = new Date().toISOString()
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read_at: n.read_at || nowIso })))
+    try {
+      await markAllNotificationsRead()
+    } catch {
+    }
+  }, [])
 
   // Persist private data to localStorage ONLY for authenticated sessions
   useEffect(() => {
@@ -1116,29 +1239,24 @@ export function AppProvider({ children }) {
       return
     }
 
+    let expirySyncTriggered = false
+
     const checkExpiration = () => {
       const countdown = getTrialCountdown(trialEndsAt)
       setTrialCountdown(countdown.formatted)
 
-      if (countdown.isExpired) {
-        console.log('[Subscription] 3-Day Pro Trial has expired. Auto-reverting to Free Plan.')
-        setPlanTier('free')
-        setPlan('Free Plan')
+      if (countdown.isExpired && !expirySyncTriggered) {
+        expirySyncTriggered = true
         setTrialCountdown('หมดเวลาแล้ว')
-
-        if (user?.id) {
-          supabase.from('profiles').update({
-            plan_tier: 'free',
-            plan: 'Free Plan',
-            updated_at: new Date().toISOString()
-          }).eq('id', user.id).then(({ error }) => {
-            if (error) console.warn('Error reverting expired trial in Supabase:', error.message)
-          })
-        }
-
+        refreshMembershipStatus().then((res) => {
+          if (!res?.profile && !activeSubscription) {
+            setPlanTier('free')
+            setPlan('Free Plan')
+          }
+        })
         addToast({
           title: 'หมดเวลาทดลองใช้ Pro 3 วันแล้ว',
-          description: 'ระบบได้ปรับระดับบัญชีกลับเป็น Free Plan ตามปกติ ขอบคุณที่ร่วมทดลองใช้!',
+          description: 'ระบบได้ตรวจสอบสิทธิ์ล่าสุดและอัปเดตระดับบัญชีของคุณเรียบร้อยแล้ว',
           fuseColor: '#eab308',
           duration: 6000
         })
@@ -1148,7 +1266,7 @@ export function AppProvider({ children }) {
     checkExpiration()
     const timer = setInterval(checkExpiration, 1000)
     return () => clearInterval(timer)
-  }, [planTier, trialEndsAt, user?.id, addToast])
+  }, [planTier, trialEndsAt, activeSubscription, refreshMembershipStatus, addToast])
 
   // Activate One-Time 3-Day Free Trial of Pro Plan
   const activateProTrial = useCallback(async () => {
@@ -1173,46 +1291,25 @@ export function AppProvider({ children }) {
       return false
     }
 
-    const now = new Date()
-    const ends = new Date(now.getTime() + 72 * 60 * 60 * 1000) // 72 hours
-    const startIso = now.toISOString()
-    const endIso = ends.toISOString()
+    setActiveModal('trialTerms')
+    return true
+  }, [trialUsed, planTier, plan, addToast, requireAuth, setActiveModal])
 
-    setPlanTier('pro_trial')
-    setPlan('Pro Plan++')
-    setTrialUsed(true)
-    setTrialStartedAt(startIso)
-    setTrialEndsAt(endIso)
-    setTrialCountdown('2 วัน 23 ชม. 59 นาที')
-
-    // Persist to Supabase
-    if (user?.id) {
-      supabase.from('profiles').update({
-        plan_tier: 'pro_trial',
-        plan: 'Pro Plan++',
-        trial_used: true,
-        trial_started_at: startIso,
-        trial_ends_at: endIso,
-        updated_at: startIso
-      }).eq('id', user.id).then(({ error }) => {
-        if (error) {
-          console.warn('Supabase update warning (fallback to plan):', error.message)
-          // Fallback if specific columns are not yet in remote table
-          supabase.from('profiles').update({
-            plan: 'Pro Plan++',
-            updated_at: startIso
-          }).eq('id', user.id)
-        }
-      })
-
-      supabase.from('trix_transactions').insert({
-        user_id: user.id,
-        amount: 0,
-        type: 'bonus',
-        action: 'เปิดใช้งานทดลองใช้ Pro ฟรี 3 วัน'
-      }).then(({ error }) => {
-        if (error) console.warn('Transaction log note:', error.message)
-      })
+  const confirmActivateProTrial = useCallback(async ({ accepted, termsVersion = CURRENT_TRIAL_TERMS_VERSION } = {}) => {
+    if (!requireAuth('รับสิทธิ์ทดลองใช้ Pro ฟรี 3 วัน')) return false
+    const res = await activateProTrialWithConsent({ accepted, termsVersion })
+    if (res?.trial) {
+      setPlanTier(res.trial.plan_tier || 'pro_trial')
+      setPlan(res.trial.plan || 'Pro Plan++')
+      setTrialUsed(Boolean(res.trial.trial_used))
+      setTrialStartedAt(res.trial.trial_started_at || null)
+      setTrialEndsAt(res.trial.trial_ends_at || null)
+    }
+    if (typeof res?.trix_balance === 'number') {
+      setTrixBalance(res.trix_balance)
+    }
+    if (Array.isArray(res?.entitlements)) {
+      setEntitlements(res.entitlements)
     }
 
     confetti({
@@ -1224,13 +1321,36 @@ export function AppProvider({ children }) {
 
     addToast({
       title: 'เปิดใช้งาน Pro Plan ฟรี 3 วันสำเร็จ! 🎉',
-      description: 'ปลดล็อกเครื่องมือระดับ Pro ทุกฟังก์ชันตลอด 72 ชั่วโมงข้างหน้า',
+      description: 'ปลดล็อกเครื่องมือระดับ Pro ตลอด 72 ชั่วโมงข้างหน้า โดยไม่มีค่าใช้จ่ายเพิ่มเติม',
       fuseColor: '#c084fc',
       duration: 5000
     })
 
+    refreshMembershipStatus().catch(() => {})
     return true
-  }, [trialUsed, planTier, plan, user?.id, addToast, requireAuth])
+  }, [requireAuth, addToast, refreshMembershipStatus])
+
+  const openCheckoutModal = useCallback((targetSlug = 'pro') => {
+    if (!requireAuth('สมัครแพ็กเกจสมาชิก Premium')) return false
+    const normalizedSlug = String(targetSlug || 'pro').toLowerCase() === 'ultra' ? 'ultra' : 'pro'
+    const currentTier = getTierInfo(planTier || plan)
+    const targetTier = getTierInfo(normalizedSlug)
+    const transition = checkPlanTransition(currentTier.id, targetTier.id)
+
+    if (!transition.allowed) {
+      addToast({
+        title: 'ไม่สามารถลดระดับแพลนได้',
+        description: transition.reason,
+        fuseColor: '#ef4444',
+        duration: 4500
+      })
+      return false
+    }
+
+    setCheckoutTargetSlug(normalizedSlug)
+    setActiveModal('checkout')
+    return true
+  }, [requireAuth, planTier, plan, addToast, setActiveModal])
 
   // Change Plan Handler with Strict No-Downgrade & Paid Plan Protection
   const changePlan = useCallback(async (targetPlanNameOrTier) => {
@@ -1238,7 +1358,6 @@ export function AppProvider({ children }) {
     const targetTier = getTierInfo(targetPlanNameOrTier)
     const currentTier = getTierInfo(planTier || plan)
 
-    // 1. Strict No-Downgrade Policy
     const transition = checkPlanTransition(currentTier.id, targetTier.id)
     if (!transition.allowed) {
       addToast({
@@ -1250,19 +1369,12 @@ export function AppProvider({ children }) {
       return false
     }
 
-    // 2. Paid Plan Gate: Cannot activate paid plans instantly for free
     if (targetTier.id === 'pro' || targetTier.id === 'ultra') {
-      addToast({
-        title: 'ระบบชำระเงินกำลังเปิดให้บริการเร็วๆ นี้',
-        description: `แพ็กเกจ ${targetTier.displayName} ต้องชำระเงินผ่านระบบ Payment Gateway ซึ่งกำลังเปิดให้บริการในเร็วๆ นี้`,
-        fuseColor: '#eab308',
-        duration: 4500
-      })
-      return false
+      return openCheckoutModal(targetTier.id)
     }
 
     return false
-  }, [planTier, plan, addToast, requireAuth])
+  }, [planTier, plan, addToast, requireAuth, openCheckoutModal])
 
   // Backward-compatible alias
   const upgradePlanPrototype = changePlan
@@ -1271,8 +1383,8 @@ export function AppProvider({ children }) {
   const topupTrix = useCallback(() => {
     if (!requireAuth('เติมเหรียญ Trix')) return
     addToast({
-      title: 'ปิดให้บริการเติมเหรียญชั่วคราว (เร็วๆ นี้)',
-      description: 'ระบบเติมเหรียญ Trix อยู่ระหว่างเตรียมเชื่อมต่อกับ Payment Gateway ขออภัยในความไม่สะดวก',
+      title: 'การเติมเหรียญแยกอยู่ระหว่างพัฒนาเพิ่มเติม',
+      description: 'คุณสามารถเลือกสมัคร Pro Plan++ หรือ Ultra Plan เพื่อรับเหรียญ Trix ประจำเดือนได้ทันที',
       fuseColor: '#f59e0b',
       duration: 4000
     })
@@ -1291,21 +1403,45 @@ export function AppProvider({ children }) {
       return
     }
 
-    const newBal = trixBalance + 3
-    setTrixBalance(newBal)
-    setLastDailyClaim(today)
-    safeLocalStorageSet('plottrix_last_claim', today)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('claim_daily_trix_safely')
 
-    if (user?.id) {
-      supabase
+    if (!rpcErr && rpcData) {
+      if (rpcData.already_claimed) {
+        if (typeof rpcData.current_balance === 'number') setTrixBalance(rpcData.current_balance)
+        setLastDailyClaim(rpcData.last_claim_date || today)
+        safeLocalStorageSet('plottrix_last_claim', rpcData.last_claim_date || today)
+        addToast({
+          title: 'รับเหรียญ Trix วันนี้ไปแล้ว',
+          description: 'กลับมารับฟรีใหม่อีกครั้งในวันพรุ่งนี้ (+3 Trix)',
+          fuseColor: '#e9c78c'
+        })
+        return
+      }
+
+      if (rpcData.success) {
+        if (typeof rpcData.remaining_balance === 'number') setTrixBalance(rpcData.remaining_balance)
+        setLastDailyClaim(rpcData.last_claim_date || today)
+        safeLocalStorageSet('plottrix_last_claim', rpcData.last_claim_date || today)
+      } else {
+        addToast({
+          title: 'ไม่สามารถรับ Trix รายวันได้',
+          description: rpcData.error || 'กรุณาลองใหม่อีกครั้ง',
+          fuseColor: '#ef4444'
+        })
+        return
+      }
+    } else if (rpcErr && (rpcErr.code === 'PGRST202' || rpcErr.message?.includes('Could not find the function'))) {
+      const newBal = trixBalance + 3
+      setTrixBalance(newBal)
+      setLastDailyClaim(today)
+      safeLocalStorageSet('plottrix_last_claim', today)
+
+      await supabase
         .from('profiles')
         .update({ trix_balance: newBal, last_claim_date: today, updated_at: new Date().toISOString() })
         .eq('id', user.id)
-        .then(({ error }) => {
-          if (error) console.error('Error updating daily claim in profile:', error.message)
-        })
 
-      supabase
+      await supabase
         .from('trix_transactions')
         .insert({
           user_id: user.id,
@@ -1313,9 +1449,13 @@ export function AppProvider({ children }) {
           type: 'claim',
           action: 'รับ Trix รายวัน'
         })
-        .then(({ error }) => {
-          if (error) console.error('Error logging daily claim transaction:', error.message)
-        })
+    } else {
+      addToast({
+        title: 'ไม่สามารถรับ Trix รายวันได้',
+        description: rpcErr?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล',
+        fuseColor: '#ef4444'
+      })
+      return
     }
 
     confetti({
@@ -1336,10 +1476,27 @@ export function AppProvider({ children }) {
   const deductTrix = useCallback(async (cost, reason) => {
     if (!user?.id) return false
     if (trixBalance < cost) return false
-    const newBal = trixBalance - cost
-    setTrixBalance(newBal)
 
-    if (user?.id) {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('deduct_trix_safely', {
+      p_user_id: user.id,
+      p_amount: cost,
+      p_action: reason || 'AI Execution'
+    })
+
+    let newBal = trixBalance - cost
+
+    if (!rpcErr && rpcData) {
+      if (!rpcData.success) {
+        if (typeof rpcData.current_balance === 'number') setTrixBalance(rpcData.current_balance)
+        return false
+      }
+      if (typeof rpcData.remaining_balance === 'number') {
+        newBal = rpcData.remaining_balance
+      }
+      setTrixBalance(newBal)
+    } else if (rpcErr && (rpcErr.code === 'PGRST202' || rpcErr.message?.includes('Could not find the function'))) {
+      setTrixBalance(newBal)
+
       supabase
         .from('profiles')
         .update({ trix_balance: newBal, updated_at: new Date().toISOString() })
@@ -1359,6 +1516,8 @@ export function AppProvider({ children }) {
         .then(({ error }) => {
           if (error) console.error('Error logging deduction in DB:', error.message)
         })
+    } else {
+      return false
     }
 
     addToast({
@@ -2136,7 +2295,22 @@ export function AppProvider({ children }) {
         trialEndsAt,
         trialCountdown,
         activateProTrial,
+        confirmActivateProTrial,
         changePlan,
+        openCheckoutModal,
+        checkoutTargetSlug,
+        membershipPlans,
+        membershipPlansLoading,
+        activeSubscription,
+        entitlements,
+        recentOrders,
+        notifications,
+        unreadNotificationCount,
+        markOneNotificationRead,
+        markAllRead,
+        adminRole,
+        isAdmin,
+        refreshMembershipStatus,
         topupTrix,
         claimDailyTrix,
         lastDailyClaim,

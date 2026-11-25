@@ -3,81 +3,34 @@ import PixelCard from '../react-bits/PixelCard'
 import CountUp from '../react-bits/CountUp'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
-import { getTierInfo } from '../../lib/subscription'
+import { formatExpiryDateTime, getTierInfo } from '../../lib/subscription'
 
-export const PRICING_PLANS = [
-  {
-    tierId: 'free',
-    name: 'Free Plan',
+const PLAN_VISUAL_META = {
+  free: {
     sub: 'สำหรับทดลองเขียน & นิยายสั้น',
-    priceNum: 0,
-    priceStr: '฿0',
     cycle: '/ ตลอดชีพ',
     trixBadge: '✦ 30 Trix แรกเข้า + 3 Trix/วัน',
-    trixCount: 30,
-    desc: 'เครื่องมือพื้นฐานครบครันสำหรับเริ่มเขียนนิยายเรื่องแรก',
-    features: [
-      'สร้างนิยายได้ 1 เรื่อง สูงสุด 5 ตอน',
-      'แก้คำผิด & เช็คคำพ้องเสียง (1 Trix / ครั้ง)',
-      'เกลาสำนวนประโยคตามบริบท (1 Trix / ครั้ง)',
-      'คลังคำศัพท์นิยายเปิดใช้ฟรีทุกแพลน',
-      'ระบบบันทึกงานเขียนอัตโนมัติบนคลาวด์'
-    ],
     buttonText: 'เริ่มต้นใช้งานฟรี',
     isPrimary: false,
     badge: null,
     pixelColors: ['#cbd5e1', '#94a3b8', '#64748b'],
     glowHex: '#94a3b8'
   },
-  {
-    tierId: 'pro',
-    name: 'Pro Plan++',
+  pro: {
     sub: 'แผนยอดนิยมสำหรับนักเขียนนิยายยาว',
-    priceNum: 249,
-    priceStr: '฿249',
-    cycle: '/ เดือน',
-    trixBadge: '✦ รับ 400 Trix / เดือน',
-    trixCount: 400,
-    desc: 'ปลดล็อกผู้ช่วยบรรณาธิการและระบบจำบริบทข้ามตอนเต็มรูปแบบ',
-    features: [
-      'สร้างนิยายและตอนไม่จำกัด + AI จำบริบท 15 ตอน',
-      'Character & Lore Bible ไม่จำกัดตัวละคร',
-      'Style Persona บันทึกโปรไฟล์สำนวนได้ 3 โปรไฟล์',
-      'Batch Proofread ตรวจทั้งตอน & Custom Dictionary',
-      'ประวัติการแก้ไข (Version History) ย้อนหลัง 30 วัน',
-      'ลดระยะเวลา Cooldown เหลือเพียง 2 วินาที'
-    ],
-    buttonText: 'เลือก Pro Plan++ →',
     isPrimary: true,
     badge: '⭐ ยอดนิยม - Best Value',
     pixelColors: ['#f3e8ff', '#c084fc', '#9333ea'],
     glowHex: '#a855f7'
   },
-  {
-    tierId: 'ultra',
-    name: 'Ultra Plan',
+  ultra: {
     sub: 'สำหรับนักเขียนมืออาชีพ & ทำ E-Book',
-    priceNum: 599,
-    priceStr: '฿599',
-    cycle: '/ เดือน',
-    trixBadge: '✦ รับ 1,000 Trix / เดือน',
-    trixCount: 1000,
-    desc: 'ได้สิทธิ์ทั้งหมดของ Pro Plan++ พร้อมเครื่องมือระดับมืออาชีพ',
-    features: [
-      'ได้สิทธิ์ทั้งหมดของ Pro Plan++ ครบถ้วน',
-      'วิเคราะห์พล็อตทั้งเล่ม (ฟรี 10 ครั้ง/เดือน)',
-      'แปลภาษาทั้งตอนโดยคงบริบทตัวละคร',
-      'จัดหน้าและส่งออกไฟล์ E-Book (EPUB / PDF)',
-      'เข้าถึงโมเดล AI สปีดสูงสุด (High-Priority AI)'
-    ],
-    Overwrite: true,
-    buttonText: 'เลือก Ultra Plan',
     isPrimary: false,
     badge: null,
     pixelColors: ['#fef3c7', '#fde047', '#ca8a04'],
     glowHex: '#eab308'
   }
-]
+}
 
 export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
   const { user } = useAuth()
@@ -86,8 +39,13 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
     planTier: contextPlanTier,
     trialUsed,
     trialCountdown,
+    activeSubscription,
+    membershipPlans,
+    membershipPlansLoading,
+    refreshMembershipStatus,
     activateProTrial,
     changePlan,
+    openCheckoutModal,
     setActiveModal
   } = useApp()
 
@@ -95,44 +53,85 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
   const activeTier = getTierInfo(contextPlanTier || activePlan)
   const isProTrial = activeTier.id === 'pro_trial'
 
+  if (membershipPlansLoading && (!membershipPlans || membershipPlans.length === 0)) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
+        {[1, 2, 3].map((idx) => (
+          <div
+            key={idx}
+            className="h-[430px] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse p-6"
+          />
+        ))}
+      </div>
+    )
+  }
+
+  if (!membershipPlans || membershipPlans.length === 0) {
+    return (
+      <div className="w-full max-w-3xl mx-auto rounded-2xl border border-amber-400/30 bg-amber-500/10 p-6 text-center space-y-3">
+        <div className="text-sm font-bold text-amber-200">
+          ยังไม่สามารถโหลดตารางแพ็กเกจสมาชิกจากฐานข้อมูลได้ในขณะนี้
+        </div>
+        <p className="text-xs text-slate-300">
+          ราคาและรายละเอียดแพ็กเกจถูกดึงจากฐานข้อมูลโดยตรงเพื่อความถูกต้อง กรุณาลองโหลดใหม่อีกครั้ง
+        </p>
+        <button
+          type="button"
+          onClick={() => refreshMembershipStatus?.()}
+          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold cursor-pointer transition"
+        >
+          โหลดข้อมูลแพ็กเกจใหม่
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto items-stretch">
-      {PRICING_PLANS.map((planItem) => {
-        const itemTier = getTierInfo(planItem.tierId)
-        
-        // Exact state calculation
+      {membershipPlans.map((dbPlan) => {
+        const slug = String(dbPlan.slug || 'free').toLowerCase()
+        const visual = PLAN_VISUAL_META[slug] || PLAN_VISUAL_META.free
+        const priceNum = Number(dbPlan.price || 0)
+        const durationDays = Number(dbPlan.duration_days || 0)
+        const trixGrant = Number(dbPlan.trix_grant || 0)
+        const features = Array.isArray(dbPlan.features) ? dbPlan.features : []
+        const itemTier = getTierInfo(slug)
         const isCurrentActive = isProTrial
-          ? planItem.tierId === 'pro'
+          ? slug === 'pro'
           : activeTier.id === itemTier.id
-
-        // Strict No-Downgrade calculation
         const isLowerTier = activeTier.rank > itemTier.rank
+        const isPaidActive = Boolean(user && (activeTier.id === 'pro' || activeTier.id === 'ultra'))
+        const canUpgradeToUltra = isPaidActive && activeTier.id === 'pro' && slug === 'ultra'
+        const canRenewCurrentPaid = isPaidActive && activeTier.id === slug
+
+        const trixBadgeText =
+          visual.trixBadge || (trixGrant > 0 ? `✦ รับ ${trixGrant.toLocaleString()} Trix / ${durationDays} วัน` : '✦ สมาชิก Plottrix')
+        const cycleText = visual.cycle || (durationDays > 0 ? `/ ${durationDays} วัน` : '')
 
         return (
           <PixelCard
-            key={planItem.name}
+            key={dbPlan.id || slug}
             className={`price-card relative flex flex-col justify-between p-6 sm:p-7 rounded-2xl transition-all duration-300 ${
-              planItem.isPrimary
+              visual.isPrimary
                 ? 'featured border border-purple-500/50 shadow-[0_12px_40px_rgba(147,51,234,0.28)] ring-1 ring-purple-400/40 bg-gradient-to-b from-[#2a1745] to-[#140d24]'
                 : 'border border-plottrix-line/40 bg-plottrix-panel2/60 hover:border-purple-400/30'
             }`}
-            colors={planItem.pixelColors}
-            glowHex={planItem.glowHex}
+            colors={visual.pixelColors}
+            glowHex={visual.glowHex}
           >
-            {/* Badges */}
             <div className="flex items-center justify-between mb-3 min-h-[26px]">
-              {planItem.badge && !isProTrial && (
+              {visual.badge && !isProTrial && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md border border-purple-300/30">
-                  {planItem.badge}
+                  {visual.badge}
                 </div>
               )}
-              {isProTrial && planItem.tierId === 'pro' && (
+              {isProTrial && slug === 'pro' && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-amber-200 bg-amber-500/20 border border-amber-400/40 animate-pulse">
                   <span>⏱️</span>
                   <span>ช่วงทดลองใช้ Pro 3 วัน</span>
                 </div>
               )}
-              {isCurrentActive && !isProTrial && (
+              {user && isCurrentActive && !isProTrial && (
                 <span className="ml-auto text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   แผนปัจจุบัน
                 </span>
@@ -142,54 +141,63 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="plan-name text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  {planItem.name}
+                  {dbPlan.name}
                 </h3>
               </div>
 
               <div className="plan-sub text-xs text-plottrix-muted mt-1 mb-4">
-                {planItem.sub}
+                {visual.sub}
               </div>
 
               <div className="plan-price flex items-baseline gap-1 text-3xl sm:text-4xl font-extrabold text-white mb-2">
                 <span>
-                  {planItem.priceNum === 0 ? '฿0' : (
+                  {priceNum === 0 ? (
+                    '฿0'
+                  ) : (
                     <>
                       <span>฿</span>
-                      <CountUp to={planItem.priceNum} duration={1000} />
+                      <CountUp to={priceNum} duration={1000} />
                     </>
                   )}
                 </span>
                 <span className="text-xs text-plottrix-muted font-normal">
-                  {planItem.cycle}
+                  {cycleText}
                 </span>
               </div>
 
               <div className="plan-trix-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-400/30 text-amber-200 mb-4">
                 <img src="/Logo/TrixCoinLogo.png" alt="Trix Coin" className="w-4 h-4 object-contain inline-block" />
-                <span>{planItem.trixBadge}</span>
+                <span>{trixBadgeText}</span>
               </div>
 
-              {/* Live Trial Countdown Box for Pro Plan card when in trial */}
-              {isProTrial && planItem.tierId === 'pro' && (
+              {isProTrial && slug === 'pro' && (
                 <div className="mb-4 p-3 rounded-xl bg-purple-500/20 border border-purple-400/40 text-center">
                   <div className="text-[10px] uppercase tracking-wider text-purple-300 font-bold mb-0.5 flex items-center justify-center gap-1">
                     <span>⏱️</span>
                     <span>เหลือเวลาทดลองใช้ Pro ฟรี</span>
                   </div>
-                  <div className="text-sm font-extrabold text-white tracking-wide text-amber-300">
+                  <div className="text-sm font-extrabold tracking-wide text-amber-300">
                     {trialCountdown || 'กำลังคำนวณ...'}
                   </div>
                 </div>
               )}
 
+              {isPaidActive && isCurrentActive && activeSubscription?.expires_at && (
+                <div className="mb-4 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-center">
+                  <div className="text-[10px] text-emerald-300 font-bold">
+                    ✓ สมาชิกใช้งานได้ถึง {formatExpiryDateTime(activeSubscription.expires_at)}
+                  </div>
+                </div>
+              )}
+
               <p className="plan-desc text-xs text-plottrix-text/80 mb-5 leading-relaxed">
-                {planItem.desc}
+                {dbPlan.description}
               </p>
 
               <div className="border-t border-white/10 my-4" />
 
               <ul className="plan-list space-y-2.5 text-xs text-plottrix-text/90 mb-6">
-                {planItem.features.map((feat, fIdx) => (
+                {features.map((feat, fIdx) => (
                   <li key={fIdx} className="flex items-start gap-2">
                     <span className="text-emerald-400 font-bold shrink-0">✓</span>
                     <span>{feat}</span>
@@ -198,22 +206,26 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
               </ul>
             </div>
 
-            <div className="mt-auto pt-4 space-y-1.5">
-              {/* Card Action Buttons with Production Business Logic */}
+            <div className="mt-auto pt-4 space-y-2">
               {(() => {
-                // Case 1: Currently active plan (only when user is logged in)
-                if (user && isCurrentActive) {
-                  if (isProTrial) {
-                    return (
+                if (user && isCurrentActive && isProTrial) {
+                  return (
+                    <div className="space-y-2">
+                      <div className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-center bg-purple-500/20 text-purple-200 border border-purple-400/40">
+                        ✓ กำลังทดลองใช้ Pro ({trialCountdown || '3 วัน'})
+                      </div>
                       <button
                         type="button"
-                        disabled
-                        className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-purple-500/20 text-purple-200 border border-purple-400/40 cursor-default shadow-sm"
+                        onClick={() => openCheckoutModal('pro')}
+                        className="w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-lg shadow-purple-600/30 border border-purple-300/40 transition cursor-pointer"
                       >
-                        ✓ กำลังทดลองใช้ Pro ({trialCountdown || '3 วัน'})
+                        อัปเกรดเป็น Pro Plan++ เต็มรูปแบบ →
                       </button>
-                    )
-                  }
+                    </div>
+                  )
+                }
+
+                if (user && isCurrentActive && slug === 'free') {
                   return (
                     <button
                       type="button"
@@ -225,7 +237,18 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
                   )
                 }
 
-                // Case 2: Lower tier (Strict No-Downgrade Rule)
+                if (canRenewCurrentPaid) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => openCheckoutModal(slug)}
+                      className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 transition cursor-pointer"
+                    >
+                      ต่ออายุ {dbPlan.name} (+{durationDays} วัน) →
+                    </button>
+                  )
+                }
+
                 if (isLowerTier) {
                   return (
                     <div>
@@ -244,64 +267,55 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
                   )
                 }
 
-                // Case 3: Pro Plan for Free-tier users or guests
-                if (planItem.tierId === 'pro' && (!user || activeTier.id === 'free')) {
-                  if (!trialUsed) {
-                    return (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => (user ? activateProTrial() : setActiveModal('auth'))}
-                          className="w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-purple-500 via-indigo-500 to-fuchsia-500 hover:brightness-110 text-white shadow-lg shadow-purple-600/40 border border-purple-300/50 transition cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <span>{user ? '⚡' : '🔒'}</span>
-                          <span>{user ? 'ทดลองใช้ Pro ฟรี 3 วัน' : 'เข้าสู่ระบบเพื่อทดลอง Pro ฟรี 3 วัน'}</span>
-                        </button>
-                        <div className="text-[10px] text-center text-purple-300 mt-1.5 font-medium">
-                          ✦ สิทธิ์ทดลองใช้ 72 ชม. (1 บัญชี / 1 ครั้ง ไม่ต้องใส่บัตร)
-                        </div>
-                      </div>
-                    )
-                  } else {
-                    return (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => changePlan('pro')}
-                          disabled
-                          className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 text-slate-400 border border-white/10 cursor-not-allowed opacity-70"
-                        >
-                          ระบบชำระเงินกำลังเปิดให้บริการเร็วๆ นี้
-                        </button>
-                        <div className="text-[10px] text-center text-amber-400/90 mt-1">
-                          คุณใช้สิทธิ์ทดลองใช้ 3 วันไปแล้ว (รอเปิดตัว Payment Gateway)
-                        </div>
-                      </div>
-                    )
-                  }
-                }
-
-                // Case 4: Ultra Plan (Paid - Coming soon)
-                if (planItem.tierId === 'ultra') {
+                if (slug === 'pro') {
                   return (
-                    <div>
+                    <div className="space-y-2">
+                      {(!user || activeTier.id === 'free') && !trialUsed && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => (user ? activateProTrial() : setActiveModal('auth'))}
+                            className="w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-purple-500 via-indigo-500 to-fuchsia-500 hover:brightness-110 text-white shadow-lg shadow-purple-600/40 border border-purple-300/50 transition cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>{user ? '⚡' : '🔒'}</span>
+                            <span>{user ? 'ทดลองใช้ Pro ฟรี 3 วัน' : 'เข้าสู่ระบบเพื่อทดลอง Pro ฟรี 3 วัน'}</span>
+                          </button>
+                          <div className="text-[10px] text-center text-purple-300 mt-1 font-medium">
+                            ✦ ทดลองฟรี 72 ชม. (1 ครั้ง/บัญชี ไม่ต้องผูกบัตร)
+                          </div>
+                        </div>
+                      )}
                       <button
                         type="button"
-                        onClick={() => changePlan('ultra')}
-                        disabled
-                        className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 text-amber-200/80 border border-amber-400/20 cursor-not-allowed opacity-75 flex items-center justify-center gap-1.5"
+                        onClick={() => (user ? openCheckoutModal('pro') : setActiveModal('auth'))}
+                        className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition cursor-pointer ${
+                          !trialUsed && (!user || activeTier.id === 'free')
+                            ? 'bg-white/10 hover:bg-purple-600/30 text-white border border-purple-400/30'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-lg shadow-purple-600/35 border border-purple-300/40'
+                        }`}
                       >
-                        <span>🔒</span>
-                        <span>ระบบชำระเงินเปิดบริการเร็วๆ นี้</span>
+                        {user ? `สมัคร ${dbPlan.name} (${priceNum.toLocaleString()} ฿)` : `เข้าสู่ระบบเพื่อสมัคร ${dbPlan.name}`}
                       </button>
-                      <div className="text-[10px] text-center text-slate-400 mt-1">
-                        กำลังเชื่อมต่อ Payment Gateway เพื่อรับชำระเงินจริง
-                      </div>
                     </div>
                   )
                 }
 
-                // Fallback (Free Plan button when logged out -> opens Auth Modal)
+                if (slug === 'ultra') {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => (user ? openCheckoutModal('ultra') : setActiveModal('auth'))}
+                      className="w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-slate-950 shadow-lg shadow-amber-500/25 border border-amber-300/60 transition cursor-pointer"
+                    >
+                      {!user
+                        ? `🔒 เข้าสู่ระบบเพื่อสมัคร ${dbPlan.name}`
+                        : canUpgradeToUltra
+                        ? `อัปเกรดเป็น ${dbPlan.name} (${priceNum.toLocaleString()} ฿) →`
+                        : `สมัคร ${dbPlan.name} (${priceNum.toLocaleString()} ฿) →`}
+                    </button>
+                  )
+                }
+
                 return (
                   <button
                     type="button"
@@ -310,11 +324,11 @@ export default function PricingCards({ currentPlan: propPlan, onSelectPlan }) {
                         setActiveModal('auth')
                         return
                       }
-                      onSelectPlan ? onSelectPlan(planItem.name) : changePlan(planItem.name)
+                      onSelectPlan ? onSelectPlan(dbPlan.name) : changePlan(slug)
                     }}
                     className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-white/5 hover:bg-purple-600/20 text-white border border-white/15 cursor-pointer"
                   >
-                    {!user && planItem.tierId === 'free' ? '🔒 เข้าสู่ระบบเพื่อเริ่มต้นฟรี' : planItem.buttonText}
+                    {!user ? '🔒 เข้าสู่ระบบเพื่อเริ่มต้นฟรี' : visual.buttonText}
                   </button>
                 )
               })()}
