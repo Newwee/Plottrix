@@ -114,7 +114,7 @@ export function doesMaskedIdentifierMatch(observedMasked: unknown, expectedPlain
   return 'AMBIGUOUS'
 }
 
-const ALLOWED_THB_CURRENCIES = new Set(['THB', 'บาท', 'BAHT', '฿'])
+const ALLOWED_THB_CURRENCIES = new Set(['THB', '764', 'บาท', 'BAHT', '฿'])
 
 export function isThaiBahtCurrency(value: unknown): boolean {
   const normalized = String(value || '').trim().toUpperCase()
