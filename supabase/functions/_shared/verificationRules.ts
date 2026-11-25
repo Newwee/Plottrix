@@ -114,6 +114,13 @@ export function doesMaskedIdentifierMatch(observedMasked: unknown, expectedPlain
   return 'AMBIGUOUS'
 }
 
+const ALLOWED_THB_CURRENCIES = new Set(['THB', 'บาท', 'BAHT', '฿'])
+
+export function isThaiBahtCurrency(value: unknown): boolean {
+  const normalized = String(value || '').trim().toUpperCase()
+  return ALLOWED_THB_CURRENCIES.has(normalized)
+}
+
 export function normalizeName(value: unknown): string {
   return String(value || '')
     .trim()
@@ -384,14 +391,14 @@ export function evaluateEasySlipVerification(input: {
     }
   }
 
-  const localCurrency = String(localObj.currency || '').trim().toUpperCase()
-  if (localCurrency !== 'THB') {
+  const localCurrencyRaw = String(localObj.currency || '').trim()
+  if (!isThaiBahtCurrency(localCurrencyRaw)) {
     return {
       decision: 'REJECT',
       transRef,
       reasonCode: 'UNSUPPORTED_SLIP_CURRENCY',
-      failureReason: `Slip local currency ${localCurrency || 'UNKNOWN'} is not THB`,
-      userMessage: 'สกุลเงินในสลิปไม่รองรับ (ต้องเป็นเงินบาท THB เท่านั้น)'
+      failureReason: `Slip local currency ${localCurrencyRaw || 'UNKNOWN'} is not THB`,
+      userMessage: 'สกุลเงินในสลิปไม่รองรับ (ต้องเป็นเงินบาท THB / บาท เท่านั้น)'
     }
   }
 
