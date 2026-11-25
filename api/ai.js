@@ -6,6 +6,7 @@
 
 import { processAiRequest } from './aiEngine.js'
 import { createClient } from '@supabase/supabase-js'
+import { getModelDisplayInfo } from '../src/lib/aiRouting.js'
 
 export default async function handler(req, res) {
   // 1. Strict CORS Policy
@@ -27,6 +28,16 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: { message: 'Method Not Allowed' } })
+  }
+
+  const wantsStream = Boolean(req.body?.stream)
+  let streamStarted = false
+
+  const sendEvent = (evt) => {
+    if (!wantsStream || !streamStarted || res.writableEnded) return
+    try {
+      res.write(`${JSON.stringify({ ...evt, ts: Date.now() })}\n`)
+    } catch (_) {}
   }
 
   try {
@@ -57,9 +68,30 @@ export default async function handler(req, res) {
       authedUser = user
     }
 
+    if (wantsStream) {
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
+      })
+      res.flushHeaders?.()
+      streamStarted = true
+
+      sendEvent({
+        type: 'progress',
+        phase: 'auth_verified',
+        stepText: 'ยืนยันเซสชันบัญชีผู้ใช้สำเร็จ กำลังจัดเส้นทางโมเดล AI'
+      })
+    }
+
     // Process real AI request via Astracode (claude-haiku-5.5-eco / chatgpt-6-luna)
     const defaultKey = process.env.ASTRACODE_API_KEY || process.env.GEMINI_API_KEY || ''
-    const aiResponse = await processAiRequest(req.body, defaultKey)
+    const startedAt = Date.now()
+    const aiResponse = await processAiRequest(
+      req.body,
+      defaultKey,
+      wantsStream ? (evt) => sendEvent({ type: 'progress', ...evt }) : null
+    )
 
     // Calculate Trix cost
     const actionCosts = {
@@ -73,6 +105,17 @@ export default async function handler(req, res) {
     }
     const actionType = req.body.actionType || 'polish'
     const cost = actionCosts[actionType] !== undefined ? actionCosts[actionType] : 1
+
+    if (wantsStream && cost > 0) {
+      sendEvent({
+        type: 'progress',
+        phase: 'deducting_trix',
+        activeModel: aiResponse.model,
+        modelDisplayName: aiResponse.modelDisplayName || getModelDisplayInfo(aiResponse.model).label,
+        fallbackUsed: Boolean(aiResponse.fallbackUsed),
+        stepText: `บันทึกการใช้ ${cost} Trix และจัดเตรียมผลลัพธ์`
+      })
+    }
 
     // Deduct Trix in database for authenticated user
     if (authedUser && supabase && cost > 0) {
@@ -111,14 +154,43 @@ export default async function handler(req, res) {
       }
     }
 
+    const modelDisplayName = aiResponse.modelDisplayName || getModelDisplayInfo(aiResponse.model).label
+    const durationSec = Number(((Date.now() - startedAt) / 1000).toFixed(2))
+
+    if (wantsStream) {
+      sendEvent({
+        type: 'done',
+        success: true,
+        cost,
+        model: aiResponse.model,
+        modelDisplayName,
+        fallbackUsed: Boolean(aiResponse.fallbackUsed),
+        attemptedModels: aiResponse.attemptedModels || [aiResponse.model],
+        durationSec,
+        result: aiResponse.result
+      })
+      return res.end()
+    }
+
     return res.status(200).json({
       success: true,
       cost,
       model: aiResponse.model,
+      modelDisplayName,
+      fallbackUsed: Boolean(aiResponse.fallbackUsed),
       result: aiResponse.result
     })
   } catch (err) {
     console.error('[AI Handler Error]', err)
+    if (streamStarted && !res.writableEnded) {
+      sendEvent({
+        type: 'error',
+        error: {
+          message: err.message || 'เกิดข้อผิดพลาดในการประมวลผลคำขอ AI'
+        }
+      })
+      return res.end()
+    }
     return res.status(500).json({
       error: {
         message: err.message || 'เกิดข้อผิดพลาดในการประมวลผลคำขอ AI'

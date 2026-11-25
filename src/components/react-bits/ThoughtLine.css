@@ -10,9 +10,10 @@
   --tl-done: 0.75;
   --tl-timer: 0.55;
 
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
+  width: 100%;
   color: var(--tl-color);
   font-family: inherit;
   font-size: var(--tl-font);
@@ -173,18 +174,20 @@
 .thought-line__steps {
   display: flex;
   flex-direction: column;
-  gap: 0.45em;
-  width: max-content;
-  padding: 0.6em 0 0.2em 1.6em;
-  font-size: 0.875em;
+  gap: 0.55em;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.75em 0 0.25em 1.25em;
+  font-size: 0.85em;
   font-weight: 400;
-  white-space: nowrap;
+  line-height: 1.45;
+  white-space: normal;
 }
 
 .thought-line__step {
   display: flex;
-  align-items: center;
-  gap: 0.5em;
+  align-items: flex-start;
+  gap: 0.55em;
   opacity: 1;
   transform: translateY(0);
   transition:

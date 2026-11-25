@@ -7,10 +7,16 @@
  */
 
 import https from 'https'
+import {
+  DEFAULT_FAST_MODEL,
+  DEFAULT_HARD_MODEL,
+  ACTION_LABELS,
+  getModelDisplayInfo,
+  selectModelRoute,
+  estimateAiDuration
+} from '../src/lib/aiRouting.js'
 
 const DEFAULT_ASTRACODE_BASE_URL = 'https://astracode.panderx.xyz/v1'
-const DEFAULT_FAST_MODEL = 'claude-haiku-5.5-eco'
-const DEFAULT_HARD_MODEL = 'chatgpt-6-luna'
 
 const GEMINI_FALLBACK_CHAIN = [
   'gemini-3.5-flash-lite',
@@ -24,23 +30,7 @@ const GEMINI_FALLBACK_CHAIN = [
 export function selectAstracodeModelChain(actionType, text = '', customSkillPrompt = '') {
   const fastModel = process.env.ASTRACODE_FAST_MODEL || DEFAULT_FAST_MODEL
   const hardModel = process.env.ASTRACODE_HARD_MODEL || DEFAULT_HARD_MODEL
-  const cleanText = (text || '').trim()
-  const cleanPrompt = (customSkillPrompt || '').trim()
-
-  const hardActions = new Set(['polish', 'continuity', 'plotBranch', 'fullBook'])
-  const isLongPayload = cleanText.length > 2500
-  const hasComplexInstruction =
-    actionType === 'custom' &&
-    (cleanText.length > 1500 ||
-      /วิเคราะห์|โครงเรื่อง|พล็อต|continuity|plot|chapter|บททั้งหมด/i.test(cleanPrompt))
-
-  const isHardTask = hardActions.has(actionType) || isLongPayload || hasComplexInstruction
-
-  // Always include the counterpart as automatic fallback in case of transient upstream 502/429
-  if (isHardTask) {
-    return fastModel !== hardModel ? [hardModel, fastModel] : [hardModel]
-  }
-  return fastModel !== hardModel ? [fastModel, hardModel] : [fastModel]
+  return selectModelRoute(actionType, text, customSkillPrompt, fastModel, hardModel).chain
 }
 
 function callGemini(model, apiKey, payload) {
@@ -167,7 +157,15 @@ function extractJson(rawText) {
   return null
 }
 
-export async function processAiRequest(body, defaultKey = '') {
+export async function processAiRequest(body, defaultKey = '', onProgress = null) {
+  const emit = (evt) => {
+    if (typeof onProgress === 'function') {
+      try {
+        onProgress(evt)
+      } catch (_) {}
+    }
+  }
+
   const {
     actionType = 'polish',
     payload = {},
@@ -418,20 +416,98 @@ ${text}
   // 1. Astracode OpenAI-Compatible Gateway with complexity routing + automatic failover
   if (astraKey) {
     const astraBase = process.env.ASTRACODE_BASE_URL || DEFAULT_ASTRACODE_BASE_URL
-    const modelChain = selectAstracodeModelChain(actionType, text, customSkillPrompt)
-    let astraLastError = null
+    const fastModel = process.env.ASTRACODE_FAST_MODEL || DEFAULT_FAST_MODEL
+    const hardModel = process.env.ASTRACODE_HARD_MODEL || DEFAULT_HARD_MODEL
+    const route = selectModelRoute(actionType, text, customSkillPrompt, fastModel, hardModel)
+    const modelChain = route.chain
+    const primaryInfo = getModelDisplayInfo(route.primaryModel)
+    const initialEstimate = estimateAiDuration({
+      actionType,
+      textLength: text.length,
+      characterCount: characters.length,
+      dictionaryCount: dictionary.length,
+      modelId: route.primaryModel
+    })
 
+    emit({
+      phase: 'route_selected',
+      activeModel: route.primaryModel,
+      modelDisplayName: primaryInfo.label,
+      modelTierLabel: primaryInfo.tierLabel,
+      modelChain,
+      routeReason: route.routeReason,
+      estimate: initialEstimate,
+      stepText: `จัดเส้นทางโมเดล: ${primaryInfo.label} (${route.routeReason})`
+    })
+
+    emit({
+      phase: 'prompt_built',
+      activeModel: route.primaryModel,
+      modelDisplayName: primaryInfo.label,
+      modelTierLabel: primaryInfo.tierLabel,
+      estimate: initialEstimate,
+      promptChars: systemInstructionText.length + userPromptText.length,
+      inputChars: text.length,
+      characterCount: characters.length,
+      dictionaryCount: dictionary.length,
+      stepText: `ประกอบชุดคำสั่งจริง (${(systemInstructionText.length + userPromptText.length).toLocaleString()} ตัวอักษร · ${characters.length} ตัวละคร · ${dictionary.length} คำศัพท์เฉพาะ)`
+    })
+
+    let astraLastError = null
+    const attemptedModels = []
+    const modelErrors = []
     const engineStart = Date.now()
 
-    for (const model of modelChain) {
+    for (let idx = 0; idx < modelChain.length; idx++) {
+      const model = modelChain[idx]
+      const modelInfo = getModelDisplayInfo(model)
       const elapsedMs = Date.now() - engineStart
-      const remainingBudget = 55000 - elapsedMs
+      const remainingBudget = 57000 - elapsedMs
       if (remainingBudget < 3000) break
 
-      // Give fast Haiku up to 15s and reasoning 6 Luna up to remaining budget (capped at 42s)
+      // Reserve 16s for Haiku fallback when 6 Luna runs first, otherwise give 6 Luna up to remaining budget
+      const reserveForBackup = idx === 0 && modelChain.length > 1 && !model.includes('haiku') ? 16000 : 0
       const perModelTimeout = model.includes('haiku')
         ? Math.min(15000, remainingBudget)
-        : Math.min(42000, remainingBudget)
+        : Math.min(52000, Math.max(20000, remainingBudget - reserveForBackup))
+
+      const currentEstimate = estimateAiDuration({
+        actionType,
+        textLength: text.length,
+        characterCount: characters.length,
+        dictionaryCount: dictionary.length,
+        modelId: model
+      })
+
+      attemptedModels.push(model)
+      const isFallbackAttempt = idx > 0
+
+      emit({
+        phase: 'calling_model',
+        activeModel: model,
+        modelDisplayName: modelInfo.label,
+        modelTierLabel: modelInfo.tierLabel,
+        attemptIndex: idx,
+        fallbackUsed: isFallbackAttempt,
+        timeoutSec: Math.round(perModelTimeout / 1000),
+        estimate: currentEstimate,
+        stepText: `กำลังส่งคำขอไปยังโมเดล ${modelInfo.label} (${ACTION_LABELS[actionType] || 'ประมวลผล'}) คาดใช้ ${currentEstimate.label}`
+      })
+
+      const callStartedAt = Date.now()
+      const heartbeatTimer = typeof onProgress === 'function'
+        ? setInterval(() => {
+            emit({
+              phase: 'model_waiting',
+              activeModel: model,
+              modelDisplayName: modelInfo.label,
+              modelTierLabel: modelInfo.tierLabel,
+              fallbackUsed: isFallbackAttempt,
+              modelElapsedSec: Math.round((Date.now() - callStartedAt) / 1000),
+              estimate: currentEstimate
+            })
+          }, 2500)
+        : null
 
       try {
         const resp = await callOpenAiCompatible(
@@ -444,28 +520,85 @@ ${text}
           perModelTimeout
         )
 
+        if (heartbeatTimer) clearInterval(heartbeatTimer)
+
         if (resp.statusCode === 200 && resp.data?.choices?.[0]?.message?.content) {
           const rawContent = resp.data.choices[0].message.content
+          const usedModel = resp.data.model || model
+          const usedInfo = getModelDisplayInfo(usedModel)
+
+          emit({
+            phase: 'validating_output',
+            activeModel: usedModel,
+            modelDisplayName: usedInfo.label,
+            modelTierLabel: usedInfo.tierLabel,
+            fallbackUsed: isFallbackAttempt,
+            responseChars: rawContent.length,
+            stepText: `ได้รับคำตอบจาก ${usedInfo.label} (${rawContent.length.toLocaleString()} ตัวอักษร) — กำลังตรวจสอบความถูกต้อง`
+          })
+
           const parsed = extractJson(rawContent)
           if (parsed) {
             return {
               success: true,
-              model: resp.data.model || model,
+              model: usedModel,
+              modelDisplayName: usedInfo.label,
+              fallbackUsed: isFallbackAttempt,
+              attemptedModels,
               result: parsed
             }
           }
         }
 
         const errMsg = resp.data?.error?.message_th || resp.data?.error?.message || `HTTP ${resp.statusCode}`
-        astraLastError = new Error(`[Astracode / ${model}] ${errMsg}`)
+        modelErrors.push(`${modelInfo.label}: ${errMsg}`)
+        astraLastError = new Error(`[Astracode / ${modelInfo.label}] ${errMsg}`)
         console.warn(`[aiEngine] Model ${model} failed (${errMsg}), switching to fallback model if available.`)
+
+        const nextModel = modelChain[idx + 1]
+        if (nextModel) {
+          const nextInfo = getModelDisplayInfo(nextModel)
+          emit({
+            phase: 'model_fallback',
+            failedModel: model,
+            failedModelDisplayName: modelInfo.label,
+            activeModel: nextModel,
+            modelDisplayName: nextInfo.label,
+            modelTierLabel: nextInfo.tierLabel,
+            fallbackUsed: true,
+            stepText: `${modelInfo.label} ไม่พร้อมตอบ (${errMsg}) — สลับอัตโนมัติเป็น ${nextInfo.label}`
+          })
+        }
       } catch (err) {
+        if (heartbeatTimer) clearInterval(heartbeatTimer)
+        const shortErr = err.message?.includes('timed out')
+          ? `หมดเวลา (${Math.round(perModelTimeout / 1000)}s)`
+          : (err.message || 'ขัดข้อง')
+        modelErrors.push(`${modelInfo.label}: ${shortErr}`)
         astraLastError = err
         console.warn(`[aiEngine] Model ${model} exception:`, err.message)
+
+        const nextModel = modelChain[idx + 1]
+        if (nextModel) {
+          const nextInfo = getModelDisplayInfo(nextModel)
+          emit({
+            phase: 'model_fallback',
+            failedModel: model,
+            failedModelDisplayName: modelInfo.label,
+            activeModel: nextModel,
+            modelDisplayName: nextInfo.label,
+            modelTierLabel: nextInfo.tierLabel,
+            fallbackUsed: true,
+            stepText: `${modelInfo.label} ตอบช้า/ขัดข้อง (${shortErr}) — สลับอัตโนมัติเป็น ${nextInfo.label}`
+          })
+        }
       }
     }
 
     if (!geminiKey) {
+      if (modelErrors.length > 0) {
+        throw new Error(`โมเดลไม่สามารถตอบได้ในขณะนี้ (${modelErrors.join(' · ')})`)
+      }
       throw astraLastError || new Error('Failed to generate response from Astracode API.')
     }
   }
@@ -490,6 +623,16 @@ ${text}
   let lastError = null
 
   for (const model of GEMINI_FALLBACK_CHAIN) {
+    const gInfo = getModelDisplayInfo(model)
+    emit({
+      phase: 'calling_model',
+      activeModel: model,
+      modelDisplayName: gInfo.label,
+      modelTierLabel: gInfo.tierLabel,
+      fallbackUsed: true,
+      stepText: `กำลังใช้โมเดลสำรอง ${gInfo.label} ประมวลผลคำขอ`
+    })
+
     try {
       const resp = await callGemini(model, geminiKey, geminiPayload)
       if (resp.statusCode === 200 && resp.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -499,6 +642,9 @@ ${text}
           return {
             success: true,
             model,
+            modelDisplayName: gInfo.label,
+            fallbackUsed: true,
+            attemptedModels: [model],
             result: parsed
           }
         }

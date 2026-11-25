@@ -242,10 +242,15 @@ export default function ThoughtLine({
         <div className="thought-line__trace" data-open={open ? '' : undefined} aria-hidden={!open}>
           <div className="thought-line__fold">
             <div className="thought-line__steps">
-              {steps.map((text, i) => {
-                const done = !isWorking || i < steps.length - 1;
+              {steps.map((item, i) => {
+                const isObj = item && typeof item === 'object';
+                const text = isObj ? item.text : String(item || '');
+                const stepKey = isObj && item.id ? item.id : `${i}-${text}`;
+                const done = isObj && item.status
+                  ? item.status === 'done' || !isWorking
+                  : !isWorking || i < steps.length - 1;
                 return (
-                  <div key={`${i}-${text}`} className="thought-line__step" data-done={done ? '' : undefined}>
+                  <div key={stepKey} className="thought-line__step" data-done={done ? '' : undefined}>
                     <span className="thought-line__mark" aria-hidden="true">
                       {done ? (
                         <HugeiconsIcon icon={Tick02Icon} size="1em" strokeWidth={2.5} />

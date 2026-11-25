@@ -397,7 +397,7 @@ function FloatingAiToolbar() {
                     status="running"
                     size={12}
                     fontSize={10}
-                    label="กำลังประมวลผล..."
+                    label={aiDrawer.modelDisplayName ? `${aiDrawer.modelDisplayName}...` : 'กำลังประมวลผล...'}
                     color="#c084fc"
                   />
                 </div>

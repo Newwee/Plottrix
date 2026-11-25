@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthContext'
 import { getTierInfo, checkPlanTransition, getTrialCountdown, PLAN_TIERS } from '../lib/subscription'
 import { safeLocalStorageSet, safeLocalStorageGet, safeLocalStorageGetJSON } from '../lib/safeStorage'
+import { selectModelRoute, getModelDisplayInfo, estimateAiDuration, ACTION_LABELS } from '../lib/aiRouting'
 
 const AppContext = createContext(null)
 
@@ -104,6 +105,16 @@ export function AppProvider({ children }) {
     result: null,
     error: null,
     steps: [],
+    startedAt: 0,
+    activeStageText: '',
+    activeModel: '',
+    modelDisplayName: '',
+    modelTierLabel: '',
+    routeReason: '',
+    modelChain: [],
+    fallbackUsed: false,
+    estimate: null,
+    inputStats: null,
     thoughtTime: 0
   })
 
@@ -1777,49 +1788,32 @@ export function AppProvider({ children }) {
       return
     }
 
-    const STEP_SETS = {
-      proofread: [
-        'อ่านวิเคราะห์โครงสร้างประโยคและวรรคตอน',
-        'ตรวจสอบพจนานุกรมคำผิดและคำทับศัพท์',
-        'เทียบเคียงคำเฉพาะจาก Custom Dictionary',
-        'จัดทำรายการคำผิดและคำที่แนะนำให้แก้'
-      ],
-      polish: [
-        'อ่านบริบทอารมณ์และสำนวนต้นฉบับ',
-        `ดึงคลังคำศัพท์เฉพาะแนว '${genre}'`,
-        `ปรับระดับภาษาให้ตรงกับ Persona '${personas.find(p => p.id === activePersonaId)?.name || 'พรรณนาลึกซึ้ง'}'`,
-        customSkillPrompt ? 'ผนวกคำสั่งพิเศษจาก Custom AI Skill' : 'เกลาจังหวะการอ่านและตัดคำซ้ำซ้อน'
-      ],
-      continuity: [
-        'สแกนรายชื่อและพฤติกรรมตัวละครในฉาก',
-        'เปรียบเทียบข้อมูลกับ Character Bible',
-        'ตรวจเช็กลำดับเวลาและตรรกะในโลกนิยาย',
-        'ประเมินคะแนนความสมเหตุสมผลและชี้จุดขัดแย้ง'
-      ],
-      plotBranch: [
-        'จับใจความสำคัญและปมขัดแย้งหลักของฉาก',
-        'สร้าง 3 ทางแยกเนื้อเรื่องที่น่าติดตาม',
-        'คำนวณแรงขับดันตัวละครและผลกระทบต่อเนื่อง',
-        'ร่างตัวอย่างย่อหน้าเริ่มต้นของแต่ละเส้นทาง'
-      ],
-      translate: [
-        'วิเคราะห์ข้อความต้นฉบับอย่างเคร่งครัด',
-        'แปลคำศัพท์และสำนวนวรรณกรรมอย่างตรงไปตรงมา',
-        'ขัดเกลาไวยากรณ์ให้ถูกต้องโดยไม่ต่อเติมเนื้อหาเกินจริง'
-      ],
-      fullBook: [
-        'อ่านโครงเรื่องภาพรวมทุกบทที่เขียน',
-        'วิเคราะห์จังหวะการดำเนินเรื่อง (Pacing)',
-        'ตรวจสอบพัฒนาการตัวละครและช่องโหว่พล็อต'
-      ],
-      custom: [
-        'ประมวลผลคำสั่งพิเศษจากผู้ใช้',
-        'ปรับแต่งเนื้อหาตามข้อกำหนด',
-        'จัดเตรียมผลลัพธ์พร้อมใช้งาน'
-      ]
-    }
+    const activePersonaObj = personas.find(p => p.id === activePersonaId)
+    const personaName = activePersonaObj?.name || 'พรรณนาลึกซึ้ง'
+    const route = selectModelRoute(actionType, targetText, customSkillPrompt)
+    const primaryInfo = getModelDisplayInfo(route.primaryModel)
+    const initialEstimate = estimateAiDuration({
+      actionType,
+      textLength: targetText.length,
+      characterCount: characters.length,
+      dictionaryCount: customDictionary.length,
+      modelId: route.primaryModel
+    })
+    const actionLabel = ACTION_LABELS[actionType] || 'ประมวลผลข้อความ'
+    const startedAtMs = Date.now()
 
-    const steps = STEP_SETS[actionType] || ['กำลังวิเคราะห์ข้อความ...', 'ประมวลผลคำแนะนำ...', 'จัดทำผลลัพธ์']
+    const initialSteps = [
+      {
+        id: 'client_prepare',
+        text: `เตรียมต้นฉบับ ${targetText.length.toLocaleString()} ตัวอักษร · ตัวละคร ${characters.length} ตัว · คลังคำ ${customDictionary.length} คำ`,
+        status: 'done'
+      },
+      {
+        id: 'connecting_server',
+        text: `ส่งคำขอ (${actionLabel}) และยืนยันสิทธิ์ผู้ใช้กับเซิร์ฟเวอร์`,
+        status: 'active'
+      }
+    ]
 
     setAiDrawer({
       isOpen: true,
@@ -1828,9 +1822,40 @@ export function AppProvider({ children }) {
       cost,
       result: null,
       error: null,
-      steps,
+      steps: initialSteps,
+      startedAt: startedAtMs,
+      activeStageText: 'กำลังเชื่อมต่อเซิร์ฟเวอร์และตรวจสอบสิทธิ์...',
+      activeModel: route.primaryModel,
+      modelDisplayName: primaryInfo.label,
+      modelTierLabel: primaryInfo.tierLabel,
+      routeReason: route.routeReason,
+      modelChain: route.chain,
+      fallbackUsed: false,
+      estimate: initialEstimate,
+      inputStats: {
+        textLength: targetText.length,
+        charCount: characters.length,
+        dictCount: customDictionary.length,
+        personaName,
+        genre
+      },
       thoughtTime: 0
     })
+
+    const upsertDrawerStep = (phaseId, text, status = 'active') => {
+      setAiDrawer(prev => {
+        const nextSteps = prev.steps.map(s =>
+          s.status === 'active' && s.id !== phaseId ? { ...s, status: 'done' } : s
+        )
+        const existingIdx = nextSteps.findIndex(s => s.id === phaseId)
+        if (existingIdx >= 0) {
+          nextSteps[existingIdx] = { id: phaseId, text, status }
+        } else {
+          nextSteps.push({ id: phaseId, text, status })
+        }
+        return { ...prev, steps: nextSteps }
+      })
+    }
 
     const startTime = performance.now()
 
@@ -1845,11 +1870,12 @@ export function AppProvider({ children }) {
         signal: abortController.signal,
         body: JSON.stringify({
           actionType,
+          stream: true,
           payload: {
             text: targetText,
             genre,
             pov,
-            persona: personas.find(p => p.id === activePersonaId)?.name,
+            persona: activePersonaObj?.name,
             dictionary: customDictionary.map(d => typeof d === 'string' ? d : d.word),
             characters: characters.map(c => ({
               name: c.name,
@@ -1869,12 +1895,109 @@ export function AppProvider({ children }) {
         throw new Error(errMsg)
       }
 
-      const data = await res.json()
+      const contentType = (res.headers.get('content-type') || '').toLowerCase()
+      let data = null
+
+      if (contentType.includes('application/x-ndjson') && res.body) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        const handleStreamEvent = (evt) => {
+          if (!evt || typeof evt !== 'object') return
+
+          if (evt.type === 'progress') {
+            if (evt.phase === 'model_waiting') {
+              const sec = Number(evt.modelElapsedSec || 0)
+              setAiDrawer(prev => ({
+                ...prev,
+                activeModel: evt.activeModel || prev.activeModel,
+                modelDisplayName: evt.modelDisplayName || prev.modelDisplayName,
+                modelTierLabel: evt.modelTierLabel || prev.modelTierLabel,
+                fallbackUsed: evt.fallbackUsed ?? prev.fallbackUsed,
+                estimate: evt.estimate || prev.estimate,
+                activeStageText: `กำลังรอโมเดล ${evt.modelDisplayName || prev.modelDisplayName} สร้างคำตอบ (${sec} วินาที)...`
+              }))
+              return
+            }
+
+            if (evt.phase === 'model_fallback') {
+              if (evt.stepText) {
+                upsertDrawerStep(`fallback_${evt.failedModel || 'primary'}`, evt.stepText, 'done')
+              }
+              setAiDrawer(prev => ({
+                ...prev,
+                activeModel: evt.activeModel || prev.activeModel,
+                modelDisplayName: evt.modelDisplayName || prev.modelDisplayName,
+                modelTierLabel: evt.modelTierLabel || prev.modelTierLabel,
+                fallbackUsed: true,
+                activeStageText: evt.stepText || prev.activeStageText
+              }))
+              return
+            }
+
+            if (evt.stepText) {
+              const stepId = evt.phase === 'calling_model'
+                ? `call_${evt.attemptIndex ?? 0}_${evt.activeModel || 'model'}`
+                : (evt.phase || `step_${Date.now()}`)
+              upsertDrawerStep(stepId, evt.stepText, 'active')
+            }
+
+            setAiDrawer(prev => ({
+              ...prev,
+              activeModel: evt.activeModel || prev.activeModel,
+              modelDisplayName: evt.modelDisplayName || prev.modelDisplayName,
+              modelTierLabel: evt.modelTierLabel || prev.modelTierLabel,
+              routeReason: evt.routeReason || prev.routeReason,
+              modelChain: evt.modelChain || prev.modelChain,
+              fallbackUsed: evt.fallbackUsed ?? prev.fallbackUsed,
+              estimate: evt.estimate || prev.estimate,
+              activeStageText: evt.stepText || prev.activeStageText
+            }))
+          } else if (evt.type === 'done') {
+            data = evt
+          } else if (evt.type === 'error') {
+            throw new Error(evt?.error?.message || 'เกิดข้อผิดพลาดในการประมวลผลคำขอ AI')
+          }
+        }
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            let parsedEvt = null
+            try {
+              parsedEvt = JSON.parse(trimmed)
+            } catch (_) {
+              continue
+            }
+            handleStreamEvent(parsedEvt)
+          }
+        }
+        if (buffer.trim()) {
+          let tailEvt = null
+          try {
+            tailEvt = JSON.parse(buffer.trim())
+          } catch (_) {}
+          if (tailEvt) handleStreamEvent(tailEvt)
+        }
+      } else {
+        data = await res.json()
+      }
+
       if (!data || !data.result) {
         throw new Error('AI Engine ไม่ได้ส่งผลลัพธ์ที่ถูกต้องกลับมา')
       }
 
       const elapsed = (performance.now() - startTime) / 1000
+      const resolvedModelId = data.model || route.primaryModel
+      const resolvedModelInfo = getModelDisplayInfo(resolvedModelId)
+      const resolvedModelLabel = data.modelDisplayName || resolvedModelInfo.label
 
       // Deduct Trix in DB and local state
       await deductTrix(cost, `AI ${actionType}`)
@@ -1887,14 +2010,20 @@ export function AppProvider({ children }) {
         loading: false,
         result: data.result,
         error: null,
+        activeModel: resolvedModelId,
+        modelDisplayName: resolvedModelLabel,
+        modelTierLabel: resolvedModelInfo.tierLabel,
+        fallbackUsed: Boolean(data.fallbackUsed),
+        steps: prev.steps.map(s => ({ ...s, status: 'done' })),
+        activeStageText: `ประมวลผลสำเร็จด้วย ${resolvedModelLabel}`,
         thoughtTime: elapsed
       }))
 
       endAITask(true)
 
       addToast({
-        title: 'AI ประมวลผลเสร็จสิ้น!',
-        description: `คิดวิเคราะห์สำเร็จในเวลา ${elapsed.toFixed(1)} วินาที`,
+        title: `ประมวลผลเสร็จสิ้น! (${resolvedModelLabel})`,
+        description: `คิดวิเคราะห์สำเร็จใน ${elapsed.toFixed(1)} วินาที`,
         fuseColor: '#74d9b4'
       })
 

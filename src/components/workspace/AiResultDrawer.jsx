@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import ThoughtLine from '../react-bits/ThoughtLine'
 import StatusMark from '../react-bits/StatusMark'
@@ -8,10 +8,27 @@ export default function AiResultDrawer() {
   const {
     aiDrawer, setAiDrawer,
     applyAiResult,
+    cancelAITask,
     addToast
   } = useApp()
 
   const [activeTab, setActiveTab] = useState('result')
+  const [liveElapsedSec, setLiveElapsedSec] = useState(0)
+
+  // Live elapsed timer during AI execution so ETA countdown stays accurate
+  useEffect(() => {
+    if (!aiDrawer.isOpen || !aiDrawer.loading) {
+      setLiveElapsedSec(0)
+      return
+    }
+    const base = aiDrawer.startedAt || Date.now()
+    const update = () => {
+      setLiveElapsedSec(Math.max(0, (Date.now() - base) / 1000))
+    }
+    update()
+    const timer = setInterval(update, 200)
+    return () => clearInterval(timer)
+  }, [aiDrawer.isOpen, aiDrawer.loading, aiDrawer.startedAt])
 
   // Close on Escape key
   React.useEffect(() => {
@@ -26,7 +43,33 @@ export default function AiResultDrawer() {
 
   if (!aiDrawer.isOpen) return null
 
-  const { loading, actionType, cost, result, error, steps, thoughtTime } = aiDrawer
+  const {
+    loading,
+    actionType,
+    cost,
+    result,
+    error,
+    steps,
+    activeStageText,
+    activeModel,
+    modelDisplayName,
+    modelTierLabel,
+    routeReason,
+    fallbackUsed,
+    estimate,
+    inputStats,
+    thoughtTime
+  } = aiDrawer
+
+  const minSec = estimate?.minSec || 6
+  const maxSec = estimate?.maxSec || 24
+  const expectedSec = estimate?.expectedSec || 15
+  const estLabel = estimate?.label || `~${minSec}–${maxSec} วินาที`
+  const remainingEstSec = Math.max(0, Math.ceil(expectedSec - liveElapsedSec))
+  const progressPct = loading
+    ? Math.min(94, Math.max(8, Math.round((liveElapsedSec / Math.max(1, maxSec)) * 90)))
+    : 100
+  const isLongerThanAvg = loading && liveElapsedSec > maxSec
 
   const ACTION_TITLES = {
     proofread: 'ตรวจคำผิด & วรรคตอน (Proofread)',
@@ -57,26 +100,32 @@ export default function AiResultDrawer() {
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-plottrix-line/40 flex items-center justify-between bg-plottrix-panel2/60">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{ACTION_ICONS[actionType] || '✦'}</span>
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-2xl shrink-0">{ACTION_ICONS[actionType] || '✦'}</span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-bold text-sm sm:text-base text-white">
                   {ACTION_TITLES[actionType] || 'ผลลัพธ์จาก AI'}
                 </h3>
                 <span className="bg-plottrix-purple/20 text-plottrix-purple2 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-plottrix-purple/30">
                   {cost} Trix
                 </span>
+                {(modelDisplayName || activeModel) && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/35">
+                    <span className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-300 animate-ping' : 'bg-emerald-400'}`} />
+                    <span>{modelDisplayName || activeModel}</span>
+                  </span>
+                )}
               </div>
-              <p className="text-[11px] text-plottrix-muted">
-                Smart Model Routing • Dynamic Vocabulary • Style Persona
+              <p className="text-[11px] text-plottrix-muted truncate mt-0.5">
+                {routeReason || 'Smart Model Routing • Dynamic Vocabulary • Style Persona'}
               </p>
             </div>
           </div>
 
           <button
             onClick={() => setAiDrawer(prev => ({ ...prev, isOpen: false }))}
-            className="w-8 h-8 rounded-lg hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-lg transition"
+            className="w-8 h-8 rounded-lg hover:bg-white/10 text-plottrix-muted hover:text-white flex items-center justify-center text-lg transition shrink-0"
           >
             ✕
           </button>
@@ -84,30 +133,105 @@ export default function AiResultDrawer() {
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          {/* 1. THINKING STATE (Using React Bits <ThoughtLine />) */}
+          {/* 1. LIVE REAL-TIME THINKING STATE */}
           {loading && (
-            <div className="py-14 flex flex-col items-center justify-center space-y-6 text-center">
-              <div className="p-6 rounded-2xl bg-plottrix-panel2/70 border border-plottrix-purple2/30 shadow-glow-purple max-w-md w-full flex flex-col items-center">
-                <ThoughtLine
-                  working={true}
-                  steps={steps}
-                  label="Plottrix AI กำลังวิเคราะห์..."
-                  doneLabel="วิเคราะห์เสร็จใน"
-                  glyph="sparkle"
-                  fontSize={16}
-                  breathPeriod={1.5}
-                  breathDepth={0.45}
-                  settleDuration={350}
-                  color="#c29aff"
-                  glyphColor="#e9c78c"
-                  collapsible={true}
-                  collapseOnSettle={false}
-                  showTimer={true}
-                />
-              </div>
+            <div className="py-4 sm:py-6 flex flex-col items-center justify-center space-y-4">
+              <div className="p-5 sm:p-6 rounded-2xl bg-plottrix-panel2/80 border border-plottrix-purple2/30 shadow-glow-purple max-w-xl w-full space-y-4">
+                {/* Active Model & ETA Top Badges */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-300">โมเดลที่กำลังทำงาน:</span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600/30 border border-purple-400/40 text-xs font-extrabold text-white">
+                      <span>🤖</span>
+                      <span>{modelDisplayName || activeModel || 'กำลังจัดสรรโมเดล...'}</span>
+                      {activeModel && (
+                        <code className="text-[10px] font-mono text-purple-200/80 bg-black/30 px-1.5 py-0.2 rounded">
+                          {activeModel}
+                        </code>
+                      )}
+                    </span>
+                    {fallbackUsed && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                        สลับโมเดลสำรอง
+                      </span>
+                    )}
+                  </div>
 
-              <div className="text-xs text-plottrix-muted max-w-sm leading-relaxed">
-                ระบบกำลังเชื่อมโยงคลังคำศัพท์เฉพาะหมวด ตรวจสอบกับข้อมูลตัวละครใน Character Bible และปรับสำนวนตาม Persona ของคุณ
+                  <div className="text-right">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px] font-semibold text-amber-300">
+                      <span>⏱</span>
+                      <span>คาดการณ์ {estLabel}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Stage + ETA Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-purple-100 font-semibold leading-snug">
+                      {activeStageText || 'กำลังส่งคำขอไปยัง AI Engine...'}
+                    </span>
+                    <span className="text-[11px] font-mono text-plottrix-muted shrink-0">
+                      {isLongerThanAvg
+                        ? `รอคำตอบ (${liveElapsedSec.toFixed(0)}s)`
+                        : remainingEstSec > 0
+                        ? `~อีก ${remainingEstSec}s`
+                        : 'กำลังตรวจรับคำตอบ...'}
+                    </span>
+                  </div>
+
+                  <div className="w-full h-1.5 rounded-full bg-black/50 overflow-hidden border border-white/5">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-purple-500 via-fuchsia-400 to-indigo-400 transition-all duration-300"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-plottrix-muted">
+                    <span>{modelTierLabel || 'Smart Model Routing'}</span>
+                    {inputStats && (
+                      <span>
+                        ต้นฉบับ {inputStats.textLength.toLocaleString()} ตัวอักษร · ตัวละคร {inputStats.charCount} · คลังคำ {inputStats.dictCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Real Step-by-Step Trace Log */}
+                <div className="pt-2 border-t border-white/10 text-left">
+                  <ThoughtLine
+                    working={true}
+                    steps={steps}
+                    label="สถานะการทำงานจริงของระบบ..."
+                    doneLabel="ประมวลผลเสร็จใน"
+                    glyph="sparkle"
+                    fontSize={15}
+                    breathPeriod={1.5}
+                    breathDepth={0.45}
+                    settleDuration={350}
+                    color="#c29aff"
+                    glyphColor="#e9c78c"
+                    collapsible={true}
+                    collapseOnSettle={false}
+                    showTimer={true}
+                  />
+                </div>
+
+                {/* Cancel Action */}
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-slate-400">
+                    {isLongerThanAvg
+                      ? 'โมเดลกำลังคิดเชิงลึก ใช้เวลานานกว่าค่าเฉลี่ยเล็กน้อย (ยังไม่เสีย Trix จนกว่าจะสำเร็จ)'
+                      : 'ยังไม่มีการหัก Trix จนกว่าระบบจะประมวลผลคำตอบสำเร็จ'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelAITask}
+                    className="px-3.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-200 text-xs font-bold transition cursor-pointer shrink-0"
+                  >
+                    ยกเลิกคำสั่ง
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -129,8 +253,8 @@ export default function AiResultDrawer() {
           {/* 3. COMPLETED STATE (Using React Bits <StatusMark /> at the top banner) */}
           {!loading && result && (
             <div className="space-y-5">
-              {/* Status Header with StatusMark */}
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent border border-emerald-500/30 flex items-center justify-between">
+              {/* Status Header with StatusMark, Model Used & Actual Time */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/15 to-transparent border border-emerald-500/30 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <StatusMark
                     status="done"
@@ -140,11 +264,19 @@ export default function AiResultDrawer() {
                     label="คิดวิเคราะห์และประมวลผลเสร็จสมบูรณ์"
                   />
                 </div>
-                {thoughtTime > 0 && (
-                  <span className="text-[11px] text-plottrix-mint font-semibold bg-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                    ใช้เวลา {thoughtTime.toFixed(1)}s
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {(modelDisplayName || activeModel) && (
+                    <span className="text-[11px] font-bold text-purple-200 bg-purple-500/20 border border-purple-400/30 px-2.5 py-0.5 rounded-full">
+                      โมเดล: {modelDisplayName || activeModel}
+                      {fallbackUsed ? ' (สำรอง)' : ''}
+                    </span>
+                  )}
+                  {thoughtTime > 0 && (
+                    <span className="text-[11px] text-plottrix-mint font-semibold bg-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                      ใช้เวลาจริง {thoughtTime.toFixed(1)}s {estimate?.label ? `(คาดการณ์ ${estimate.label})` : ''}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* ACTION RESULT: PROOFREAD */}
